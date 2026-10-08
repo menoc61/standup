@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Adaptive-icon background. Pure white rather than the crimson accent: the
+        launcher masks the icon to whatever shape the device theme uses, and a
+        coloured background turns every themed icon into a red blob. White keeps
+        the mark legible in both light and dark launchers, with the accent carried
+        by the artwork itself.
+    -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>

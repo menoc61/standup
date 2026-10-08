@@ -1,25 +1,28 @@
 {
-    "name": "CSPH StandUp",
+    "name": "CSPH StandUp — Bien-être au travail",
     "short_name": "StandUp",
     "id": "com.healthwellness.standup_app",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
-    "theme_color": "#4D8763",
+    "theme_color": "#DA244D",
     "description": "Rappels horaires pour se lever, s'étirer et rester actif au travail.",
-    "orientation": "portrait-primary",
-    "categories": ["health", "productivity"],
+    "lang": "fr",
+    "dir": "ltr",
+    "categories": ["health", "productivity", "lifestyle"],
     "prefer_related_applications": false,
     "icons": [
         {
             "src": "icons/Icon-192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "icons/Icon-512.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         },
         {
             "src": "icons/Icon-maskable-192.png",

@@ -236,14 +236,14 @@ jobs:
           retention-days: 14
 
   # ---------------------------------------------------------------------------
-  # Windows desktop. Also disabled by default because it needs a runner with
-  # the Visual Studio C++ workload. Set RUN_WINDOWS_CI = true on a self-hosted
-  # windows-latest runner.
+  # Windows desktop. Not gated: the hosted windows-latest image ships Visual
+  # Studio 2022 with the "Desktop development with C++" workload, so this builds
+  # on a stock runner. It was previously behind RUN_WINDOWS_CI on the assumption
+  # that a self-hosted machine was needed.
   # ---------------------------------------------------------------------------
   build-windows:
     name: Windows release
     needs: verify
-    if: ${{ vars.RUN_WINDOWS_CI == 'true' }}
     runs-on: windows-latest
     timeout-minutes: 60
     steps:

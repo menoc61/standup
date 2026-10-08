@@ -19,17 +19,28 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="CSPH StandUp — rappels horaires pour vous lever, vous étirer et rester actif.">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#4D8763">
+  <!--
+    user-scalable is deliberately left at its default. Pinch-zoom may not be
+    disabled: it is a WCAG 2.1 success criterion (1.4.4 Resize Text), and the
+    layout is already responsive, so there is nothing to prevent by locking it.
+    viewport-fit=cover lets the safe-area insets reach the rounded corners of a
+    phone or a notched display.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#DA244D">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="CSPH StandUp">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="icons/Icon-192.png">
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <!-- Favicon: the 64px square plus the scalable 192/512 pairs, so a
+       high-density browser tab picks the crispest available source. -->
+  <link rel="icon" type="image/png" sizes="64x64" href="favicon.png"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/Icon-192.png"/>
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/Icon-512.png"/>
 
   <title>CSPH StandUp</title>
   <link rel="manifest" href="manifest.json">

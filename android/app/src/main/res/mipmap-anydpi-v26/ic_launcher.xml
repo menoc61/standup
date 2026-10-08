@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Adaptive launcher icon.
+
+    Three layers, all of which are required for a modern Android icon:
+
+    * background  - a flat colour the launcher fills the mask with.
+    * foreground  - the brand mark, inset by a third because Android crops this
+                    layer and then scales it up, so artwork drawn to the edge
+                    would lose its own outer letters.
+    * monochrome  - the same silhouette as an alpha mask, used from Android 13 to
+                    tint the icon to the user's wallpaper palette. Without it the
+                    app opts out of themed icons entirely and keeps a fixed colour
+                    that clashes with every other themed icon on the device.
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background" />
-    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
 </adaptive-icon>

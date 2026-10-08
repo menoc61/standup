@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OAuthProvider;
 import 'package:uuid/uuid.dart';
+import 'package:standup_app/core/app_colors.dart';
 import 'package:standup_app/data/local/local_repository.dart';
 import 'package:standup_app/data/local/widget_snapshot.dart';
 import 'package:standup_app/data/models/daily_analytics.dart';
@@ -18,6 +20,7 @@ import 'package:standup_app/data/models/workday_metrics.dart';
 import 'package:standup_app/data/remote/supabase_service.dart';
 import 'package:standup_app/services/audio_service.dart';
 import 'package:standup_app/services/haptics_service.dart';
+import 'package:standup_app/services/live_countdown_service.dart';
 import 'package:standup_app/services/notification_service.dart';
 
 class AppState extends ChangeNotifier {
@@ -25,6 +28,14 @@ class AppState extends ChangeNotifier {
   final SupabaseService supabaseService;
   final NotificationService notificationService;
   final AudioService audioService;
+
+  /// Persistent notification that counts down to the next break.
+  ///
+  /// Owned here rather than injected so there is a single place that decides
+  /// whether the shade should show a countdown, which keeps the reminder,
+  /// snooze and skip paths from disagreeing with each other.
+  late final LiveCountdownService liveCountdownService = LiveCountdownService()
+    ..accentResolver = () => AppColors.getAccentColor(preferences.colorSystem);
 
   UserProfile? _userProfile;
   UserPreferences? _preferences;
@@ -233,6 +244,13 @@ class AppState extends ChangeNotifier {
     );
     _languageCode = storedLanguage == 'en' ? 'en' : 'fr';
 
+    // Set up before anything can schedule a reminder, so the first countdown is
+    // never posted against an uninitialised channel.
+    await liveCountdownService.initialize(
+      isAndroid: !kIsWeb && defaultTargetPlatform == TargetPlatform.android,
+      languageCode: _languageCode,
+    );
+
     // 1. Load Profile
     _userProfile = await localRepo.getUserProfile();
     final userId = _userProfile?.id ?? 'local_${const Uuid().v4()}';
@@ -411,6 +429,21 @@ class AppState extends ChangeNotifier {
 
     await _persistReminderInterval();
     await _scheduleReminderQueue(_nextReminderTime!);
+    await _syncLiveCountdown();
+  }
+
+  /// Pushes the next break time to the ongoing notification.
+  ///
+  /// Kept as a separate step so every path that recomputes the timer — a cadence
+  /// change, a snooze, a language change, a window that rolls over — updates the
+  /// shade too. Skipping any one of them would leave a stale countdown on screen.
+  Future<void> _syncLiveCountdown() async {
+    final next = _nextReminderTime;
+    if (next == null) {
+      await liveCountdownService.cancel();
+      return;
+    }
+    await liveCountdownService.start(next);
   }
 
   /// Rebuilds the timer purely from the wall clock. Because the window is
@@ -743,6 +776,10 @@ class AppState extends ChangeNotifier {
     _breakSecondsRemaining = 300; // 5 minutes
     _breakWindowKey = _currentWindowKey();
 
+    // The break has started, so the countdown to it has nothing left to say.
+    // Leaving it up would show a stuck "0:00" next to an in-progress stretch.
+    unawaited(liveCountdownService.cancel());
+
     _breakTimer?.cancel();
     _breakTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       if (_breakSecondsRemaining > 0) {
@@ -884,6 +921,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     await notificationService.setLanguageCode(languageCode);
+    liveCountdownService.setLanguageCode(languageCode);
     final store = await SharedPreferences.getInstance();
     await store.setString('language_code', languageCode);
     // The widget carries its own copy of the strings, so a language change has
@@ -1133,6 +1171,9 @@ class AppState extends ChangeNotifier {
     unawaited(supabaseService.stopWatchingAnalytics());
     notificationService.dispose();
     audioService.dispose();
+    // The countdown owns a repeating timer; left running it would keep posting
+    // to a notification service this notifier no longer drives.
+    liveCountdownService.dispose();
     super.dispose();
   }
 }

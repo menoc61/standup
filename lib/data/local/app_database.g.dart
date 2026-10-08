@@ -559,7 +559,7 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultValue: const Constant('system'),
+    defaultValue: const Constant('light'),
   );
   static const VerificationMeta _colorSystemMeta = const VerificationMeta(
     'colorSystem',

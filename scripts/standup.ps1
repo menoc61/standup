@@ -46,6 +46,9 @@ param(
     # -Debug common parameter and the script would fail to load.
     [switch] $Trace,
     [switch] $NoColor,
+    # Reuses an existing build output and only runs the post-build steps, which
+    # is what CI needs for the web job's Drift asset copy.
+    [switch] $SkipBuild,
     [string] $FlutterVersion,
     [string] $DeviceId
 )
@@ -63,12 +66,26 @@ $ErrorActionPreference = 'Stop'
     on both editions.
 #>
 if (-not (Test-Path 'variable:IsWindows')) {
-    # The script lives in the repository, so a Windows host is the only case that
-    # reaches this branch in practice; the other two are set explicitly so later
-    # checks resolve rather than failing.
-    $global:IsWindows = $true
-    $global:IsMacOS   = $false
+    # Detect the real host rather than assuming Windows. PowerShell 5.1 only ever
+    # ran on Windows in practice, but the shim is also reached by hosts that
+    # dot-source this script, and hardcoding $true made every platform check
+    # below answer wrongly on a non-Windows host.
+    $global:IsMacOS   = $true  # overwritten immediately when we detect Windows
     $global:IsLinux   = $false
+    $global:IsWindows = $false
+
+    # $PSVersionTable.PSEdition is 'Desktop' on 5.1 and 'Core' on 6+, and Core is
+    # available on all three operating systems, so it cannot decide this alone.
+    if ($env:OS -eq 'Windows_NT') {
+        $global:IsWindows = $true
+        $global:IsMacOS   = $false
+    }
+    elseif ($IsMacOS) {
+        $global:IsMacOS = $true
+    }
+    else {
+        $global:IsLinux = $true
+    }
 }
 
 # ── Locations ───────────────────────────────────────────────────────────────
@@ -84,6 +101,7 @@ $Script:AndroidPackage = 'com.healthwellness.standup_app'
 $Script:IOSBundleId = 'com.healthwellness.standupApp'
 $Script:Platforms = @('android', 'ios', 'web', 'windows', 'macos', 'linux')
 $Script:ValidModes = @('debug', 'profile', 'release')
+$Script:SkipBuild = [bool] $SkipBuild
 
 if ($NoColor -or $env:NO_COLOR -eq '1') {
     # Suppress colour by pointing every helper at the default foreground.
@@ -741,7 +759,11 @@ function Invoke-Build {
     Write-Section "Building $Platform ($BuildMode)"
     $defines = Get-DartDefines
 
-    switch ($Platform) {
+    # --skip-build reuses an existing output and only performs the post-build
+    # steps. CI uses it for the web job: the compile is already done, and all
+    # that remains is copying the Drift assets.
+    if (-not $Script:SkipBuild) {
+        switch ($Platform) {
         'android' {
             Invoke-Flutter build apk "--$BuildMode" @defines
             Write-Success 'APK: build\app\outputs\flutter-apk\'
@@ -758,13 +780,6 @@ function Invoke-Build {
         }
         'web' {
             Invoke-Flutter build web --release @defines
-            # Drift needs two assets that `flutter build web` does not copy: the
-            # sqlite3 WASM binary and the worker's JS bootstrap. Without them a
-            # deployed build throws on the first query, so they are pulled out of
-            # the pub cache and copied in rather than left to be discovered in
-            # production.
-            Copy-DriftWebAssets
-            Write-Success 'build\web\'
         }
         'windows' {
             Invoke-Flutter build windows "--$BuildMode" @defines
@@ -778,6 +793,18 @@ function Invoke-Build {
             Invoke-Flutter build linux "--$BuildMode" @defines
             Write-Success 'build\linux\x64\release\bundle\'
         }
+        }
+    }
+    else {
+        Write-Info '--skip-build: reusing the existing output'
+    }
+
+    # The asset copy runs either way. It is cheap, and it is the step most likely
+    # to be skipped by accident, which is exactly how a web build ends up
+    # throwing on its first database query in production.
+    if ($Platform -eq 'web') {
+        Copy-DriftWebAssets
+        Write-Success 'build\web\'
     }
 }
 

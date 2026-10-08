@@ -24,7 +24,13 @@ import 'package:standup_app/ui/widgets/spring_button.dart';
 class HomeScreen extends StatefulWidget {
   final AppState appState;
 
-  const HomeScreen({super.key, required this.appState});
+  final VoidCallback onRerunOnboarding;
+
+  const HomeScreen({
+    super.key,
+    required this.appState,
+    required this.onRerunOnboarding,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -160,7 +166,10 @@ class _HomeScreenState extends State<HomeScreen> {
           Positioned(
             top: 0,
             right: 0,
-            child: AccountButton(appState: widget.appState),
+            child: AccountButton(
+              appState: widget.appState,
+              onRerunOnboarding: widget.onRerunOnboarding,
+            ),
           ),
         ],
       ),

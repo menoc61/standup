@@ -450,7 +450,6 @@ const Map<String, String> _french = {
   'The app is black and white. Your accent colours the actions.': 'L’application est en noir et blanc. Votre couleur d’accentuation colore les actions.',
   'Back': 'Retour',
   'Forward': 'Suivant',
-  'Organization': 'Organisation',
   'Open': 'Ouvrir',
   'Organization dashboard': 'Tableau de bord de l’organisation',
   'Anonymised adherence and team trends. No individual is ever named.': 'Adhérence anonymisée et tendances d’équipe. Aucun individu n’est jamais nommé.',

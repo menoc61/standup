@@ -30,12 +30,18 @@ import 'package:standup_app/ui/widgets/spring_button.dart';
 /// is what makes an appearance change feel immediate rather than like a reload.
 class AccountButton extends StatelessWidget {
   final AppState appState;
+
+  /// Replays onboarding. Supplied by the shell, which owns the top-level screen
+  /// switch, so the button never has to reach across widget boundaries to
+  /// rebuild the app.
+  final VoidCallback onRerunOnboarding;
   final double topPadding;
   final double sidePadding;
 
   const AccountButton({
     super.key,
     required this.appState,
+    required this.onRerunOnboarding,
     this.topPadding = 8,
     this.sidePadding = 12,
   });
@@ -138,10 +144,7 @@ class AccountButton extends StatelessWidget {
       MaterialPageRoute<void>(
         builder: (_) => SettingsScreen(
           appState: appState,
-          // Replay lives in the shell, which owns the top-level screen switch.
-          // The shell installs its own handler; this keeps the contract explicit
-          // rather than reaching across to it.
-          onRerunOnboarding: () => Navigator.of(context).maybePop(),
+          onRerunOnboarding: onRerunOnboarding,
         ),
       ),
     );

@@ -8,6 +8,7 @@ import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/core/app_theme.dart';
 import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/services/haptics_service.dart';
+import 'package:standup_app/ui/layout/adaptive.dart';
 import 'package:standup_app/ui/screens/analytics_screen.dart';
 import 'package:standup_app/ui/screens/home_screen.dart';
 import 'package:standup_app/ui/screens/leaderboard_screen.dart';
@@ -29,19 +30,6 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
-
-  /// Width at which the shell switches from the bottom bar to the sidebar.
-  ///
-  /// 720 is the Material "large" window class. It is measured against the
-  /// space the shell is allocated, so resizing the desktop window across this
-  /// value swaps layouts live.
-  static const double _wideLayoutMinWidth = 720;
-
-  /// Ceiling for tab content on very wide windows.
-  ///
-  /// Without it the dashboard cards stretch to a 2000px-wide row on a desktop
-  /// monitor and the countdown sits alone in the middle of the screen.
-  static const double _contentMaxWidth = 1100;
 
   /// Drives the between-tab transition. Held in state so the page tree is not
   /// rebuilt on every navigation, which is what previously discarded each
@@ -121,7 +109,10 @@ class _MainShellState extends State<MainShell> {
 
     // Main tabs: Timer, Leaderboard, Analytics. Org is inside Settings now.
     final screens = <Widget>[
-      HomeScreen(appState: widget.appState),
+      HomeScreen(
+        appState: widget.appState,
+        onRerunOnboarding: widget.onRerunOnboarding,
+      ),
       LeaderboardScreen(appState: widget.appState),
       AnalyticsScreen(appState: widget.appState),
     ];
@@ -193,12 +184,9 @@ class _MainShellState extends State<MainShell> {
           // compact layout, which `MediaQuery.sizeOf` would get wrong in each
           // case because it reports the window rather than the allocation.
           child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= _wideLayoutMinWidth;
-              return isWide
-                  ? _buildDesktop(context, theme, isDark, accent, screens)
-                  : _buildMobile(context, accent, screens);
-            },
+            builder: (context, constraints) => useSidebarNavigation(constraints)
+                ? _buildDesktop(context, theme, isDark, accent, screens)
+                : _buildMobile(context, accent, screens),
           ),
         ),
       ),
@@ -215,33 +203,33 @@ class _MainShellState extends State<MainShell> {
     Color accent,
     List<Widget> screens,
   ) {
+    final navigator = Navigator.of(context);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       floatingActionButton: ReminderFab(appState: widget.appState),
-      body: Stack(
+      body: Row(
         children: [
-          Row(
-            children: [
-              // Glass sidebar
-              _GlassSidebar(
-                currentIndex: _currentIndex,
-                accent: accent,
-                isDark: isDark,
-                onDestinationSelected: _navigate,
-              ),
+          // Glass sidebar
+          _GlassSidebar(
+            currentIndex: _currentIndex,
+            accent: accent,
+            isDark: isDark,
+            onDestinationSelected: _navigate,
+          ),
 
-              // Subtle divider
-              Container(
-                width: 1,
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.06)
-                    : Colors.black.withValues(alpha: 0.05),
-              ),
+          // Subtle divider
+          Container(
+            width: 1,
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.black.withValues(alpha: 0.05),
+          ),
 
-              // Back/forward controls for pushed detail sections. Positioned inside the
-          // content column rather than over the row, so they cannot land on top
-          // of the sidebar when the window is at its narrowest.
+          // Content column. The detail nav sits above the page rather than
+          // being positioned over it, so it can never overlap the sidebar and
+          // the page keeps the full remaining height.
           Expanded(
             child: Column(
               children: [
@@ -249,13 +237,11 @@ class _MainShellState extends State<MainShell> {
                   alignment: Alignment.centerLeft,
                   child: _buildDetailNav(
                     context,
-                    canGoBack: Navigator.of(context).canPop(),
-                    canGoForward: Navigator.of(context).canPop(),
+                    canGoBack: navigator.canPop(),
+                    canGoForward: navigator.canPop(),
                   ),
                 ),
-                Expanded(
-                  child: _buildAnimatedScreenStack(context, screens),
-                ),
+                Expanded(child: _buildAnimatedScreenStack(context, screens)),
               ],
             ),
           ),
@@ -363,20 +349,17 @@ class _MainShellState extends State<MainShell> {
             // Centre and cap the page width. Without this the dashboard cards
             // stretch to the full width of a desktop monitor, and the timer
             // ends up marooned in the middle of a very wide row.
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: _contentMaxWidth),
-                child: reduceMotion
-                    ? screens[index]
-                    : AnimatedSlide(
-                        // Directional entrance: the page settles in from the
-                        // side it came from rather than always from the right.
-                        offset: Offset(_slideDirectionFor(index) * 0.03, 0),
-                        duration: const Duration(milliseconds: 260),
-                        curve: Curves.easeOutCubic,
-                        child: screens[index],
-                      ),
-              ),
+            child: constrainContent(
+              reduceMotion
+                  ? screens[index]
+                  : AnimatedSlide(
+                      // Directional entrance: the page settles in from the
+                      // side it came from rather than always from the right.
+                      offset: Offset(_slideDirectionFor(index) * 0.03, 0),
+                      duration: const Duration(milliseconds: 260),
+                      curve: Curves.easeOutCubic,
+                      child: screens[index],
+                    ),
             ),
           ),
         );
@@ -793,7 +776,6 @@ class _ShortcutHint extends StatelessWidget {
     );
   }
 }
-
 
 /// Carries a shell action through the `Shortcuts`/`Actions` pair.
 ///

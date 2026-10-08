@@ -1153,7 +1153,12 @@ EOF
 # ── Entry point ──────────────────────────────────────────────────────────────
 
 main() {
-  # Global options are parsed before the command so they apply everywhere.
+  # Options are collected in a full pass over the arguments rather than only
+  # before the command, so `build web release --skip-build` behaves the same as
+  # `--skip-build build web release`. Reading them in a leading run only meant a
+  # trailing flag silently fell through to the command and was ignored.
+  local positionals=()
+
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --flutter-version)
@@ -1184,10 +1189,14 @@ main() {
         return 0
         ;;
       *)
-        break
+        positionals+=("$1")
+        shift
         ;;
     esac
   done
+
+  # Restore the positional arguments so the dispatch below can use "$@".
+  set -- "${positionals[@]+"${positionals[@]}"}"
 
   local command="${1:-menu}"
   shift || true

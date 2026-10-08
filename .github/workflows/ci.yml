@@ -85,12 +85,12 @@ jobs:
           distribution: zulu
           java-version: "17"
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept Android licences
-        run: |
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+      # No android-actions/setup-android step on purpose. That action shells out
+      # to `sdkmanager --list`, which now fails on the current runner image with
+      # "Failed to find package 'tools'" because Google retired that package
+      # name. The hosted image already ships a working SDK with the build-tools
+      # and platform versions this project needs, and the licences are already
+      # accepted there.
 
       - name: Resolve dependencies
         run: flutter pub get
@@ -137,7 +137,7 @@ jobs:
       # truth for locating them; running it here means CI and a developer
       # following the TUI produce an identical bundle.
       - name: Copy Drift web assets
-        run: ./scripts/standup.sh build web release --skip-build
+        run: bash ./scripts/standup.sh build web release --skip-build
 
       # The browser build cannot work without these two files served next to
       # index.html, so assert they were emitted rather than discovering it at
@@ -179,7 +179,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
-            libstdc++-12-dev libblkid-dev uuid-dev
+            libstdc++-12-dev libblkid-dev uuid-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 
       - name: Resolve dependencies
         run: flutter pub get

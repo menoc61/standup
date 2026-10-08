@@ -343,6 +343,9 @@ class NotificationService {
         ? Duration(minutes: actionWindowMinutes)
         : Duration.zero;
 
+    var scheduled = 0;
+    var skippedInQuietHours = 0;
+
     for (var i = 0; i < count; i++) {
       final boundary = firstReminder.add(
         Duration(minutes: frequencyMinutes * i),
@@ -351,12 +354,28 @@ class NotificationService {
       if (when.isBefore(DateTime.now().subtract(const Duration(minutes: 1)))) {
         continue;
       }
-      if (_isInsideQuietWindow(when, window)) continue;
+      if (_isInsideQuietWindow(when, window)) {
+        skippedInQuietHours++;
+        continue;
+      }
       await scheduleStandupReminder(
         id: firstId + i,
         scheduledTime: when,
         title: title,
         body: body,
+      );
+      scheduled++;
+    }
+
+    // A quiet window that happens to cover every candidate instant would leave
+    // the user with no OS reminders at all while the in-app timer kept
+    // advancing. That failure is invisible from the UI, so it is reported
+    // rather than silently swallowed.
+    if (scheduled == 0 && skippedInQuietHours > 0) {
+      debugPrint(
+        'Reminder queue is empty: all $skippedInQuietHours candidate slots fall '
+        'inside quiet hours "$quietHours". Reminders resume after the window '
+        'ends; shorten it or pick another cadence.',
       );
     }
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -17,34 +18,44 @@ class ReminderFab extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = theme.colorScheme.primary;
-    return GestureDetector(
-      onTap: () {
-        HapticsService.medium();
-        _openActions(context);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: accent.withValues(alpha: 0.9),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.6),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: accent.withValues(alpha: 0.4),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+    return Semantics(
+      button: true,
+      label: appString(context, 'Reminder'),
+      // Icon-only control with no text child: without an explicit label a screen
+      // reader announces an unnamed double-tap target.
+      excludeSemantics: true,
+      child: Tooltip(
+        message: appString(context, 'Reminder'),
+        child: GestureDetector(
+          onTap: () {
+            unawaited(HapticsService.medium());
+            _openActions(context);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: accent.withValues(alpha: 0.9),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.6),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.4),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: const Icon(
-          Icons.notifications_active_rounded,
-          color: Colors.white,
-          size: 26,
+            child: const Icon(
+              Icons.notifications_active_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
+          ),
         ),
       ),
     );

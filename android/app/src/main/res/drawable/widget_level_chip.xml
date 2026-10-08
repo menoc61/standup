@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Chip behind the level badge. Light and neutral so the ink label inside stays
+  legible; the accent is carried by the surrounding text instead.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFE4E5E0" />
+    <corners android:radius="8dp" />
+</shape>

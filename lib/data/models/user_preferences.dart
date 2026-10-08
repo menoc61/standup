@@ -1,8 +1,27 @@
+import 'package:standup_app/core/app_colors.dart';
+
+/// Resolves a stored accent id to one the current palette offers.
+///
+/// The rebrand retired the botanical accents (`emerald`, `teal`, `amber`,
+/// `indigo`, `coral`) in favour of a monochrome base with a single accent.
+/// Profiles created before that change still carry the old id, and without this
+/// they would render in the colour the user is complaining about — the value
+/// would be perfectly valid, just no longer offered.
+///
+/// Falling back to the default here rather than mutating the stored row keeps
+/// the change non-destructive and reversible: if the old palette ever comes
+/// back, nothing has been overwritten.
+String normalizeAccent(String? stored) {
+  if (stored == null || stored.isEmpty) return AppColors.defaultAccentId;
+  if (AppColors.isKnownAccent(stored)) return stored;
+  return AppColors.defaultAccentId;
+}
+
 class UserPreferences {
   final String id;
   final String userId;
   final String themeMode; // 'system', 'light', 'dark'
-  final String colorSystem; // 'emerald', 'teal', 'amber', 'indigo', 'coral'
+  final String colorSystem; // accent id; see AppColors.accents. Default is the brand crimson.
   final int notificationFrequency; // 30, 60, 90 minutes
   final bool soundEnabled;
   final bool hapticsEnabled;
@@ -26,8 +45,8 @@ class UserPreferences {
   UserPreferences({
     required this.id,
     required this.userId,
-    this.themeMode = 'system',
-    this.colorSystem = 'emerald',
+    this.themeMode = 'light',
+    this.colorSystem = AppColors.defaultAccentId,
     this.notificationFrequency = 60,
     this.soundEnabled = true,
     this.hapticsEnabled = true,
@@ -103,8 +122,8 @@ class UserPreferences {
     return UserPreferences(
       id: json['id'] as String,
       userId: json['user_id'] as String,
-      themeMode: json['theme_mode'] as String? ?? 'system',
-      colorSystem: json['color_system'] as String? ?? 'emerald',
+      themeMode: json['theme_mode'] as String? ?? 'light',
+      colorSystem: normalizeAccent(json['color_system'] as String?),
       notificationFrequency: json['notification_frequency'] as int? ?? 60,
       soundEnabled: json['sound_enabled'] as bool? ?? true,
       hapticsEnabled: json['haptics_enabled'] as bool? ?? true,
@@ -125,8 +144,8 @@ class UserPreferences {
     return UserPreferences(
       id: 'pref_$userId',
       userId: userId,
-      themeMode: 'system',
-      colorSystem: 'emerald',
+      themeMode: 'light',
+      colorSystem: AppColors.defaultAccentId,
       notificationFrequency: 60,
       soundEnabled: true,
       hapticsEnabled: true,

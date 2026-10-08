@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:standup_app/services/haptics_service.dart';
 
 class SpringButton extends StatefulWidget {
@@ -12,6 +13,10 @@ class SpringButton extends StatefulWidget {
   final double scaleFactor;
   final bool isFullWidth;
 
+  /// Accessible name. When null the child text is used, which works for the
+  /// common case; pass an explicit label when the visual content is an icon.
+  final String? semanticLabel;
+
   const SpringButton({
     super.key,
     required this.child,
@@ -23,6 +28,7 @@ class SpringButton extends StatefulWidget {
     this.border,
     this.scaleFactor = 0.94,
     this.isFullWidth = false,
+    this.semanticLabel,
   });
 
   @override
@@ -34,6 +40,7 @@ class _SpringButtonState extends State<SpringButton>
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   bool _isHovered = false;
+  bool _hasFocus = false;
 
   @override
   void initState() {
@@ -97,22 +104,33 @@ class _SpringButtonState extends State<SpringButton>
             decoration: BoxDecoration(
               color: bg,
               borderRadius: r,
-              border: widget.border,
-              boxShadow: _isHovered
-                  ? [
-                      BoxShadow(
-                        color: bg.withValues(alpha: 0.35),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
+              border:
+                  widget.border ??
+                  // A visible focus ring: without one, keyboard and switch users
+                  // have no way to tell which control is focused.
+                  (_hasFocus
+                      ? Border.all(color: theme.colorScheme.primary, width: 2.5)
+                      : null),
+              boxShadow: [
+                if (_hasFocus)
+                  BoxShadow(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                    blurRadius: 0,
+                    spreadRadius: 3,
+                  ),
+                if (_isHovered)
+                  BoxShadow(
+                    color: bg.withValues(alpha: 0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  )
+                else
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+              ],
             ),
             child: Center(
               widthFactor: widget.isFullWidth ? null : 1.0,
@@ -137,14 +155,57 @@ class _SpringButtonState extends State<SpringButton>
           : SystemMouseCursors.basic,
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTapDown: _onTapDown,
-        onTapUp: _onTapUp,
-        onTapCancel: _onTapCancel,
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: content,
+      // A bare GestureDetector produces an unnamed tap target, so assistive
+      // technology announced these as buttons with no label and no enabled
+      // state. Merging the child into a single semantic node fixes both, and
+      // `button: true` plus `enabled` lets a screen reader say what the control
+      // is and whether it currently works.
+      child: Semantics(
+        button: true,
+        enabled: widget.onTap != null,
+        excludeSemantics: true,
+        label: widget.semanticLabel,
+        child: FocusableActionDetector(
+          enabled: widget.onTap != null,
+          mouseCursor: widget.onTap != null
+              ? SystemMouseCursors.click
+              : SystemMouseCursors.basic,
+          // Keyboard and switch users need a focus node and a way to activate,
+          // otherwise the primary actions are unreachable without a pointer.
+          shortcuts: widget.onTap == null
+              ? const <ShortcutActivator, Intent>{}
+              : const {
+                  SingleActivator(LogicalKeyboardKey.enter): _ActivateIntent(),
+                  SingleActivator(LogicalKeyboardKey.space): _ActivateIntent(),
+                },
+          actions: widget.onTap == null
+              ? const <Type, Action<Intent>>{}
+              : {
+                  _ActivateIntent: CallbackAction<_ActivateIntent>(
+                    onInvoke: (_) {
+                      widget.onTap?.call();
+                      return null;
+                    },
+                  ),
+                },
+          onShowFocusHighlight: (value) {
+            if (mounted) setState(() => _hasFocus = value);
+          },
+          child: GestureDetector(
+            onTapDown: _onTapDown,
+            onTapUp: _onTapUp,
+            onTapCancel: _onTapCancel,
+            onTap: widget.onTap,
+            behavior: HitTestBehavior.opaque,
+            child: content,
+          ),
+        ),
       ),
     );
   }
+}
+
+/// Activates a [SpringButton] from the keyboard or a switch device.
+class _ActivateIntent extends Intent {
+  const _ActivateIntent();
 }

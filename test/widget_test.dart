@@ -30,15 +30,38 @@ void main() {
     test('UserPreferences default and copyWith', () {
       final prefs = UserPreferences.defaultPreferences('user_1');
       expect(prefs.notificationFrequency, 60);
-      expect(prefs.colorSystem, 'emerald');
+      // The default accent follows the logo. Asserted explicitly so a change of
+      // default is a deliberate edit rather than an accident.
+      expect(prefs.colorSystem, 'brand');
+      expect(prefs.colorSystem, AppColors.defaultAccentId);
       expect(prefs.soundEnabled, true);
 
       final updated = prefs.copyWith(
         notificationFrequency: 30,
-        colorSystem: 'amber',
+        colorSystem: 'violet',
       );
       expect(updated.notificationFrequency, 30);
-      expect(updated.colorSystem, 'amber');
+      expect(updated.colorSystem, 'violet');
+    });
+
+    test('a retired accent id falls back to the brand on load', () {
+      // Profiles created before the rebrand still store 'emerald'. Loading one
+      // must not put the user back into the palette they moved away from.
+      final legacy = UserPreferences.fromJson({
+        'id': 'p1',
+        'user_id': 'user_1',
+        'color_system': 'emerald',
+      });
+      expect(legacy.colorSystem, 'brand');
+    });
+
+    test('normalizeAccent keeps current ids and repairs the rest', () {
+      expect(normalizeAccent('violet'), 'violet');
+      expect(normalizeAccent('brand'), 'brand');
+      expect(normalizeAccent('emerald'), 'brand');
+      expect(normalizeAccent('coral'), 'brand');
+      expect(normalizeAccent(''), 'brand');
+      expect(normalizeAccent(null), 'brand');
     });
 
     test('ReminderLog serialization', () {

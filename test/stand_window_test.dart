@@ -139,55 +139,149 @@ void main() {
   });
 
   group('ClockIntegrityGuard', () {
-    test('counts a backwards clock jump as a violation', () {
+    test('classifies ordinary elapsed time as ok', () {
       expect(
-        ClockIntegrityGuard.countViolations(
-          previous: DateTime(2026, 1, 1, 10),
-          now: DateTime(2026, 1, 1, 9, 30),
+        ClockIntegrityGuard.classify(
+          wallDelta: const Duration(seconds: 1),
+          monotonicDelta: const Duration(seconds: 1),
         ),
-        1,
+        ClockVerdict.ok,
       );
     });
 
-    test('counts a large forward jump as a violation', () {
+    test('a backwards wall clock is a violation', () {
       expect(
-        ClockIntegrityGuard.countViolations(
-          previous: DateTime(2026, 1, 1, 10),
-          now: DateTime(2026, 1, 1, 14),
+        ClockIntegrityGuard.classify(
+          wallDelta: const Duration(seconds: -30),
+          monotonicDelta: const Duration(seconds: 1),
         ),
-        1,
+        ClockVerdict.violation,
       );
     });
 
-    test('accepts ordinary elapsed time', () {
+    test(
+      'a forward jump with a matching monotonic reference is a violation',
+      () {
+        // The wall clock claims four hours passed while the process was only up
+        // for one second.
+        expect(
+          ClockIntegrityGuard.classify(
+            wallDelta: const Duration(hours: 4),
+            monotonicDelta: const Duration(seconds: 1),
+          ),
+          ClockVerdict.violation,
+        );
+      },
+    );
+
+    test('an OS suspend is a reset, not tampering', () {
+      // This is the regression that would otherwise get a diligent user flagged
+      // every morning after a normal night of sleep: the wall clock advances by
+      // the sleep duration while the monotonic stopwatch does not move at all.
       expect(
-        ClockIntegrityGuard.countViolations(
-          previous: DateTime(2026, 1, 1, 10),
-          now: DateTime(2026, 1, 1, 10, 1),
+        ClockIntegrityGuard.classify(
+          wallDelta: const Duration(hours: 8),
+          monotonicDelta: Duration.zero,
         ),
-        0,
+        ClockVerdict.reset,
       );
     });
 
-    test('flags a device that repeatedly moves the clock', () {
-      final start = DateTime(2026, 1, 1, 8);
-      final now = DateTime(2026, 1, 1, 12);
+    test('a long foreground gap with no clock movement is still a reset', () {
       expect(
-        ClockIntegrityGuard.isUnreliable(
-          violations: 10,
-          windowStart: start,
-          now: now,
+        ClockIntegrityGuard.classify(
+          wallDelta: const Duration(hours: 2),
+          monotonicDelta: const Duration(milliseconds: 100),
         ),
-        isTrue,
+        ClockVerdict.reset,
       );
+    });
+
+    test('small divergence from timer imprecision is tolerated', () {
       expect(
-        ClockIntegrityGuard.isUnreliable(
-          violations: 1,
-          windowStart: start,
-          now: now,
+        ClockIntegrityGuard.classify(
+          wallDelta: const Duration(seconds: 75),
+          monotonicDelta: const Duration(seconds: 1),
         ),
-        isFalse,
+        ClockVerdict.ok,
       );
+    });
+  });
+
+  group('ClockIntegrityTracker', () {
+    test('three consecutive violations mark the device as distrusted', () {
+      final tracker = ClockIntegrityTracker();
+      var wall = DateTime(2026, 1, 1, 9);
+
+      // First observation establishes the reference point.
+      tracker.observe(
+        wallNow: wall,
+        monotonicDelta: const Duration(seconds: 1),
+      );
+
+      // Each subsequent reading jumps the wall clock forward by four hours
+      // relative to the previous reading, while the app is demonstrably live.
+      for (var i = 1; i <= ClockIntegrityGuard.tolerance; i++) {
+        wall = wall.add(const Duration(hours: 4));
+        tracker.observe(
+          wallNow: wall,
+          monotonicDelta: const Duration(seconds: 1),
+        );
+        if (i < ClockIntegrityGuard.tolerance) {
+          expect(
+            tracker.isDistrusted,
+            isFalse,
+            reason: 'not distrusted after $i violations',
+          );
+        }
+      }
+      expect(tracker.isDistrusted, isTrue);
+      expect(tracker.streak, ClockIntegrityGuard.tolerance);
+    });
+
+    test('a suspend clears the streak so sleep is never punished', () {
+      final tracker = ClockIntegrityTracker();
+      var now = DateTime(2026, 1, 1, 22);
+      tracker.observe(wallNow: now, monotonicDelta: const Duration(seconds: 1));
+      now = now.add(const Duration(seconds: 1));
+      tracker.observe(wallNow: now, monotonicDelta: const Duration(seconds: 1));
+      expect(tracker.streak, 0, reason: 'clean readings stay at zero');
+
+      // Night: eight hours of wall clock, monotonic frozen.
+      now = now.add(const Duration(hours: 8));
+      tracker.observe(wallNow: now, monotonicDelta: Duration.zero);
+      expect(tracker.isDistrusted, isFalse);
+      expect(tracker.streak, 0);
+    });
+
+    test('clean readings decay an existing streak', () {
+      final tracker = ClockIntegrityTracker();
+      var wall = DateTime(2026, 1, 1, 12);
+
+      // Baseline.
+      tracker.observe(
+        wallNow: wall,
+        monotonicDelta: const Duration(seconds: 1),
+      );
+
+      // One clear violation.
+      wall = wall.add(const Duration(hours: 5));
+      tracker.observe(
+        wallNow: wall,
+        monotonicDelta: const Duration(seconds: 1),
+      );
+      expect(tracker.streak, 1);
+
+      // Then honest readings: one per second, matching monotonic time.
+      for (var i = 0; i < 3; i++) {
+        wall = wall.add(const Duration(seconds: 1));
+        tracker.observe(
+          wallNow: wall,
+          monotonicDelta: const Duration(seconds: 1),
+        );
+      }
+      expect(tracker.streak, 0);
+      expect(tracker.isDistrusted, isFalse);
     });
   });
 }

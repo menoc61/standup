@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  White rounded chip that holds the app logo.
+
+  The logo asset has a white ground, so giving it a white container means the
+  mark reads as a deliberate badge on any surface colour instead of showing a
+  white square.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFFFFFFF" />
+    <corners android:radius="8dp" />
+</shape>

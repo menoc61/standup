@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:glass_bottom_navigation/glass_bottom_navigation.dart';
 import 'package:standup_app/core/app_colors.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/providers/app_state.dart';
@@ -9,8 +10,6 @@ import 'package:standup_app/services/haptics_service.dart';
 import 'package:standup_app/ui/screens/analytics_screen.dart';
 import 'package:standup_app/ui/screens/home_screen.dart';
 import 'package:standup_app/ui/screens/leaderboard_screen.dart';
-import 'package:standup_app/ui/screens/org_admin_screen.dart';
-import 'package:standup_app/ui/screens/settings_screen.dart';
 import 'package:standup_app/ui/widgets/reminder_fab.dart';
 
 class MainShell extends StatefulWidget {
@@ -37,8 +36,6 @@ class _MainShellState extends State<MainShell> {
   static const _kNav1 = 'nav_timer';
   static const _kNav2 = 'nav_leaderboard';
   static const _kNav3 = 'nav_analytics';
-  static const _kNav4 = 'nav_org';
-  static const _kNav5 = 'nav_settings';
 
   void _navigate(int idx) {
     if (idx == _currentIndex) return;
@@ -65,15 +62,11 @@ class _MainShellState extends State<MainShell> {
       widget.appState.preferences.colorSystem,
     );
 
+    // Main tabs: Timer, Leaderboard, Analytics. Org is inside Settings now.
     final screens = [
       HomeScreen(appState: widget.appState),
       LeaderboardScreen(appState: widget.appState),
       AnalyticsScreen(appState: widget.appState),
-      OrgAdminScreen(appState: widget.appState),
-      SettingsScreen(
-        appState: widget.appState,
-        onRerunOnboarding: widget.onRerunOnboarding,
-      ),
     ];
 
     // Keyboard shortcut map
@@ -96,20 +89,14 @@ class _MainShellState extends State<MainShell> {
       const SingleActivator(LogicalKeyboardKey.digit3): const _AppIntent(
         _kNav3,
       ),
-      const SingleActivator(LogicalKeyboardKey.digit4): const _AppIntent(
-        _kNav4,
-      ),
-      const SingleActivator(LogicalKeyboardKey.digit5): const _AppIntent(
-        _kNav5,
-      ),
     };
 
-    final actions = <Type, Action<Intent>>{
+final actions = <Type, Action<Intent>>{
       _AppIntent: CallbackAction<_AppIntent>(
-        onInvoke: (intent) {
+        onInvoke: (intent) async {
           switch (intent.action) {
             case _kComplete:
-              widget.appState.completeReminder();
+              await widget.appState.completeReminder();
             case _kSnooze:
               widget.appState.snoozeReminder(minutes: 10);
             case _kSkip:
@@ -120,10 +107,6 @@ class _MainShellState extends State<MainShell> {
               _navigate(1);
             case _kNav3:
               _navigate(2);
-            case _kNav4:
-              _navigate(3);
-            case _kNav5:
-              _navigate(4);
           }
           return null;
         },
@@ -198,11 +181,32 @@ class _MainShellState extends State<MainShell> {
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       floatingActionButton: ReminderFab(appState: widget.appState),
       body: _buildAnimatedScreenStack(context, screens),
-      bottomNavigationBar: _GlassBottomNav(
+      bottomNavigationBar: GlassBottomBar(
+        items: const [
+          GlassBarItem(
+            icon: Icons.timer_outlined,
+            label: 'Timer',
+            nativeSymbolName: 'timer',
+          ),
+          GlassBarItem(
+            icon: Icons.emoji_events_outlined,
+            label: 'Leaderboard',
+            nativeSymbolName: 'trophy.fill',
+          ),
+          GlassBarItem(
+            icon: Icons.grid_view_outlined,
+            label: 'Analytics',
+            nativeSymbolName: 'chart.bar.fill',
+          ),
+        ],
         currentIndex: _currentIndex,
-        accent: accent,
-        isDark: isDark,
-        onDestinationSelected: _navigate,
+        onTap: _navigate,
+        style: GlassBottomNavStyle(
+          accent: accent,
+          actionButtonMode: isDark
+              ? GlassActionButtonMode.flutter
+              : GlassActionButtonMode.nativeLiquidGlassOnIOS26,
+        ),
       ),
     );
   }
@@ -282,12 +286,6 @@ class _GlassSidebar extends StatelessWidget {
       selected: Icons.grid_view_rounded,
       label: 'Analytics',
     ),
-    (
-      icon: Icons.corporate_fare_outlined,
-      selected: Icons.corporate_fare,
-      label: 'Org Health',
-    ),
-    (icon: Icons.tune_outlined, selected: Icons.tune, label: 'Settings'),
   ];
 
   @override
@@ -422,59 +420,78 @@ class _SidebarNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? accent.withValues(alpha: 0.11)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: isSelected
-                    ? accent
-                    : Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected
-                        ? accent
-                        : Theme.of(context).colorScheme.onSurfaceVariant,
+    return Semantics(
+      container: true,
+      button: true,
+      selected: isSelected,
+      label: label,
+      excludeSemantics: true,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: AnimatedContainer(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? accent.withValues(alpha: 0.11)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: isSelected
+                      ? accent
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? accent
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
-              ),
-              // Keyboard shortcut badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  shortcutLabel,
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                // Keyboard shortcut badge, excluded from the button's own label
+                // so it does not read as trailing content ("Timer 1").
+                ExcludeSemantics(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      shortcutLabel,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -640,10 +657,18 @@ class _GlassBottomNavState extends State<_GlassBottomNav>
 
                             return SizedBox(
                               width: itemWidth,
+                              // `container: true` + `excludeSemantics: true`
+                              // collapses the tab into one semantic node.
+                              // Without it the annotating node and the button's
+                              // own nodes become siblings, so a screen reader
+                              // announces the label twice with a stray unnamed
+                              // tap target in between.
                               child: Semantics(
+                                container: true,
                                 button: true,
                                 selected: isSelected,
                                 label: appString(context, item.label),
+                                excludeSemantics: true,
                                 child: _TabButton(
                                   icon: isSelected ? item.selected : item.icon,
                                   label: appString(context, item.label),

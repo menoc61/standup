@@ -418,7 +418,9 @@ class ProfileSetupSlide extends StatelessWidget {
       'Leadership',
     ];
 
-    return SingleChildScrollView(
+    // The onboarding shell already provides a scroll view, so this slide must
+    // not nest a second one on the same axis.
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -666,7 +668,7 @@ class PreferencesSlide extends StatelessWidget {
     final theme = Theme.of(context);
     final accent = AppColors.getAccentColor(selectedColor);
 
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -714,7 +716,7 @@ class PreferencesSlide extends StatelessWidget {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        '$mins mins',
+                        formatDurationLabel(context, mins),
                         style: TextStyle(
                           color: isSel
                               ? Colors.white
@@ -737,34 +739,60 @@ class PreferencesSlide extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
           ),
           const SizedBox(height: 8),
+
+          // The swatch list comes from `AppColors.accents` rather than being
+          // written out here, so the picker can never offer an option the theme
+          // does not know how to render.
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: ['emerald', 'teal', 'amber', 'indigo', 'coral'].map((
-              colorName,
-            ) {
-              final isSel = selectedColor == colorName;
-              final col = AppColors.getAccentColor(colorName);
-              return GestureDetector(
-                onTap: () => onColorChanged(colorName),
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: col,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSel ? Colors.white : Colors.transparent,
-                      width: 3.0,
+            children: AppColors.accents.map((option) {
+              final isSel = selectedColor == option.id;
+              final col = option.swatch;
+              return Semantics(
+                // Each swatch is a real choice, so it is a labelled button
+                // rather than an anonymous image. The audit flagged this row
+                // for having no name at all.
+                button: true,
+                selected: isSel,
+                label: appString(context, option.label),
+                child: Tooltip(
+                  message: appString(context, option.label),
+                  child: InkWell(
+                    onTap: () => onColorChanged(option.id),
+                    customBorder: const CircleBorder(),
+                    child: Padding(
+                      // The visible circle is 38dp; the padding brings the
+                      // touch target to 48dp, which is the accessibility floor.
+                      padding: const EdgeInsets.all(5),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOut,
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: col,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            // A white ring reads on the light accents but
+                            // disappears on the dark 'ink' swatch, so the ring
+                            // is drawn in the surface colour instead.
+                            color: isSel
+                                ? theme.colorScheme.surface
+                                : Colors.transparent,
+                            width: 3.0,
+                          ),
+                          boxShadow: isSel
+                              ? [
+                                  BoxShadow(
+                                    color: col.withValues(alpha: 0.45),
+                                    blurRadius: 10,
+                                    spreadRadius: 2,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                      ),
                     ),
-                    boxShadow: isSel
-                        ? [
-                            BoxShadow(
-                              color: col.withValues(alpha: 0.5),
-                              blurRadius: 10,
-                              spreadRadius: 2,
-                            ),
-                          ]
-                        : null,
                   ),
                 ),
               );

@@ -93,13 +93,18 @@ class _DynamicIslandState extends State<DynamicIsland>
     // Never exceed the available width: a fixed 340 overflows on small phones.
     final available = MediaQuery.sizeOf(context).width - 32;
     final expandedWidth = available.clamp(180.0, 340.0);
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
     return Center(
       child: GestureDetector(
         onTap: _toggleExpanded,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 380),
-          curve: Curves.easeOutBack,
+          // This is the largest single motion event in the app (height 40 to 96
+          // with an overshoot curve), so it must honour reduced motion.
+          duration: reduceMotion
+              ? Duration.zero
+              : const Duration(milliseconds: 380),
+          curve: reduceMotion ? Curves.linear : Curves.easeOutBack,
           height: expanded ? 96 : 40,
           width: expanded ? expandedWidth : 220,
           padding: EdgeInsets.symmetric(

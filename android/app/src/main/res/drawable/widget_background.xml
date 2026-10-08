@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Rounded brand surface.
+
+  Neutral white on purpose. The launcher draws this over an arbitrary wallpaper
+  and RemoteViews cannot recolour a rounded shape at runtime, so a fixed neutral
+  is the only reliable base. The user's accent is applied to the streak, the level
+  badge and the action label by StandUpWidgetProvider.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFFFFFFF" />
+    <corners android:radius="22dp" />
+</shape>

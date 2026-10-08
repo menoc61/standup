@@ -133,6 +133,13 @@ class _ParticleBurstState extends State<ParticleBurst>
 
   @override
   Widget build(BuildContext context) {
+    // A 40-particle burst is the most motion in the app and fires on every
+    // completed break. Honour the platform reduced-motion signal: the
+    // celebration still happens, just without the confetti.
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+
+    if (reduceMotion) return widget.child;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [

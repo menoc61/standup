@@ -12,6 +12,7 @@ import 'package:standup_app/services/audio_service.dart';
 import 'package:standup_app/services/background_run_service.dart';
 import 'package:standup_app/services/haptics_service.dart';
 import 'package:standup_app/ui/widgets/glass_card.dart';
+import 'package:standup_app/ui/widgets/segmented_choice.dart';
 import 'package:standup_app/ui/widgets/spring_button.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -713,10 +714,7 @@ class SettingsScreen extends StatelessWidget {
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
-                                  appString(
-                                    context,
-                                    '$mins min',
-                                  ).replaceAll('mins', 'min'),
+                                  formatDurationLabel(context, mins),
                                   style: TextStyle(
                                     color: isSel
                                         ? Colors.white
@@ -813,54 +811,43 @@ class SettingsScreen extends StatelessWidget {
                         fontSize: 13,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: ['system', 'light', 'dark'].map((mode) {
-                        final isSel = prefs.themeMode == mode;
-                        return Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4.0,
-                            ),
-                            child: InkWell(
-                              onTap: () =>
-                                  appState.updatePreferences(themeMode: mode),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isSel ? accent : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isSel
-                                        ? accent
-                                        : theme.colorScheme.outlineVariant,
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  appString(context, switch (mode) {
-                                    'system' => 'System',
-                                    'light' => 'Light',
-                                    _ => 'Dark',
-                                  }),
-                                  style: TextStyle(
-                                    color: isSel
-                                        ? Colors.white
-                                        : theme.textTheme.bodyLarge?.color,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                    const SizedBox(height: 6),
+                    Text(
+                      appString(
+                        context,
+                        'Light, dark, or follow your device setting.',
+                      ),
+                      style: theme.textTheme.bodySmall,
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 12),
+                    // One accessible control replaces the previous row of
+                    // unlabelled InkWells. Each option carries an icon so the
+                    // three choices are distinguishable without reading them.
+                    SegmentedChoice<String>(
+                      semanticLabel: appString(context, 'App Theme Mode'),
+                      selected: prefs.themeMode,
+                      onChanged: (mode) =>
+                          appState.updatePreferences(themeMode: mode),
+                      singleRow: true,
+                      options: [
+                        SegmentedOption(
+                          value: 'system',
+                          label: appString(context, 'System'),
+                          icon: Icons.brightness_auto_outlined,
+                        ),
+                        SegmentedOption(
+                          value: 'light',
+                          label: appString(context, 'Light'),
+                          icon: Icons.light_mode_outlined,
+                        ),
+                        SegmentedOption(
+                          value: 'dark',
+                          label: appString(context, 'Dark'),
+                          icon: Icons.dark_mode_outlined,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
                     Text(
                       appString(context, 'Color Accent System'),
                       style: const TextStyle(
@@ -868,58 +855,30 @@ class SettingsScreen extends StatelessWidget {
                         fontSize: 13,
                       ),
                     ),
+                    const SizedBox(height: 6),
+                    Text(
+                      appString(
+                        context,
+                        'The app is black and white. Your accent colours the actions.',
+                      ),
+                      style: theme.textTheme.bodySmall,
+                    ),
                     const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: ['emerald', 'teal', 'amber', 'indigo', 'coral']
-                          .map((colName) {
-                            final isSel = prefs.colorSystem == colName;
-                            final col = AppColors.getAccentColor(colName);
-                            return Semantics(
-                              button: true,
-                              selected: isSel,
-                              label: colName,
-                              child: InkWell(
-                                onTap: () => appState.updatePreferences(
-                                  colorSystem: colName,
-                                ),
-                                borderRadius: BorderRadius.circular(24),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 220),
-                                  curve: Curves.easeOutBack,
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: col,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: isSel
-                                          ? Colors.white
-                                          : Colors.transparent,
-                                      width: 3.0,
-                                    ),
-                                    boxShadow: isSel
-                                        ? [
-                                            BoxShadow(
-                                              color: col.withValues(alpha: 0.5),
-                                              blurRadius: 10,
-                                              spreadRadius: 2,
-                                            ),
-                                          ]
-                                        : null,
-                                  ),
-                                  child: isSel
-                                      ? const Icon(
-                                          Icons.check,
-                                          color: Colors.white,
-                                          size: 20,
-                                        )
-                                      : null,
-                                ),
-                              ),
-                            );
-                          })
-                          .toList(),
+                    // Options come from the palette, so this can never offer a
+                    // colour the theme cannot render.
+                    SegmentedChoice<String>(
+                      semanticLabel: appString(context, 'Color Accent System'),
+                      selected: prefs.colorSystem,
+                      onChanged: (id) =>
+                          appState.updatePreferences(colorSystem: id),
+                      options: [
+                        for (final option in AppColors.accents)
+                          SegmentedOption(
+                            value: option.id,
+                            label: appString(context, option.label),
+                            icon: Icons.circle,
+                          ),
+                      ],
                     ),
                   ],
                 ),

@@ -8,6 +8,82 @@ String appString(BuildContext context, String english) {
   return _french[english] ?? english;
 }
 
+/// Translates a sentence that carries values.
+///
+/// [englishPattern] uses `{name}` placeholders, for example
+/// `'Could not save your setup ({reason}).'`. Interpolating first and
+/// translating afterwards cannot work: the resulting string
+/// (`'Could not save your setup (disk full).'`) is not a dictionary key, so the
+/// lookup silently falls through to English. Substituting after the lookup is
+/// the only order that keeps the translation.
+///
+/// Unknown placeholders are left untouched rather than throwing, because a
+/// missing value should degrade to a slightly odd sentence in one language
+/// rather than crash the screen in both.
+String appStringArgs(
+  BuildContext context,
+  String englishPattern, [
+  Map<String, String> values = const {},
+]) {
+  final base = Localizations.localeOf(context).languageCode != 'fr'
+      ? englishPattern
+      : (_french[englishPattern] ?? englishPattern);
+  return _substitute(base, values);
+}
+
+/// Applies `{name}` placeholders, leaving any that have no value in place.
+String _substitute(String template, Map<String, String> values) {
+  if (values.isEmpty) return template;
+  var result = template;
+  values.forEach((key, value) {
+    result = result.replaceAll('{$key}', value);
+  });
+  return result;
+}
+
+/// Formats a duration the way both languages expect it.
+///
+/// French abbreviates both units to `min` and `h`, so this is deliberately not a
+/// dictionary lookup: the units are identical and a per-locale table would only
+/// add a way for the two to drift apart.
+String formatDurationLabel(BuildContext context, int minutes) {
+  if (minutes < 60) return '$minutes min';
+  final hours = minutes ~/ 60;
+  final remainder = minutes % 60;
+  if (remainder == 0) return '$hours h';
+  return '$hours h $remainder min';
+}
+
+/// Exposed for the bilingual parity test.
+///
+/// The dictionary is the single source of truth for French copy, so a test that
+/// scans the widget tree for `appString` keys can assert that nothing the user
+/// can actually see is left untranslated. Production code has no reason to call
+/// this.
+@visibleForTesting
+Map<String, String> get frenchOverrides => _french;
+
+/// Whether [english] has a French translation.
+@visibleForTesting
+bool hasFrenchTranslation(String english) => _french.containsKey(english);
+
+/// Entries whose French form is deliberately the English word.
+///
+/// Listing them is the point: a reviewer scanning for gaps should be able to see
+/// that `Google` is a brand name and `Finance` a cognate, rather than having to
+/// re-derive that for every entry each time.
+const Set<String> intentionallyIdenticalInFrench = {
+  'Google', // brand
+  'Apple', // brand
+  'XP', // gamification abbreviation, identical in French usage
+  'minutes', // identical spelling in French
+  'Notifications', // identical spelling in French
+  'Finance', // identical spelling in French
+  'Auto', // standard French UI shorthand for "Automatique"
+  'Monochrome', // the word is the same in French
+  'Violet', // the colour name is the same in French
+};
+
 const Map<String, String> _french = {
   'StandUp': 'CSPH • StandUp',
   'Timer': 'Rappels',
@@ -359,6 +435,22 @@ const Map<String, String> _french = {
   'Everything below is read from your operating system and stored on this device. No IP address, location, or advertising identifier is ever collected.': 'Les données ci-dessous proviennent de votre système d’exploitation et restent sur cet appareil. Aucune adresse IP, localisation ou identifiant publicitaire n’est collecté.',
   'Copy device details': 'Copier les détails',
   'Device details copied': 'Détails de l’appareil copiés',
+  'Leave setup?': 'Quitter la configuration ?',
+  'Leave': 'Quitter',
+  'Your progress in this walkthrough will be lost.':
+      'Votre progression dans cette présentation sera perdue.',
+  'Crimson': 'Cramoisi',
+  'Monochrome': 'Monochrome',
+  'Blue': 'Bleu',
+  'Teal': 'Sarcelle',
+  'Violet': 'Violet',
+  'Amber': 'Ambre',
+  'Light, dark, or follow your device setting.':
+      'Clair, sombre, ou suivre le réglage de votre appareil.',
+  'The app is black and white. Your accent colours the actions.': 'L’application est en noir et blanc. Votre couleur d’accentuation colore les actions.',
+  'Collecting…': 'Collecte en cours…',
+  'Go to step': 'Aller à l’étape',
+  'Could not save your setup. Please try again. ({reason})': 'Impossible d’enregistrer votre configuration. Veuillez réessayer. ({reason})',
   'Clock integrity': 'Intégrité de l’horloge',
   'Clock looks normal': 'Horloge normale',
   'The device clock has moved repeatedly, so totals are flagged as unreliable for the leaderboard.': 'L’horloge de l’appareil a été modifiée à plusieurs reprises ; les totaux sont donc signalés comme non fiables pour le classement.',

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:standup_app/core/app_theme.dart';
 import 'package:standup_app/data/local/app_database.dart';
 import 'package:standup_app/data/local/local_repository.dart';
+import 'package:standup_app/data/local/widget_action_dispatcher.dart';
 import 'package:standup_app/data/remote/supabase_service.dart';
 import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/services/audio_service.dart';
@@ -47,6 +48,12 @@ void main() async {
   notificationService.onActionReceived = appState.handleNotificationAction;
   await appState.init();
   await notificationService.dispatchLaunchAction();
+
+  // 5. Register the headless handler for home-screen widget actions, so a
+  // stand-up can be logged from the launcher while the app is closed. This is
+  // registered outside the isolate above on purpose: the plugin stores the
+  // callback handle and re-invokes it in a background engine later.
+  await registerWidgetBackgroundAction();
 
   runApp(StandUpApp(appState: appState));
 }

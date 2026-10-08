@@ -155,6 +155,34 @@ class LocalDatabaseRepository {
         );
   }
 
+  /// Whether the user already completed a break inside the given window.
+  ///
+  /// This is the durable half of the one-completion-per-window rule. The
+  /// in-memory guard in the app state only survives while the isolate lives, so
+  /// anything that can restart the app — a launcher widget tap, a cold launch,
+  /// a crash — needs this check to read the truth from the database instead.
+  ///
+  /// The window is matched against [ReminderLogsTable.timestamp], which is when
+  /// the action was recorded, because that is the moment the rule is about. A
+  /// stretch that began before the window and finished inside it therefore
+  /// still counts, while a log from a previous window does not leak in.
+  Future<bool> hasCompletedReminderInWindow(
+    String userId,
+    DateTime windowStart,
+    DateTime windowEnd,
+  ) async {
+    final query = _db.select(_db.reminderLogsTable)
+      ..where(
+        (tbl) =>
+            tbl.userId.equals(userId) &
+            tbl.actionTaken.equals('completed') &
+            tbl.timestamp.isBiggerOrEqualValue(windowStart) &
+            tbl.timestamp.isSmallerThanValue(windowEnd),
+      )
+      ..limit(1);
+    return (await query.get()).isNotEmpty;
+  }
+
   Future<List<ReminderLog>> getRecentSkips(String userId, int count) async {
     final query = _db.select(_db.reminderLogsTable)
       ..where((tbl) => tbl.userId.equals(userId))
@@ -235,41 +263,47 @@ class LocalDatabaseRepository {
     );
   }
 
+  /// Applies one action to today's counters.
+  ///
+  /// The read-modify-write runs inside a transaction so that two concurrent
+  /// actions (for example a notification tap racing the guided-stretch
+  /// auto-completion, or a realtime merge landing at the same moment) cannot
+  /// both read the same starting value and have one increment silently lost.
   Future<DailyAnalytics> updateAnalytics(
     String userId,
     String action, {
     String? orgId,
-  }) async {
-    final today = getTodayDateString();
-    final current = await getAnalyticsForDate(userId, today);
+  }) {
+    return _db.transaction(() async {
+      final today = getTodayDateString();
+      final current = await getAnalyticsForDate(userId, today);
 
-    int sent = current.remindersSent + 1;
-    int completed = current.remindersCompleted;
-    int snoozed = current.remindersSnoozed;
-    int skipped = current.remindersSkipped;
+      final sent = current.remindersSent + 1;
+      var completed = current.remindersCompleted;
+      var snoozed = current.remindersSnoozed;
+      var skipped = current.remindersSkipped;
 
-    if (action == 'completed') {
-      completed += 1;
-    } else if (action == 'snoozed') {
-      snoozed += 1;
-    } else if (action == 'skipped') {
-      skipped += 1;
-    }
+      if (action == 'completed') {
+        completed += 1;
+      } else if (action == 'snoozed') {
+        snoozed += 1;
+      } else if (action == 'skipped') {
+        skipped += 1;
+      }
 
-    final totalMinutes = completed * 5;
+      final updated = current.copyWith(
+        remindersSent: sent,
+        remindersCompleted: completed,
+        remindersSnoozed: snoozed,
+        remindersSkipped: skipped,
+        totalStandTime: completed * 5,
+        organizationId: orgId ?? current.organizationId,
+        syncedToCloud: false,
+      );
 
-    final updated = current.copyWith(
-      remindersSent: sent,
-      remindersCompleted: completed,
-      remindersSnoozed: snoozed,
-      remindersSkipped: skipped,
-      totalStandTime: totalMinutes,
-      organizationId: orgId ?? current.organizationId,
-      syncedToCloud: false,
-    );
-
-    await saveAnalyticsRecord(updated);
-    return updated;
+      await saveAnalyticsRecord(updated);
+      return updated;
+    });
   }
 
   Future<void> saveAnalyticsRecord(DailyAnalytics record) async {

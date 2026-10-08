@@ -262,12 +262,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Alert nudge badge when overdue
                   if (isAlert) ...[
                     const SizedBox(height: 12),
-                    _buildAlertBadge(accent)
-                        .animate(onPlay: (c) => c.repeat(reverse: true))
-                        .shimmer(
-                          duration: 1200.ms,
-                          color: accent.withValues(alpha: 0.3),
-                        ),
+                    // The shimmer is an unbounded repeat loop. Honour the
+                    // platform reduced-motion signal so it cannot run forever
+                    // for a user who has asked for less motion.
+                    if (MediaQuery.disableAnimationsOf(context))
+                      _buildAlertBadge(accent)
+                    else
+                      _buildAlertBadge(accent)
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .shimmer(
+                            duration: 1200.ms,
+                            color: accent.withValues(alpha: 0.3),
+                          ),
                   ],
                 ],
               ),

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CSPH StandUp</string>
+    <string name="csph_widget_description">Compte à rebours vers la prochaine pause, avec validation en un geste.</string>
+    <!--
+      TalkBack reads this before the countdown, so it has to say what the mark is
+      rather than describing a picture.
+    -->
+    <string name="csph_widget_logo_description">CSPH StandUp</string>
+</resources>

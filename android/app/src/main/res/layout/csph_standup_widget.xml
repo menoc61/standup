@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Countdown + action widget.
+
+  Rendered entirely with framework-drawn views because a launcher widget cannot
+  run Dart. All dynamic state, including every colour, is supplied by
+  StandUpWidgetProvider — nothing here is load-bearing, so the widget follows the
+  user's chosen accent without a rebuild.
+
+  Colours below are the light-palette fallbacks the provider overrides at runtime.
+  They exist so a widget rendered before the first publish is still legible.
+
+  Two constraints shape this file:
+    * RemoteViews only inflates a fixed allow-list of classes, and a bare <View>
+      is not on it. Spacing therefore uses layout_weight on visible views rather
+      than spacer elements.
+    * RemoteViews cannot set a rounded rectangle to a runtime colour (the
+      setBackground* methods are @hide and setInt only carries an Int). The
+      rounded shapes are therefore static, and the accent is carried by the
+      streak text, the level badge and the action label.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="14dp">
+
+    <!--
+      Header: the app logo beside the title.
+
+      The logo asset has a white ground, so it sits on a white rounded chip. That
+      reads as an app badge and keeps the mark legible on any surface.
+    -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:id="@+id/widget_logo_chip"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:background="@drawable/widget_logo_chip"
+            android:padding="3dp"
+            android:contentDescription="@string/csph_widget_logo_description"
+            android:src="@drawable/standup_logo" />
+
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textColor="#FF0B0B0C"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            tools:text="StandUp" />
+
+        <TextView
+            android:id="@+id/widget_level"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/widget_level_chip"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:maxLines="1"
+            android:textColor="#FF0B0B0C"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            tools:text="Lv 3" />
+    </LinearLayout>
+
+    <!-- Countdown: the single most important datum, so it gets the most space. -->
+    <TextView
+        android:id="@+id/widget_countdown"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:includeFontPadding="false"
+        android:textColor="#FF0B0B0C"
+        android:textSize="38sp"
+        android:textStyle="bold"
+        tools:text="03:12" />
+
+    <TextView
+        android:id="@+id/widget_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:textColor="#FF6B6B70"
+        android:textSize="12sp"
+        tools:text="Movement window open" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Streak takes the weight a spacer would otherwise provide. -->
+        <TextView
+            android:id="@+id/widget_streak"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="#FFDA244D"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            tools:text="5 day streak" />
+
+        <TextView
+            android:id="@+id/widget_action"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:background="@drawable/widget_action_background"
+            android:gravity="center"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:textColor="#FFDA244D"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            tools:text="I stood up" />
+    </LinearLayout>
+</LinearLayout>

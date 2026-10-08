@@ -211,43 +211,97 @@ class StandWindow {
 /// cheap, accidental forms of drift and to make suspicious data visible to the
 /// server instead of silently trusted.
 ///
-/// Every value is derived from the operating system rather than from anything
-/// the app writes, so resetting app storage does not reset the guard.
+/// The check compares the wall clock against a **monotonic** stopwatch. That
+/// distinction matters: a plain "did the wall clock go backwards" test reports a
+/// violation every single time the OS suspends the app, so an ordinary night of
+/// sleep would eventually get a diligent user flagged and excluded from the
+/// leaderboard. A monotonic reference does not advance while suspended, so
+/// sleep is correctly classified as legitimate rather than as tampering.
 class ClockIntegrityGuard {
   const ClockIntegrityGuard._();
 
-  /// A jump larger than this in either direction suggests the wall clock was
-  /// moved rather than time passing.
-  static const int driftThresholdMinutes = 20;
+  /// A divergence between wall-clock and monotonic time larger than this is a
+  /// violation. Anything smaller is ordinary timer imprecision.
+  static const Duration driftThreshold = Duration(seconds: 90);
 
-  /// One such jump in this window is tolerated before the device is flagged.
-  static const int toleratedDriftsPerHour = 2;
+  /// Consecutive violations before the device is distrusted.
+  static const int tolerance = 3;
 
-  /// Returns the number of monotonic violations observed since [previous].
+  /// A monotonic interval shorter than this means the process was effectively
+  /// frozen, i.e. suspended. The UI ticker runs at 1 Hz, so a live interval is
+  /// close to one second; anything well under that is a genuine suspend rather
+  /// than normal jitter.
+  static const Duration suspendThreshold = Duration(milliseconds: 500);
+
+  /// Classifies the transition between two observations.
   ///
-  /// [previous] is the previously observed wall-clock reading. A violation is
-  /// when the new reading is behind the old one, or jumps forward by more than
-  /// [driftThresholdMinutes]. The caller owns the accumulator, which keeps this
-  /// function pure and testable.
-  static int countViolations({
-    required DateTime previous,
-    required DateTime now,
+  /// Returns [ClockVerdict.violation] when the wall clock was moved,
+  /// [ClockVerdict.reset] when the app was suspended (monotonic time also barely
+  /// advanced), and [ClockVerdict.ok] when the two clocks agree.
+  static ClockVerdict classify({
+    required Duration wallDelta,
+    required Duration monotonicDelta,
   }) {
-    final delta = now.difference(previous);
-    if (delta.isNegative) return 1;
-    if (delta.inMinutes.abs() > driftThresholdMinutes) return 1;
-    return 0;
-  }
+    if (wallDelta.isNegative) return ClockVerdict.violation;
 
-  /// Whether accumulated violations justify refusing to trust the reported
-  /// totals for leaderboard purposes.
-  static bool isUnreliable({
-    required int violations,
-    required DateTime windowStart,
-    required DateTime now,
-  }) {
-    final windowHours = now.difference(windowStart).inHours.clamp(1, 24);
-    final allowed = toleratedDriftsPerHour * windowHours;
-    return violations > allowed;
+    // A monotonic clock that did not advance means the process was suspended.
+    // The wall clock jumping forward over that gap is normal sleep, not
+    // tampering, so it must not count against the user.
+    if (monotonicDelta.abs() < suspendThreshold) return ClockVerdict.reset;
+
+    final divergence = (wallDelta - monotonicDelta).inSeconds.abs();
+    if (divergence > driftThreshold.inSeconds) return ClockVerdict.violation;
+    return ClockVerdict.ok;
+  }
+}
+
+/// Outcome of a single clock observation.
+enum ClockVerdict {
+  /// The wall clock moved independently of real elapsed time.
+  violation,
+
+  /// Time passed normally.
+  ok,
+
+  /// The app was suspended; the gap is not user error.
+  reset,
+}
+
+/// Tracks the running clock-integrity tally for a single device.
+///
+/// Clean readings decay the streak so a single accident does not permanently
+/// penalise the user; a suspend/resume clears it outright.
+class ClockIntegrityTracker {
+  DateTime? _lastWall;
+  int _streak = 0;
+
+  int get streak => _streak;
+
+  /// True once enough consecutive violations have been observed.
+  bool get isDistrusted => _streak >= ClockIntegrityGuard.tolerance;
+
+  /// Records a new observation and returns the running violation streak.
+  ///
+  /// The very first observation only establishes the reference point. There is
+  /// nothing to compare it against, so it cannot be a violation and must not
+  /// count towards the tolerance.
+  int observe({required DateTime wallNow, required Duration monotonicDelta}) {
+    final previous = _lastWall;
+    _lastWall = wallNow;
+    if (previous == null) return _streak;
+
+    final verdict = ClockIntegrityGuard.classify(
+      wallDelta: wallNow.difference(previous),
+      monotonicDelta: monotonicDelta,
+    );
+    switch (verdict) {
+      case ClockVerdict.violation:
+        _streak++;
+      case ClockVerdict.ok:
+        if (_streak > 0) _streak--;
+      case ClockVerdict.reset:
+        _streak = 0;
+    }
+    return _streak;
   }
 }

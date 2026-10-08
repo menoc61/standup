@@ -50,7 +50,7 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
   Color _getCellColor(DailyAnalytics? data, bool isDark) {
     if (data == null ||
         (data.remindersSent == 0 && data.remindersCompleted == 0)) {
-      return isDark ? AppColors.empty : AppColors.emptyLight;
+      return isDark ? AppColors.emptyOnDark : AppColors.empty;
     }
 
     if (data.remindersCompleted > 0) {
@@ -71,7 +71,7 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
       return AppColors.skipped; // Red
     }
 
-    return isDark ? AppColors.empty : AppColors.emptyLight;
+    return isDark ? AppColors.emptyOnDark : AppColors.empty;
   }
 
   void _showDayDetails(
@@ -318,7 +318,7 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
               style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
             ),
             const SizedBox(width: 6),
-            _buildLegendBox(isDark ? AppColors.empty : AppColors.emptyLight),
+            _buildLegendBox(isDark ? AppColors.emptyOnDark : AppColors.empty),
             const SizedBox(width: 3),
             _buildLegendBox(AppColors.skipped),
             const SizedBox(width: 3),

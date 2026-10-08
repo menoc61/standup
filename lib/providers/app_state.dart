@@ -5,8 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OAuthProvider;
 import 'package:uuid/uuid.dart';
 import 'package:standup_app/data/local/local_repository.dart';
+import 'package:standup_app/data/local/widget_snapshot.dart';
 import 'package:standup_app/data/models/daily_analytics.dart';
 import 'package:standup_app/data/models/device_profile.dart';
+import 'package:standup_app/data/models/gamification_metrics.dart';
 import 'package:standup_app/data/models/org_analytics.dart';
 import 'package:standup_app/data/models/reminder_log.dart';
 import 'package:standup_app/data/models/stand_window.dart';
@@ -44,16 +46,20 @@ class AppState extends ChangeNotifier {
   int _activeBreakStep = 0;
   int _breakSecondsRemaining = 300; // 5 minutes
   Timer? _breakTimer;
+
+  /// The window key a guided stretch was started under, so its completion is
+  /// still honoured after the window's end instant has passed.
+  int? _breakWindowKey;
+
   SyncStatus _syncStatus = SyncStatus.idle;
   String _languageCode = 'fr';
   DeviceProfile? _deviceProfile;
 
-  // Anti-bypass bookkeeping. These live in memory only: a tamper that rewrites
-  // the device clock is detected against the running process, so clearing app
-  // storage cannot clear the evidence.
-  DateTime _lastClockReading = DateTime.now();
-  final DateTime _clockWatchStart = DateTime.now();
-  int _clockViolations = 0;
+  // Anti-bypass bookkeeping. The monotonic stopwatch is the reference that lets
+  // ordinary OS suspend/resume be told apart from deliberate clock tampering.
+  final Stopwatch _uptime = Stopwatch()..start();
+  final ClockIntegrityTracker _clockTracker = ClockIntegrityTracker();
+  bool _disposed = false;
   String? _lastActionRejection;
 
   /// Windows already acted on this session, preventing double counting when a
@@ -145,17 +151,51 @@ class AppState extends ChangeNotifier {
     cadenceMinutes: _cadenceMinutes,
   );
 
-  int get _actionWindowMinutes => preferences.actionWindowMinutes;
+  /// The window length, clamped so a corrupt or hand-edited preference row can
+  /// never make `StandWindow` throw `ArgumentError` from inside the 1 Hz
+  /// ticker. Without this clamp a single bad value would produce an unhandled
+  /// async error every second and freeze the visible timer at zero.
+  int get _actionWindowMinutes {
+    final requested = preferences.actionWindowMinutes;
+    final cadence = _cadenceMinutes;
+    if (requested <= 0) return cadence < 1 ? 1 : (cadence < 5 ? cadence : 5);
+    if (requested > cadence) return cadence;
+    return requested;
+  }
+
   int get _cadenceMinutes =>
       preferences.notificationFrequency.clamp(1, 24 * 60);
 
   /// Whether the device's clock has moved suspiciously often, which makes the
   /// reported totals unreliable for the leaderboard.
-  bool get isClockUnreliable => ClockIntegrityGuard.isUnreliable(
-    violations: _clockViolations,
-    windowStart: _clockWatchStart,
-    now: DateTime.now(),
-  );
+  bool get isClockUnreliable => _clockTracker.isDistrusted;
+
+  /// Publishes the current state to the home-screen widget.
+  ///
+  /// Called whenever a displayed figure changes so the widget never shows a
+  /// stale countdown or an out-of-date streak. Failures are swallowed by the
+  /// bridge: a widget that will not update must never break the reminder loop.
+  Future<void> syncWidget() async {
+    if (_disposed) return;
+    final snapshot = WidgetSnapshot.fromState(
+      streak: WorkdayMetrics.currentStreak(_dailyHistory, DateTime.now()),
+      totalXp: GamificationMetrics.totalXp(_dailyHistory),
+      todayCompleted: _todayAnalytics.remindersCompleted,
+      dailyGoal: preferences.streakGoal,
+      windowOpen: isActionWindowOpen,
+      windowMinutes: _actionWindowMinutes,
+      cadenceMinutes: _cadenceMinutes,
+      clockSuspect: isClockUnreliable,
+      // The widget follows the user's accent, so the preference is part of the
+      // payload rather than something the native side guesses.
+      colorSystem: preferences.colorSystem,
+    );
+    final payload = snapshot.toMap();
+    // Language is a widget-level concern, so it rides along in the payload
+    // rather than being guessed by the native side.
+    payload['lang'] = _languageCode;
+    await WidgetBridge.publish(payload);
+  }
 
   /// The reason the last [completeReminder] was refused, or null when it was
   /// accepted. The UI shows this so a refusal is never silent.
@@ -266,19 +306,25 @@ class AppState extends ChangeNotifier {
     });
     if (preferences.statisticsOptIn) await _startRealtimeAnalytics();
 
+    registerWidgetActions();
+    await syncWidget();
+
     notifyListeners();
   }
 
   void _tick() {
     final now = DateTime.now();
 
-    // Watch for wall-clock manipulation. This compares consecutive readings
-    // inside the running process, so it cannot be defeated by editing storage.
-    _clockViolations += ClockIntegrityGuard.countViolations(
-      previous: _lastClockReading,
-      now: now,
-    );
-    _lastClockReading = now;
+    // Watch for wall-clock manipulation by comparing it against a monotonic
+    // stopwatch. Ordinary suspend/resume is classified separately, so a user
+    // who sleeps is never flagged. The stopwatch is re-based each tick so it
+    // always measures the interval since the previous reading.
+    final monotonic = _uptime.elapsed;
+    _uptime
+      ..stop()
+      ..reset()
+      ..start();
+    _clockTracker.observe(wallNow: now, monotonicDelta: monotonic);
 
     if (_nextReminderTime != null) {
       _remainingDuration = ReminderClock.remaining(now, _nextReminderTime!);
@@ -318,6 +364,21 @@ class AppState extends ChangeNotifier {
   Future<void> onAppResumed() async {
     _tick();
     await refreshReminderQueue();
+    await drainPendingWidgetAction();
+    // The launcher may have missed a state change while the app was away.
+    await syncWidget();
+  }
+
+  /// Applies a stand-up requested from a widget while the app was closed.
+  ///
+  /// iOS cannot start a Dart isolate from an App Intent, so the extension records
+  /// the tap and the app applies it here on the next resume. Consuming the
+  /// pending action and then routing it through [completeReminder] means a
+  /// widget tap and an in-app tap share the same window and dedupe checks.
+  Future<void> drainPendingWidgetAction() async {
+    final action = await WidgetBridge.takePendingAction();
+    if (action != 'complete') return;
+    await completeReminder();
   }
 
   // ---------------------------------------------------------------------------
@@ -388,20 +449,10 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _persistReminderInterval() async {
-    final userId = _userProfile?.id;
-    final dueAt = _nextReminderTime;
-    final startedAt = _timerStartTime;
-    if (userId == null || dueAt == null || startedAt == null) return;
-
-    final store = await SharedPreferences.getInstance();
-    await store.setString(
-      'reminder_due_at_$userId',
-      dueAt.toUtc().toIso8601String(),
-    );
-    await store.setString(
-      'reminder_started_at_$userId',
-      startedAt.toUtc().toIso8601String(),
-    );
+    // Deliberately a no-op. The timer is derived from the wall clock on every
+    // launch (see _restoreReminderInterval), so persisting the due time would
+    // write state nothing ever reads and leave stale values on disk. Kept as a
+    // call-site anchor so the derivation stays easy to find.
   }
 
   /// Schedules the OS queue. Reminders are emitted at the *start* of each
@@ -444,17 +495,80 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// A stable key for the window [now] belongs to, used to deduplicate actions.
+  ///
+  /// When no window is open the key falls back to a coarse bucket derived from
+  /// the cadence boundary rather than the current instant. Keying on the exact
+  /// second would let a burst of rapid taps each produce a fresh key, so the
+  /// guard would never block anything.
+  int _currentWindowKey([DateTime? at]) {
+    final when = at ?? DateTime.now();
+    final window = StandWindow.activeWindow(
+      now: when,
+      actionWindowMinutes: _actionWindowMinutes,
+      cadenceMinutes: _cadenceMinutes,
+    );
+    if (window != null) return window.end.millisecondsSinceEpoch;
+
+    final cadenceMs = _cadenceMinutes * 60 * 1000;
+    return when.millisecondsSinceEpoch ~/ cadenceMs;
+  }
+
+  /// Asks the database whether the window identified by [key] was already used.
+  ///
+  /// A key derived from an active window is the window's closing instant, which
+  /// is the lower bound to search from; the width comes from the configured
+  /// action window. A key derived outside any window is a coarse cadence bucket
+  /// instead, so it is searched over the whole cadence slot.
+  ///
+  /// Any failure resolves to `false` so a database problem cannot silently block
+  /// a legitimate break; the analytics transaction is what actually guarantees
+  /// the totals stay correct.
+  Future<bool> _alreadyCompletedInWindow(DateTime now, int key) async {
+    try {
+      final active = StandWindow.activeWindow(
+        now: now,
+        actionWindowMinutes: _actionWindowMinutes,
+        cadenceMinutes: _cadenceMinutes,
+      );
+      if (active != null && active.end.millisecondsSinceEpoch == key) {
+        return await localRepo.hasCompletedReminderInWindow(
+          _userProfile!.id,
+          active.start,
+          active.end,
+        );
+      }
+      final cadenceMs = _cadenceMinutes * 60 * 1000;
+      return await localRepo.hasCompletedReminderInWindow(
+        _userProfile!.id,
+        DateTime.fromMillisecondsSinceEpoch(key * cadenceMs),
+        DateTime.fromMillisecondsSinceEpoch((key + 1) * cadenceMs),
+      );
+    } catch (e) {
+      debugPrint('Completion dedupe check failed: $e');
+      return false;
+    }
+  }
+
   /// Records a completed stand-up break.
   ///
   /// Returns false when the action is refused. Refusals are explicit and
   /// surfaced through [lastActionRejection] rather than being swallowed, so a
   /// rejected tap always produces visible feedback.
-  Future<bool> completeReminder() async {
+  ///
+  /// [windowKey] lets an in-flight action that began inside a window finish
+  /// even if the window has since closed, which is what the guided stretch
+  /// needs. Pass null for a new, user-initiated action.
+  Future<bool> completeReminder({int? windowKey}) async {
     final now = DateTime.now();
 
-    // Gate 1: the hourly action window. Unless the preference relaxes the rule,
-    // a break only counts in the final action_window_minutes of each hour.
-    if (preferences.enforceActionWindow && !isActionWindowOpen) {
+    // Gate 1: the hourly action window. A stretch that already started is
+    // exempt because it was validated when it began.
+    final inProgressStretch = _isBreakActive && _breakWindowKey != null;
+    if (preferences.enforceActionWindow &&
+        windowKey == null &&
+        !inProgressStretch &&
+        !isActionWindowOpen) {
       _lastActionRejection = _languageCode == 'fr'
           ? 'La fenêtre de pause ouvre à la minute 55 de chaque heure. '
                 'Revenez ensuite pour enregistrer votre pause.'
@@ -467,15 +581,23 @@ class AppState extends ChangeNotifier {
 
     // Gate 2: one completion per window. A notification tap racing an in-app
     // tap must not be counted twice.
-    final window = StandWindow.activeWindow(
-      now: now,
-      actionWindowMinutes: _actionWindowMinutes,
-      cadenceMinutes: _cadenceMinutes,
-    );
-    final windowKey = window == null
-        ? now.millisecondsSinceEpoch ~/ 1000
-        : window.end.millisecondsSinceEpoch;
-    if (!_actedWindows.add(windowKey)) {
+    final key = windowKey ?? _currentWindowKey(now);
+    if (_actedWindows.contains(key)) {
+      _lastActionRejection = _languageCode == 'fr'
+          ? 'Cette pause a déjà été enregistrée.'
+          : 'This break has already been recorded.';
+      notifyListeners();
+      return false;
+    }
+
+    // Gate 3: the same rule, asked of the database rather than of memory.
+    //
+    // [_actedWindows] only knows about taps in this isolate. A home-screen
+    // widget tap arrives in a headless isolate, and a cold launch or a crash
+    // starts a fresh one, so an in-memory-only guard would let a second break
+    // through and inflate both the streak and the leaderboard totals.
+    if (await _alreadyCompletedInWindow(now, key)) {
+      _actedWindows.add(key);
       _lastActionRejection = _languageCode == 'fr'
           ? 'Cette pause a déjà été enregistrée.'
           : 'This break has already been recorded.';
@@ -484,11 +606,14 @@ class AppState extends ChangeNotifier {
     }
 
     _lastActionRejection = null;
-    unawaited(audioService.playSuccess());
-    unawaited(HapticsService.celebration());
     _consecutiveSkips = 0;
     _isBreakActive = false;
     _breakTimer?.cancel();
+    _breakTimer = null;
+    _breakWindowKey = null;
+
+    unawaited(audioService.playSuccess());
+    unawaited(HapticsService.celebration());
 
     // 1. Log action
     final log = ReminderLog(
@@ -507,11 +632,16 @@ class AppState extends ChangeNotifier {
     );
     _dailyHistory = await localRepo.getAllDailyAnalytics(_userProfile!.id);
 
-    // 3. Move to the next hourly window
+    // 3. Claim the window only once the write succeeded, so a failed write does
+    // not burn the window and leave the user unable to log it at all.
+    _actedWindows.add(key);
+
+    // 4. Move to the next hourly window
     await _scheduleNextInterval(minutes: _cadenceMinutes);
 
-    // 4. Sync
+    // 5. Sync
     _triggerBackgroundSync();
+    unawaited(syncWidget());
     notifyListeners();
     return true;
   }
@@ -575,8 +705,11 @@ class AppState extends ChangeNotifier {
     );
     _dailyHistory = await localRepo.getAllDailyAnalytics(_userProfile!.id);
 
-    // Check consecutive skips
-    if (_consecutiveSkips == 3) {
+    // Check consecutive skips. `>= 3` rather than `== 3`: the streak is
+    // restored from history at launch and can already sit above three, in
+    // which case an equality test would suppress the nudge for the whole
+    // session.
+    if (_consecutiveSkips >= 3) {
       unawaited(audioService.playNudge());
       await notificationService.showNudgeNotification(
         id: 999,
@@ -592,24 +725,48 @@ class AppState extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------------
-  // Guided 5-Minute Stretch Mode
+  // Guided Stretch Mode
   // ---------------------------------------------------------------------------
+
+  /// Begins the guided stretch.
+  ///
+  /// A guided stretch lasts five minutes, which is exactly the length of the
+  /// default action window. Because a window's end instant is exclusive, a
+  /// stretch that starts when the window opens necessarily finishes at or after
+  /// the window closes. The stretch is therefore bound to the window it began
+  /// in ([_breakWindowKey]) so its completion is still honoured, rather than
+  /// being refused by the gate that guards a *new* stand action.
   void startGuidedStretch() {
     unawaited(audioService.playClick());
     _isBreakActive = true;
     _activeBreakStep = 0;
     _breakSecondsRemaining = 300; // 5 minutes
+    _breakWindowKey = _currentWindowKey();
 
     _breakTimer?.cancel();
-    _breakTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _breakTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       if (_breakSecondsRemaining > 0) {
         _breakSecondsRemaining--;
         // 5 steps: 60s per step
         _activeBreakStep = (4 - (_breakSecondsRemaining ~/ 60)).clamp(0, 4);
         notifyListeners();
-      } else {
-        timer.cancel();
-        unawaited(completeReminder());
+        return;
+      }
+      timer.cancel();
+      // A timer callback has no caller to observe a failure, so the completion
+      // is handled here and any rejection is surfaced through the UI rather
+      // than becoming an unhandled async error.
+      try {
+        await completeReminder(windowKey: _breakWindowKey);
+      } catch (error) {
+        debugPrint('Guided stretch completion failed: $error');
+      } finally {
+        // Always clear the flag. Leaving it set would suppress the reminder
+        // chime for the remainder of the session.
+        _breakTimer = null;
+        _isBreakActive = false;
+        _breakWindowKey = null;
+        notifyListeners();
       }
     });
     notifyListeners();
@@ -617,7 +774,9 @@ class AppState extends ChangeNotifier {
 
   void cancelGuidedStretch() {
     _breakTimer?.cancel();
+    _breakTimer = null;
     _isBreakActive = false;
+    _breakWindowKey = null;
     notifyListeners();
   }
 
@@ -889,30 +1048,63 @@ class AppState extends ChangeNotifier {
   // Cloud Sync
   // ---------------------------------------------------------------------------
   Future<void> triggerCloudSync() async {
+    if (_disposed) return;
     _syncStatus = SyncStatus.syncing;
     notifyListeners();
 
-    final status = await supabaseService.syncLocalToCloud(
-      userId: _userProfile!.id,
-      localRepo: localRepo,
-      optIn: preferences.statisticsOptIn,
-      clockUnreliable: isClockUnreliable,
-    );
+    SyncStatus status;
+    try {
+      status = await supabaseService.syncLocalToCloud(
+        userId: _userProfile!.id,
+        localRepo: localRepo,
+        optIn: preferences.statisticsOptIn,
+        clockUnreliable: isClockUnreliable,
+      );
+    } catch (error) {
+      debugPrint('Cloud sync failed: $error');
+      status = SyncStatus.error;
+    }
 
+    // An in-flight sync can outlive disposal; notifying afterwards would trip
+    // the ChangeNotifier "used after dispose" assertion.
+    if (_disposed) return;
     _syncStatus = status;
     notifyListeners();
   }
 
   void _triggerBackgroundSync() {
+    if (_disposed) return;
     unawaited(triggerCloudSync());
+  }
+
+  /// Wires the home-screen widget's action button.
+  ///
+  /// The button deliberately does **not** log the break itself: it routes back
+  /// through [completeReminder], so the action window and the
+  /// one-completion-per-window rule are enforced identically whether the user
+  /// taps in the app or on the launcher.
+  void registerWidgetActions() {
+    WidgetBridge.registerActionHandler((action) async {
+      if (action != 'complete') return;
+      await completeReminder();
+      await syncWidget();
+    });
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _ticker?.cancel();
+    _ticker = null;
     _breakTimer?.cancel();
+    _breakTimer = null;
     _authSubscription?.cancel();
+    _authSubscription = null;
+    _uptime.stop();
+    // The notification service holds its own Linux timers and a callback into
+    // this notifier; both must go or a late timer would notify a dead object.
     unawaited(supabaseService.stopWatchingAnalytics());
+    notificationService.dispose();
     audioService.dispose();
     super.dispose();
   }

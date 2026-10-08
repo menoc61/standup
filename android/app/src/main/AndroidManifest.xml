@@ -24,6 +24,16 @@
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
+        <receiver android:name=".widget.StandUpWidgetProvider" android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+                <action android:name="com.healthwellness.standup_app.action.COMPLETE_BREAK"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/csph_standup_widget_info"/>
+        </receiver>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

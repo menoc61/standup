@@ -23,7 +23,11 @@ class UserProfilesTable extends Table {
 class UserPreferencesTable extends Table {
   TextColumn get id => text()();
   TextColumn get userId => text()();
-  TextColumn get themeMode => text().withDefault(const Constant('system'))();
+  // Defaults to 'light' to match `UserPreferences.themeMode`. The app is a
+  // workplace tool used on shared and borrowed devices, where a device left in
+  // dark mode would otherwise hand a new user a dark screen they did not ask
+  // for. 'system' stays available as an explicit choice.
+  TextColumn get themeMode => text().withDefault(const Constant('light'))();
   TextColumn get colorSystem => text().withDefault(const Constant('emerald'))();
   IntColumn get notificationFrequency =>
       integer().withDefault(const Constant(60))();

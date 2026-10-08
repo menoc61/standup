@@ -1,0 +1,223 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref to keep the queue short.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: "3.47.4"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Static analysis and unit tests. Fast, and blocks everything downstream.
+  # ---------------------------------------------------------------------------
+  verify:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      # Fails on any linter warning, matching `flutter analyze` locally.
+      - name: Analyze
+        run: flutter analyze --fatal-infos --fatal-warnings
+
+      - name: Drift code generation is up to date
+        run: |
+          dart run build_runner build
+          if ! git diff --quiet -- lib/data/local/app_database.g.dart; then
+            echo "::error::app_database.g.dart is out of date. Run:"
+            echo "  dart run build_runner build"
+            git --no-pager diff --stat -- lib/data/local/app_database.g.dart
+            exit 1
+          fi
+
+      - name: Run tests
+        run: flutter test --reporter expanded
+
+      - name: Format check
+        run: |
+          dart format --output=none --set-exit-if-changed lib test
+
+  # ---------------------------------------------------------------------------
+  # Android release build. Runs on every push so a broken Gradle setup is
+  # caught before a tag is cut.
+  # ---------------------------------------------------------------------------
+  build-android:
+    name: Android release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android licences
+        run: |
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      # The release build type enables R8 and reads android/key.properties when
+      # present. Without a keystore it falls back to the debug signing config,
+      # which is enough to prove the build and the ProGuard rules work.
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: standup-apk-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Web release build, including the Drift WASM assets.
+  # ---------------------------------------------------------------------------
+  build-web:
+    name: Web release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Build web
+        run: flutter build web --release
+
+      # The browser build cannot work without these two files served next to
+      # index.html, so assert they were emitted rather than discovering it at
+      # runtime.
+      - name: Verify Drift web assets
+        run: |
+          test -f build/web/sqlite3.wasm || (echo "::error::sqlite3.wasm missing" && exit 1)
+          test -f build/web/drift_worker.js || (echo "::error::drift_worker.js missing" && exit 1)
+          ls -la build/web/sqlite3.wasm build/web/drift_worker.js
+
+      - name: Upload web bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: standup-web-release
+          path: build/web
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Apple targets. Disabled by default because Apple builds require a macOS
+  # runner. Enable with the repository variable RUN_APPLE_CI = true.
+  # ---------------------------------------------------------------------------
+  build-apple:
+    name: Apple release
+    needs: verify
+    if: ${{ vars.RUN_APPLE_CI == 'true' }}
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      # No signing identity is configured here, so these produce unsigned
+      # bundles suitable for local verification and simulator use only.
+      - name: Build iOS (no codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Build macOS
+        run: flutter build macos --release
+
+      - name: Upload Apple artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: standup-apple-release
+          path: |
+            build/ios/Runner
+            build/macos/Build/Products/Release
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Windows desktop. Also disabled by default because it needs a runner with
+  # the Visual Studio C++ workload. Set RUN_WINDOWS_CI = true on a self-hosted
+  # windows-latest runner.
+  # ---------------------------------------------------------------------------
+  build-windows:
+    name: Windows release
+    needs: verify
+    if: ${{ vars.RUN_WINDOWS_CI == 'true' }}
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Upload Windows bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: standup-windows-release
+          path: build/windows/x64/runner/Release
+          retention-days: 14

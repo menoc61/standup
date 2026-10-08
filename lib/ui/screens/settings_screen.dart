@@ -11,6 +11,7 @@ import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/services/audio_service.dart';
 import 'package:standup_app/services/background_run_service.dart';
 import 'package:standup_app/services/haptics_service.dart';
+import 'package:standup_app/ui/screens/org_admin_screen.dart';
 import 'package:standup_app/ui/widgets/glass_card.dart';
 import 'package:standup_app/ui/widgets/segmented_choice.dart';
 import 'package:standup_app/ui/widgets/spring_button.dart';
@@ -1119,6 +1120,57 @@ class SettingsScreen extends StatelessWidget {
                       TextButton(
                         onPressed: () => _showJoinWorkspaceDialog(context),
                         child: Text(appString(context, 'Join')),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ----------------------------------------------------------------
+                // Organization admin
+                // ----------------------------------------------------------------
+                _SectionTitle(appString(context, 'Organization')),
+                const SizedBox(height: 12),
+                _GlassSection(
+                  reduceMotion: reduceMotion,
+                  child: Row(
+                    children: [
+                      Icon(Icons.admin_panel_settings_outlined, color: accent),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              appString(context, 'Organization dashboard'),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                            Text(
+                              appString(
+                                context,
+                                'Anonymised adherence and team trends. No individual is ever named.',
+                              ),
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Disabled rather than hidden when no workspace is linked:
+                      // the row keeps its position instead of shifting under
+                      // the user's finger once an invite code is applied.
+                      TextButton(
+                        onPressed: user?.organizationId == null
+                            ? null
+                            : () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) =>
+                                      OrgAdminScreen(appState: appState),
+                                ),
+                              ),
+                        child: Text(appString(context, 'Open')),
                       ),
                     ],
                   ),

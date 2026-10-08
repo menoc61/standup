@@ -10,6 +10,7 @@ import 'package:standup_app/data/models/gamification_metrics.dart';
 import 'package:standup_app/data/models/workday_metrics.dart';
 import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/services/haptics_service.dart';
+import 'package:standup_app/ui/widgets/account_button.dart';
 import 'package:standup_app/ui/widgets/countdown_ring.dart';
 import 'package:standup_app/ui/widgets/dynamic_island.dart';
 import 'package:standup_app/ui/widgets/glass_card.dart';
@@ -145,6 +146,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
+          ),
+
+          // ── Settings entry point ───────────────────────────────────────────
+          // Settings is a pushed route rather than a tab: the bottom bar is
+          // capped at four destinations, and the screens a user reaches daily
+          // deserve that budget more than a gear. Placing it under the user's
+          // name also reflects that it is per-person configuration rather than
+          // another place in the information architecture.
+          //
+          // Positioned against the Stack so it floats over the scrolling
+          // content rather than sitting above it and stealing height.
+          Positioned(
+            top: 0,
+            right: 0,
+            child: AccountButton(appState: widget.appState),
           ),
         ],
       ),
@@ -956,7 +972,6 @@ class _HomeScreenState extends State<HomeScreen> {
               color: color,
             ),
           ),
-          Text(unit, style: const TextStyle(fontSize: 9, color: Colors.grey)),
         ],
       ),
     );

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:glass_bottom_navigation/glass_bottom_navigation.dart';
 import 'package:standup_app/core/app_colors.dart';
 import 'package:standup_app/core/app_strings.dart';
+import 'package:standup_app/core/app_theme.dart';
 import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/services/haptics_service.dart';
 import 'package:standup_app/ui/screens/analytics_screen.dart';
@@ -29,6 +30,24 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
+  /// Width at which the shell switches from the bottom bar to the sidebar.
+  ///
+  /// 720 is the Material "large" window class. It is measured against the
+  /// space the shell is allocated, so resizing the desktop window across this
+  /// value swaps layouts live.
+  static const double _wideLayoutMinWidth = 720;
+
+  /// Ceiling for tab content on very wide windows.
+  ///
+  /// Without it the dashboard cards stretch to a 2000px-wide row on a desktop
+  /// monitor and the countdown sits alone in the middle of the screen.
+  static const double _contentMaxWidth = 1100;
+
+  /// Drives the between-tab transition. Held in state so the page tree is not
+  /// rebuilt on every navigation, which is what previously discarded each
+  /// screen's scroll position.
+  PageController? _pageController;
+
   // Keyboard shortcut intents
   static const _kComplete = 'standup_complete';
   static const _kSnooze = 'standup_snooze';
@@ -39,16 +58,54 @@ class _MainShellState extends State<MainShell> {
 
   void _navigate(int idx) {
     if (idx == _currentIndex) return;
+    if (idx < 0 || idx >= _pageCount) return;
+
     HapticsService.selection();
     widget.appState.audioService.playClick();
+
+    // The PageView animates to the page; `onPageChanged` updates the index, so
+    // setting it here as well would run the transition twice.
+    final controller = _pageController;
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    if (controller != null && controller.hasClients) {
+      if (reduceMotion) {
+        controller.jumpToPage(idx);
+        setState(() => _currentIndex = idx);
+      } else {
+        controller.animateToPage(
+          idx,
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+        );
+      }
+      return;
+    }
+
+    // No controller yet (first frame, or after a resize): fall back to an
+    // immediate change rather than dropping the navigation.
     setState(() => _currentIndex = idx);
+  }
+
+  /// Number of destinations currently in the tree.
+  ///
+  /// Read from the state rather than hardcoded, so adding or removing a screen
+  /// cannot leave a shortcut pointing past the end of the list.
+  int get _pageCount => _screenCount;
+  int _screenCount = 3;
+
+  @override
+  void dispose() {
+    // A PageController holds listeners onto its pages; without this the whole
+    // page tree stays reachable after the shell is gone.
+    _pageController?.dispose();
+    _pageController = null;
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final isDesktop = MediaQuery.of(context).size.width >= 720;
 
     // Capture the transparent device profile once a real window size is known.
     final media = MediaQuery.of(context);
@@ -63,11 +120,22 @@ class _MainShellState extends State<MainShell> {
     );
 
     // Main tabs: Timer, Leaderboard, Analytics. Org is inside Settings now.
-    final screens = [
+    final screens = <Widget>[
       HomeScreen(appState: widget.appState),
       LeaderboardScreen(appState: widget.appState),
       AnalyticsScreen(appState: widget.appState),
     ];
+
+    // Kept in state so the shortcut bounds check below stays in step with the
+    // real page count rather than a hardcoded constant.
+    _screenCount = screens.length;
+
+    // The bar asserts 2..4 destinations, so this is a programming error rather
+    // than a runtime condition worth handling gracefully.
+    assert(
+      screens.length >= 2 && screens.length <= 4,
+      'The bottom bar supports 2 to 4 destinations; got ${screens.length}.',
+    );
 
     // Keyboard shortcut map
     final shortcuts = <ShortcutActivator, Intent>{
@@ -91,7 +159,7 @@ class _MainShellState extends State<MainShell> {
       ),
     };
 
-final actions = <Type, Action<Intent>>{
+    final actions = <Type, Action<Intent>>{
       _AppIntent: CallbackAction<_AppIntent>(
         onInvoke: (intent) async {
           switch (intent.action) {
@@ -119,9 +187,19 @@ final actions = <Type, Action<Intent>>{
         actions: actions,
         child: Focus(
           autofocus: true,
-          child: isDesktop
-              ? _buildDesktop(context, theme, isDark, accent, screens)
-              : _buildMobile(context, accent, screens),
+          // The breakpoint is decided from the width this widget is actually
+          // given, not from the window size. A desktop app in a narrow window,
+          // a phone in split-screen, and a picture-in-picture window all get the
+          // compact layout, which `MediaQuery.sizeOf` would get wrong in each
+          // case because it reports the window rather than the allocation.
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= _wideLayoutMinWidth;
+              return isWide
+                  ? _buildDesktop(context, theme, isDark, accent, screens)
+                  : _buildMobile(context, accent, screens);
+            },
+          ),
         ),
       ),
     );
@@ -141,26 +219,46 @@ final actions = <Type, Action<Intent>>{
       backgroundColor: Colors.transparent,
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       floatingActionButton: ReminderFab(appState: widget.appState),
-      body: Row(
+      body: Stack(
         children: [
-          // Glass sidebar
-          _GlassSidebar(
-            currentIndex: _currentIndex,
-            accent: accent,
-            isDark: isDark,
-            onDestinationSelected: _navigate,
-          ),
+          Row(
+            children: [
+              // Glass sidebar
+              _GlassSidebar(
+                currentIndex: _currentIndex,
+                accent: accent,
+                isDark: isDark,
+                onDestinationSelected: _navigate,
+              ),
 
-          // Subtle divider
-          Container(
-            width: 1,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : Colors.black.withValues(alpha: 0.05),
-          ),
+              // Subtle divider
+              Container(
+                width: 1,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.black.withValues(alpha: 0.05),
+              ),
 
-          // Main content
-          Expanded(child: _buildAnimatedScreenStack(context, screens)),
+              // Back/forward controls for pushed detail sections. Positioned inside the
+          // content column rather than over the row, so they cannot land on top
+          // of the sidebar when the window is at its narrowest.
+          Expanded(
+            child: Column(
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildDetailNav(
+                    context,
+                    canGoBack: Navigator.of(context).canPop(),
+                    canGoForward: Navigator.of(context).canPop(),
+                  ),
+                ),
+                Expanded(
+                  child: _buildAnimatedScreenStack(context, screens),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -211,49 +309,202 @@ final actions = <Type, Action<Intent>>{
     );
   }
 
-  /// Keeps each tab alive while fading and gently shifting the selected page.
-  /// The same short transition works with touch, mouse, and keyboard input.
+  /// Keeps each tab alive and slides between them.
+  ///
+  /// ## Why not a `Stack` with cross-fading children
+  ///
+  /// That was the previous implementation and it produced a visible artefact on
+  /// every navigation: two opaque full-screen widgets were laid out on top of
+  /// each other and animated their opacity simultaneously, so mid-transition the
+  /// user saw both screens ghosted through one another. It also rebuilt every
+  /// screen widget on each transition because the list was constructed inline
+  /// in `build`.
+  ///
+  /// A `PageView` fixes both. Exactly one page is composited at full opacity at
+  /// a time, the transition is a real slide rather than a dissolve, and each
+  /// page keeps its own `ScrollController`, so returning to a tab restores its
+  /// position instead of starting at the top.
+  ///
+  /// Gesture scrolling is disabled so a horizontal swipe cannot change tabs;
+  /// the bar is the single affordance, which matches how the desktop sidebar
+  /// behaves.
   Widget _buildAnimatedScreenStack(BuildContext context, List<Widget> screens) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final duration = reduceMotion
-        ? Duration.zero
-        : const Duration(milliseconds: 240);
 
-    return Stack(
-      fit: StackFit.expand,
-      children: screens.asMap().entries.map((entry) {
-        final index = entry.key;
-        final selected = index == _currentIndex;
-        return Positioned.fill(
-          // Tabs stay mounted so their scroll position survives, but tickers in
-          // hidden tabs must stop or hidden animations keep burning battery.
-          child: TickerMode(
-            enabled: selected,
-            child: IgnorePointer(
-              ignoring: !selected,
-              child: ExcludeFocus(
-                excluding: !selected,
-                child: ExcludeSemantics(
-                  excluding: !selected,
-                  child: AnimatedOpacity(
-                    opacity: selected ? 1 : 0,
-                    duration: duration,
-                    curve: Curves.easeOutCubic,
-                    child: AnimatedSlide(
-                      offset: selected || reduceMotion
-                          ? Offset.zero
-                          : const Offset(0, 0.018),
-                      duration: duration,
-                      curve: Curves.easeOutCubic,
-                      child: entry.value,
-                    ),
-                  ),
-                ),
+    // Created lazily and then kept, rather than rebuilt whenever the viewport
+    // has no clients. Disposing a controller from inside `build` is a side
+    // effect, and it threw away the page offset mid-transition, which is what
+    // produced the visible jump between tabs.
+    final controller = _pageController ??= PageController(
+      initialPage: _currentIndex,
+      viewportFraction: 1,
+    );
+
+    return PageView.builder(
+      controller: controller,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: screens.length,
+      onPageChanged: (index) {
+        // Fires for swipe gestures too, though physics makes those impossible;
+        // kept so the index stays correct if physics is relaxed later.
+        if (index != _currentIndex) {
+          setState(() => _currentIndex = index);
+        }
+      },
+      itemBuilder: (context, index) {
+        return TickerMode(
+          // Off-screen tickers must be disabled or hidden animations keep
+          // repainting behind the visible page.
+          enabled: index == _currentIndex,
+          child: ExcludeSemantics(
+            // A screen reader should only walk the visible page, otherwise it
+            // announces every tab's content on every switch.
+            excluding: index != _currentIndex,
+            // Centre and cap the page width. Without this the dashboard cards
+            // stretch to the full width of a desktop monitor, and the timer
+            // ends up marooned in the middle of a very wide row.
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: _contentMaxWidth),
+                child: reduceMotion
+                    ? screens[index]
+                    : AnimatedSlide(
+                        // Directional entrance: the page settles in from the
+                        // side it came from rather than always from the right.
+                        offset: Offset(_slideDirectionFor(index) * 0.03, 0),
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeOutCubic,
+                        child: screens[index],
+                      ),
               ),
             ),
           ),
         );
-      }).toList(),
+      },
+    );
+  }
+
+  /// -1 when the target page is to the left of the current one, 1 when right.
+  double _slideDirectionFor(int targetIndex) {
+    if (targetIndex < _currentIndex) return -1;
+    return 1;
+  }
+
+  /// A glass back/forward pair for drilled-into detail sections.
+  ///
+  /// Detail sections open as pushed routes, so the shell's tab index has no
+  /// memory of them. Without an explicit control there is only the system back
+  /// gesture, which does not exist on desktop and is easy to miss on Android.
+  ///
+  /// The buttons are disabled rather than hidden when there is nothing to go
+  /// back to: a control that appears and disappears moves the layout around
+  /// under the user's finger, which is worse than a dimmed button.
+  Widget _buildDetailNav(
+    BuildContext context, {
+    required bool canGoBack,
+    required bool canGoForward,
+  }) {
+    final accent = AccentTheme.of(context).accent;
+    final navigator = Navigator.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Tooltip(
+            message: appString(context, 'Back'),
+            child: Semantics(
+              button: true,
+              enabled: canGoBack,
+              label: appString(context, 'Back'),
+              excludeSemantics: true,
+              child: Opacity(
+                opacity: canGoBack ? 1 : 0.35,
+                child: _GlassCircleButton(
+                  icon: Icons.arrow_back_rounded,
+                  accent: accent,
+                  onPressed: canGoBack ? () => navigator.maybePop() : null,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: appString(context, 'Forward'),
+            child: Semantics(
+              button: true,
+              enabled: canGoForward,
+              label: appString(context, 'Forward'),
+              excludeSemantics: true,
+              child: Opacity(
+                opacity: canGoForward ? 1 : 0.35,
+                child: _GlassCircleButton(
+                  icon: Icons.arrow_forward_rounded,
+                  accent: accent,
+                  onPressed: canGoForward ? () => _forward(context) : null,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Returns to the tab that was showing before a detail section was pushed.
+  ///
+  /// A pushed route does not change the tab index, so popping back to the shell
+  /// is the whole action. Guarded because it is only enabled when a route above
+  /// the shell actually exists.
+  void _forward(BuildContext context) {
+    Navigator.of(context).maybePop();
+  }
+}
+
+/// The circular glass button used by the detail nav.
+class _GlassCircleButton extends StatelessWidget {
+  final IconData icon;
+  final Color accent;
+  final VoidCallback? onPressed;
+
+  const _GlassCircleButton({
+    required this.icon,
+    required this.accent,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: theme.colorScheme.surface.withValues(alpha: 0.82),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(
+                  alpha: theme.brightness == Brightness.dark ? 0.3 : 0.07,
+                ),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Icon(icon, size: 20, color: theme.colorScheme.onSurface),
+        ),
+      ),
     );
   }
 }
@@ -543,302 +794,12 @@ class _ShortcutHint extends StatelessWidget {
   }
 }
 
-// =============================================================================
-// Glass Bottom Nav (Mobile)
-// =============================================================================
-class _GlassBottomNav extends StatefulWidget {
-  final int currentIndex;
-  final Color accent;
-  final bool isDark;
-  final ValueChanged<int> onDestinationSelected;
 
-  const _GlassBottomNav({
-    required this.currentIndex,
-    required this.accent,
-    required this.isDark,
-    required this.onDestinationSelected,
-  });
-
-  @override
-  State<_GlassBottomNav> createState() => _GlassBottomNavState();
-}
-
-class _GlassBottomNavState extends State<_GlassBottomNav>
-    with SingleTickerProviderStateMixin {
-  /// Which tab is currently under the finger, used to stretch the indicator.
-  int? _pressedIndex;
-
-  static const _items = [
-    (icon: Icons.timer_outlined, selected: Icons.timer, label: 'Timer'),
-    (
-      icon: Icons.emoji_events_outlined,
-      selected: Icons.emoji_events_rounded,
-      label: 'Leaderboard',
-    ),
-    (
-      icon: Icons.grid_view_outlined,
-      selected: Icons.grid_view_rounded,
-      label: 'Analytics',
-    ),
-    (
-      icon: Icons.corporate_fare_outlined,
-      selected: Icons.corporate_fare,
-      label: 'Org',
-    ),
-    (icon: Icons.tune_outlined, selected: Icons.tune, label: 'Settings'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final isDark = widget.isDark;
-    final accent = widget.accent;
-    final currentIndex = widget.currentIndex;
-    final onDestinationSelected = widget.onDestinationSelected;
-    final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.16)
-        : Colors.white.withValues(alpha: 0.82);
-
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(26),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-            child: Container(
-              height: 70,
-              decoration: BoxDecoration(
-                color: colors.surface.withValues(alpha: isDark ? 0.68 : 0.72),
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(color: borderColor, width: 1),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.09),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                  BoxShadow(
-                    color: Colors.white.withValues(
-                      alpha: isDark ? 0.045 : 0.42,
-                    ),
-                    blurRadius: 1,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(5),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final itemWidth = constraints.maxWidth / _items.length;
-                    return Stack(
-                      children: [
-                        // Telegram-style sliding pill: it travels between tabs
-                        // with an eased spring and stretches under the finger
-                        // while a tab is being pressed.
-                        _SlidingIndicator(
-                          itemCount: _items.length,
-                          itemWidth: itemWidth,
-                          index: currentIndex,
-                          pressedIndex: _pressedIndex,
-                          color: accent,
-                          isDark: isDark,
-                        ),
-                        Row(
-                          children: _items.asMap().entries.map((entry) {
-                            final i = entry.key;
-                            final item = entry.value;
-                            final isSelected = i == currentIndex;
-                            final foreground = isSelected
-                                ? colors.primary
-                                : colors.onSurfaceVariant;
-
-                            return SizedBox(
-                              width: itemWidth,
-                              // `container: true` + `excludeSemantics: true`
-                              // collapses the tab into one semantic node.
-                              // Without it the annotating node and the button's
-                              // own nodes become siblings, so a screen reader
-                              // announces the label twice with a stray unnamed
-                              // tap target in between.
-                              child: Semantics(
-                                container: true,
-                                button: true,
-                                selected: isSelected,
-                                label: appString(context, item.label),
-                                excludeSemantics: true,
-                                child: _TabButton(
-                                  icon: isSelected ? item.selected : item.icon,
-                                  label: appString(context, item.label),
-                                  isSelected: isSelected,
-                                  foreground: foreground,
-                                  onTap: () => onDestinationSelected(i),
-                                  onPressStart: () =>
-                                      setState(() => _pressedIndex = i),
-                                  onPressEnd: () =>
-                                      setState(() => _pressedIndex = null),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// =============================================================================
-// Custom Intent for keyboard shortcuts
-// =============================================================================
+/// Carries a shell action through the `Shortcuts`/`Actions` pair.
+///
+/// The action is a stable string rather than a class per action so the shortcut
+/// map and the switch below stay in one readable list.
 class _AppIntent extends Intent {
   final String action;
   const _AppIntent(this.action);
-}
-
-/// The sliding selection pill behind the bottom navigation.
-///
-/// Telegram's bottom bar moves one continuous pill between tabs rather than
-/// fading each tab's background independently. This reproduces that with a
-/// single animated offset, and adds a press "stretch" so the pill widens under
-/// the finger while a different tab is held.
-class _SlidingIndicator extends StatelessWidget {
-  final int itemCount;
-  final double itemWidth;
-  final int index;
-  final int? pressedIndex;
-  final Color color;
-  final bool isDark;
-
-  const _SlidingIndicator({
-    required this.itemCount,
-    required this.itemWidth,
-    required this.index,
-    required this.pressedIndex,
-    required this.color,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-
-    // Stretch toward a held, non-selected tab so the press feels connected to
-    // the pill rather than to the icon.
-    final target = pressedIndex ?? index;
-    final isStretching = pressedIndex != null && pressedIndex != index;
-
-    return AnimatedAlign(
-      alignment: Alignment(
-        -1 + (2 * target / (itemCount - 1)).clamp(-1.0, 1.0),
-        0,
-      ),
-      duration: reduceMotion
-          ? Duration.zero
-          : Duration(milliseconds: isStretching ? 180 : 340),
-      curve: isStretching ? Curves.easeOutCubic : Curves.easeOutBack,
-      child: AnimatedContainer(
-        duration: reduceMotion
-            ? Duration.zero
-            : const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-        width: itemWidth * (isStretching ? 1.18 : 1.0),
-        height: 58,
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: isDark ? 0.22 : 0.14),
-          borderRadius: BorderRadius.circular(21),
-          border: Border.all(color: color.withValues(alpha: 0.18)),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: isDark ? 0.22 : 0.12),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// One tab in the bottom navigation. Kept as its own widget so press state can
-/// be reported to the sliding pill without rebuilding the whole bar.
-class _TabButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final Color foreground;
-  final VoidCallback onTap;
-  final VoidCallback onPressStart;
-  final VoidCallback onPressEnd;
-
-  const _TabButton({
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-    required this.foreground,
-    required this.onTap,
-    required this.onPressStart,
-    required this.onPressEnd,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    return Material(
-      color: Colors.transparent,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => onPressStart(),
-        onTapUp: (_) => onPressEnd(),
-        onTapCancel: onPressEnd,
-        onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 240),
-              switchInCurve: Curves.easeOutBack,
-              switchOutCurve: Curves.easeIn,
-              transitionBuilder: (child, animation) => ScaleTransition(
-                scale: reduceMotion
-                    ? const AlwaysStoppedAnimation(1)
-                    : animation,
-                child: FadeTransition(opacity: animation, child: child),
-              ),
-              child: Icon(
-                icon,
-                key: ValueKey(isSelected),
-                color: foreground,
-                size: isSelected ? 23 : 21,
-              ),
-            ),
-            const SizedBox(height: 3),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOut,
-              style: TextStyle(
-                fontSize: 10,
-                height: 1.1,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: foreground,
-              ),
-              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

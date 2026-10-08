@@ -636,40 +636,51 @@ cmd_build() {
 
   section "Building ${target} (${mode})"
 
-  case "${target}" in
-    android)
-      run_flutter build apk --${mode} $(dart_defines | tr '\n' ' ')
-      success "APK: build/app/outputs/flutter-apk/"
-      ;;
-    ios)
-      # --no-codesign keeps a CI or first-run build from failing on a missing
-      # provisioning profile; a real device install goes through `run ios`.
-      if [[ "${mode}" == "release" ]]; then
-        run_flutter build ios --release --no-codesign $(dart_defines | tr '\n' ' ')
-        success "build/ios/iphoneos/ (unsigned — sign in Xcode for a device)"
-      else
-        run_flutter build ios --${mode} --no-codesign $(dart_defines | tr '\n' ' ')
-        success "build/ios/"
-      fi
-      ;;
-        web)
-          run_flutter build web --release $(dart_defines | tr '\n' ' ')
-          copy_drift_web_assets
-          success "build/web/"
-          ;;
-    windows)
-      run_flutter build windows --${mode} $(dart_defines | tr '\n' ' ')
-      success "build/windows/x64/runner/"
-      ;;
-    macos)
-      run_flutter build macos --${mode} $(dart_defines | tr '\n' ' ')
-      success "build/macos/"
-      ;;
-    linux)
-      run_flutter build linux --${mode} $(dart_defines | tr '\n' ' ')
-      success "build/linux/x64/release/bundle/"
-      ;;
-  esac
+  # --skip-build reuses an existing output. CI uses it for the web step: the
+  # compile is already done, and only the post-build asset copy is wanted.
+  if [[ "${STANDUP_SKIP_BUILD:-0}" != "1" ]]; then
+    case "${target}" in
+      android)
+        run_flutter build apk --${mode} $(dart_defines | tr '\n' ' ')
+        success "APK: build/app/outputs/flutter-apk/"
+        ;;
+      ios)
+        # --no-codesign keeps a CI or first-run build from failing on a missing
+        # provisioning profile; a real device install goes through `run ios`.
+        if [[ "${mode}" == "release" ]]; then
+          run_flutter build ios --release --no-codesign $(dart_defines | tr '\n' ' ')
+          success "build/ios/iphoneos/ (unsigned — sign in Xcode for a device)"
+        else
+          run_flutter build ios --${mode} --no-codesign $(dart_defines | tr '\n' ' ')
+          success "build/ios/"
+        fi
+        ;;
+      web)
+        run_flutter build web --release $(dart_defines | tr '\n' ' ')
+        ;;
+      windows)
+        run_flutter build windows --${mode} $(dart_defines | tr '\n' ' ')
+        success "build/windows/x64/runner/"
+        ;;
+      macos)
+        run_flutter build macos --${mode} $(dart_defines | tr '\n' ' ')
+        success "build/macos/"
+        ;;
+      linux)
+        run_flutter build linux --${mode} $(dart_defines | tr '\n' ' ')
+        success "build/linux/x64/release/bundle/"
+        ;;
+    esac
+  else
+    info "--skip-build: reusing the existing output"
+  fi
+
+  # The asset copy runs either way: it is cheap, and it is the step most likely
+  # to be skipped by accident.
+  if [[ "${target}" == "web" ]]; then
+    copy_drift_web_assets
+    success "build/web/"
+  fi
 }
 
 # Builds every platform this host can support, skipping the rest with a note.
@@ -1149,6 +1160,12 @@ main() {
         FLUTTER_VERSION="${2:?--flutter-version needs a value}"
         export STANDUP_FLUTTER_VERSION="${FLUTTER_VERSION}"
         shift 2
+        ;;
+      --skip-build)
+        # Reuse an existing build output instead of recompiling. CI uses this for
+        # the web step, where only the post-build asset copy is wanted.
+        export STANDUP_SKIP_BUILD=1
+        shift
         ;;
       --assume-yes|-y)
         export STANDUP_ASSUME_YES=1

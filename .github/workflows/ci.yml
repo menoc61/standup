@@ -132,6 +132,13 @@ jobs:
       - name: Build web
         run: flutter build web --release
 
+      # `flutter build web` has no knowledge of Drift, so the two WASM assets are
+      # copied from the pub cache afterwards. The script is the single source of
+      # truth for locating them; running it here means CI and a developer
+      # following the TUI produce an identical bundle.
+      - name: Copy Drift web assets
+        run: ./scripts/standup.sh build web release --skip-build
+
       # The browser build cannot work without these two files served next to
       # index.html, so assert they were emitted rather than discovering it at
       # runtime.

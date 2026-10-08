@@ -821,6 +821,20 @@ class AppState extends ChangeNotifier {
       HapticsService.enabled = hapticsEnabled;
     }
 
+    // Publish before any I/O so appearance changes land on the next frame.
+    //
+    // Previously the first `notifyListeners()` sat below the database write, the
+    // realtime-analytics toggle and up to three notification-queue rebuilds.
+    // Toggling the theme therefore felt broken: the control moved, the screen
+    // did not, and the delay scaled with how slow the disk was. The UI is the
+    // cheapest and most latency-sensitive part of this method, so it goes first;
+    // persistence and rescheduling then run behind it.
+    notifyListeners();
+
+    // The widget payload carries the resolved palette, so an accent change has to
+    // reach the launcher rather than waiting for the next break.
+    if (colorSystem != null) unawaited(syncWidget());
+
     await localRepo.saveUserPreferences(_preferences!);
 
     if (statisticsOptIn != null) {
@@ -852,17 +866,30 @@ class AppState extends ChangeNotifier {
       await refreshReminderQueue();
     }
 
+    // A final notification catches anything the work above changed. Harmless
+    // when the early one already reflected everything: ListenableBuilder
+    // collapses duplicate notifications into a single rebuild.
     notifyListeners();
   }
 
   Future<void> updateLanguage(String languageCode) async {
     if (languageCode != 'fr' && languageCode != 'en') return;
+    if (languageCode == _languageCode) return;
+
     _languageCode = languageCode;
+
+    // Repaint before the I/O for the same reason `updatePreferences` does: the
+    // whole interface re-renders on this, and the queue rebuild below can take
+    // tens of milliseconds on a slow device.
+    notifyListeners();
+
     await notificationService.setLanguageCode(languageCode);
     final store = await SharedPreferences.getInstance();
     await store.setString('language_code', languageCode);
+    // The widget carries its own copy of the strings, so a language change has
+    // to be pushed to the launcher or the two languages disagree on screen.
+    unawaited(syncWidget());
     await refreshReminderQueue();
-    notifyListeners();
   }
 
   Future<void> updateProfile({

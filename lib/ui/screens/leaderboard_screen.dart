@@ -138,12 +138,17 @@ class LeaderboardScreen extends StatelessWidget {
     List<DailyAnalytics> history,
     int todayCompleted,
   ) {
-    final formatter = DateFormat('MMM d');
-    final today = DateTime.now();
+    // The locale has to be passed explicitly. Without it `intl` falls back to
+    // `en_US`, which is why this board used to render "Jan 3" on a French
+    // device — the date row was the one place the language setting did not
+    // reach.
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final formatter = DateFormat.MMMd(locale);
+    final now = DateTime.now();
     final todayKey =
-        '${today.year.toString().padLeft(4, '0')}-'
-        '${today.month.toString().padLeft(2, '0')}-'
-        '${today.day.toString().padLeft(2, '0')}';
+        '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
 
     final rows = history
         .map(
@@ -156,17 +161,21 @@ class LeaderboardScreen extends StatelessWidget {
         )
         .toList();
 
-    if (todayCompleted > 0 && !rows.any((r) => r.isCurrentUser)) {
+    // Today's live count is fresher than the stored record, so it replaces the
+    // day rather than appearing twice.
+    rows.removeWhere((r) => r.isCurrentUser);
+    if (todayCompleted > 0) {
       rows.insert(
         0,
         DailyAnalyticsLike(
-          label: formatter.format(today),
+          label: formatter.format(now),
           completed: todayCompleted,
           unit: appString(context, 'breaks'),
           isCurrentUser: true,
         ),
       );
     }
+
     return LeaderboardBuilder.fromPersonalHistory(rows);
   }
 }

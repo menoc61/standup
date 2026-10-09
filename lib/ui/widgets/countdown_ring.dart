@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:standup_app/core/app_strings.dart';
 import 'package:flutter/material.dart';
 
 class CountdownRing extends StatelessWidget {
@@ -17,12 +18,6 @@ class CountdownRing extends StatelessWidget {
     this.isBreakActive = false,
     this.size = 240,
   });
-
-  String _formatDuration(Duration d) {
-    final minutes = d.inMinutes;
-    final seconds = d.inSeconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,7 +87,7 @@ class CountdownRing extends StatelessWidget {
                 const SizedBox(height: 8),
                 // Timer
                 Text(
-                  _formatDuration(remainingTime),
+                  formatClock(remainingTime),
                   style: theme.textTheme.headlineLarge?.copyWith(
                     fontSize: 48,
                     fontWeight: FontWeight.w800,

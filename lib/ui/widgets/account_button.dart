@@ -8,7 +8,7 @@ import 'package:standup_app/services/haptics_service.dart';
 import 'package:standup_app/ui/screens/settings_screen.dart';
 import 'package:standup_app/ui/widgets/spring_button.dart';
 
-/// The account affordance: tapping the user's name opens Settings.
+/// The account affordance: tapping the avatar opens Settings.
 ///
 /// ## Why Settings is a route and not a tab
 ///
@@ -18,12 +18,20 @@ import 'package:standup_app/ui/widgets/spring_button.dart';
 /// belongs conceptually: it is per-person configuration, not another place in the
 /// product's information architecture.
 ///
+/// ## Why avatar-only
+///
+/// This sits at the trailing edge of the navigation bar alongside the other
+/// items. At that size a name is unreadable and the label pushed the real
+/// destinations off the row; the name is still exposed to screen readers and in
+/// the tooltip, so nothing is lost for assistive technology.
+///
 /// ## Why this is a StatelessWidget
 ///
-/// It holds no state of its own. The label is derived from [AppState] on every
-/// build, and the press feedback belongs to [SpringButton], which is already a
-/// StatefulWidget handling exactly that. Wrapping it in another StatefulWidget
-/// would mean a `setState` that exists only to duplicate a child's behaviour.
+/// It holds no state of its own. The initials are derived from [AppState] on
+/// every build, and the press feedback belongs to [SpringButton], which is
+/// already a StatefulWidget handling exactly that. Wrapping it in another
+/// StatefulWidget would mean a `setState` that exists only to duplicate a child's
+/// behaviour.
 ///
 /// The screen underneath stays mounted while this route is pushed, so returning
 /// from Settings does not rebuild the dashboard or lose its scroll position. That
@@ -35,20 +43,17 @@ class AccountButton extends StatelessWidget {
   /// switch, so the button never has to reach across widget boundaries to
   /// rebuild the app.
   final VoidCallback onRerunOnboarding;
-  final double topPadding;
-  final double sidePadding;
+  final double size;
 
   const AccountButton({
     super.key,
     required this.appState,
     required this.onRerunOnboarding,
-    this.topPadding = 8,
-    this.sidePadding = 12,
+    this.size = 44,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final accent = AppColors.getAccentColor(appState.preferences.colorSystem);
     final rawName = appState.userProfile?.name ?? '';
 
@@ -62,76 +67,23 @@ class AccountButton extends StatelessWidget {
     // literal it is given and cannot interpolate.
     final semantics = '${appString(context, 'Open settings')}: $label';
 
-    return SafeArea(
-      bottom: false,
-      child: Padding(
-        padding: EdgeInsets.only(top: topPadding, right: sidePadding),
-        child: Align(
-          alignment: Alignment.topRight,
-          child: Semantics(
-            button: true,
-            label: semantics,
-            excludeSemantics: true,
-            child: Tooltip(
-              message: appString(context, 'Settings'),
-              child: SpringButton(
-                onTap: () => unawaited(_open(context)),
-                borderRadius: BorderRadius.circular(999),
-                scaleFactor: 0.94,
-                semanticLabel: semantics,
-                padding: const EdgeInsets.all(2),
-                child: Container(
-                  constraints: const BoxConstraints(
-                    minWidth: 44,
-                    minHeight: 44,
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface.withValues(alpha: 0.86),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: theme.colorScheme.outlineVariant.withValues(
-                        alpha: 0.7,
-                      ),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: theme.brightness == Brightness.dark
-                              ? 0.3
-                              : 0.07,
-                        ),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _Monogram(label: label, accent: accent),
-                      if (label.length > 1) ...[
-                        const SizedBox(width: 8),
-                        ConstrainedBox(
-                          // Truncating rather than overflowing: a long name
-                          // must not push the control past the content edge.
-                          constraints: const BoxConstraints(maxWidth: 96),
-                          child: Text(
-                            label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
+    return Semantics(
+      button: true,
+      label: semantics,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: semantics,
+        child: SpringButton(
+          onTap: () => unawaited(_open(context)),
+          borderRadius: BorderRadius.circular(size / 2),
+          scaleFactor: 0.94,
+          semanticLabel: semantics,
+          padding: EdgeInsets.zero,
+          child: Container(
+            width: size,
+            height: size,
+            alignment: Alignment.center,
+            child: _Monogram(label: label, accent: accent, diameter: size - 8),
           ),
         ),
       ),
@@ -158,8 +110,13 @@ class AccountButton extends StatelessWidget {
 class _Monogram extends StatelessWidget {
   final String label;
   final Color accent;
+  final double diameter;
 
-  const _Monogram({required this.label, required this.accent});
+  const _Monogram({
+    required this.label,
+    required this.accent,
+    this.diameter = 30,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -174,19 +131,19 @@ class _Monogram extends StatelessWidget {
     if (initials.isEmpty) {
       return Icon(
         Icons.person_outline,
-        size: 20,
+        size: diameter * 0.55,
         color: Theme.of(context).colorScheme.onSurfaceVariant,
       );
     }
 
     return CircleAvatar(
-      radius: 15,
+      radius: diameter / 2,
       backgroundColor: accent,
       child: Text(
         initials,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
-          fontSize: 11,
+          fontSize: diameter * 0.38,
           fontWeight: FontWeight.w700,
         ),
       ),

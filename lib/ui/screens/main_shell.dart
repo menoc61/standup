@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -12,6 +14,8 @@ import 'package:standup_app/ui/layout/adaptive.dart';
 import 'package:standup_app/ui/screens/analytics_screen.dart';
 import 'package:standup_app/ui/screens/home_screen.dart';
 import 'package:standup_app/ui/screens/leaderboard_screen.dart';
+import 'package:standup_app/ui/screens/settings_screen.dart';
+import 'package:standup_app/ui/widgets/account_button.dart';
 import 'package:standup_app/ui/widgets/reminder_fab.dart';
 
 class MainShell extends StatefulWidget {
@@ -216,6 +220,8 @@ class _MainShellState extends State<MainShell> {
             currentIndex: _currentIndex,
             accent: accent,
             isDark: isDark,
+            appState: widget.appState,
+            onRerunOnboarding: widget.onRerunOnboarding,
             onDestinationSelected: _navigate,
           ),
 
@@ -285,11 +291,38 @@ class _MainShellState extends State<MainShell> {
         ],
         currentIndex: _currentIndex,
         onTap: _navigate,
+        // Settings is a pushed route, not a fourth destination: the bar is
+        // capped at four and the screens a user reaches daily deserve that
+        // budget more than a gear. It sits at the trailing edge of the bar,
+        // alongside the other items, so it reads as part of the navigation
+        // rather than as a control floating over the dashboard.
+        trailingActions: [
+          GlassActionButtonItem(
+            type: GlassActionIcon.custom,
+            icon: Icons.person_outline,
+            onTap: _openSettings,
+            semanticLabel: appString(context, 'Settings'),
+          ),
+        ],
         style: GlassBottomNavStyle(
           accent: accent,
           actionButtonMode: isDark
               ? GlassActionButtonMode.flutter
               : GlassActionButtonMode.nativeLiquidGlassOnIOS26,
+        ),
+      ),
+    );
+  }
+
+  /// Pushes Settings, replaying onboarding through the same callback the account
+  /// button uses so both entry points behave identically.
+  Future<void> _openSettings() async {
+    unawaited(HapticsService.selection());
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SettingsScreen(
+          appState: widget.appState,
+          onRerunOnboarding: widget.onRerunOnboarding,
         ),
       ),
     );
@@ -499,12 +532,16 @@ class _GlassSidebar extends StatelessWidget {
   final int currentIndex;
   final Color accent;
   final bool isDark;
+  final AppState appState;
+  final VoidCallback onRerunOnboarding;
   final ValueChanged<int> onDestinationSelected;
 
   const _GlassSidebar({
     required this.currentIndex,
     required this.accent,
     required this.isDark,
+    required this.appState,
+    required this.onRerunOnboarding,
     required this.onDestinationSelected,
   });
 
@@ -622,6 +659,21 @@ class _GlassSidebar extends StatelessWidget {
                         label: appString(context, 'Skip'),
                       ),
                     ],
+                  ),
+                ),
+
+                // Settings sits at the trailing edge of the sidebar, mirroring
+                // the account button's position on the mobile bar so the entry
+                // point is in the same place on every platform.
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: AccountButton(
+                      appState: appState,
+                      onRerunOnboarding: onRerunOnboarding,
+                    ),
                   ),
                 ),
               ],

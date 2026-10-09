@@ -1,0 +1,263 @@
+name: Release
+
+# Publishes tagged builds as a GitHub Release.
+#
+# CI already builds every target on every push. This workflow is separate on
+# purpose: a release must only ever be produced from a tag that has passed the
+# same checks, so it re-runs `verify` itself rather than trusting a previous run
+# on a different commit.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to publish (e.g. v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: "3.47.4"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Gate. Nothing is built or published unless analysis, tests, formatting and
+  # Drift codegen freshness all pass on the tag itself.
+  # ---------------------------------------------------------------------------
+  verify:
+    name: Analyze and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --fatal-infos --fatal-warnings
+
+      - name: Drift code generation is up to date
+        run: |
+          dart run build_runner build
+          if ! git diff --quiet -- lib/data/local/app_database.g.dart; then
+            echo "::error::app_database.g.dart is out of date. Run:"
+            echo "  dart run build_runner build"
+            git --no-pager diff --stat -- lib/data/local/app_database.g.dart
+            exit 1
+          fi
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Format check
+        run: dart format --output=none --set-exit-if-changed lib test
+
+  # ---------------------------------------------------------------------------
+  # Android. The APK is the primary distribution artefact for the pilot, so the
+  # bundle is uploaded both as a workflow artifact and onto the release itself.
+  # ---------------------------------------------------------------------------
+  android:
+    name: Android release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    outputs:
+      # Consumed by the publish job so a failure here fails the release loudly
+      # rather than silently shipping without the APK.
+      ok: ${{ steps.build.outcome }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "17"
+
+      # No android-actions/setup-android step: it runs `sdkmanager --list`, which
+      # now fails on the current runner image because Google retired the 'tools'
+      # package name. The hosted image ships a usable SDK already.
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Build release APK
+        id: build
+        run: |
+          flutter build apk --release
+          flutter build appbundle --release
+
+      - name: Collect artefacts
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             dist/standup-${GITHUB_REF_NAME}-android.apk
+          cp build/app/outputs/bundle/release/app-release.aab \
+             dist/standup-${GITHUB_REF_NAME}-android.aab
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-android
+          path: dist
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Windows. Requires no secret: the bundle is unsigned, which is enough to
+  # download and run, and signing needs a certificate the repository does not
+  # hold yet.
+  # ---------------------------------------------------------------------------
+  windows:
+    name: Windows release
+    needs: verify
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Package as a zip
+        run: |
+          Compress-Archive -Path build\windows\x64\runner\Release\* `
+            -DestinationPath "dist\standup-$env:GITHUB_REF_NAME-windows-x64.zip"
+          Get-Item "dist\standup-$env:GITHUB_REF_NAME-windows-x64.zip" | Format-List Name,Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-windows
+          path: dist
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Linux. GTK, clang and ninja are the same packages the TUI's
+  # `setup --linux-deps` installs, plus the GStreamer headers audioplayers needs.
+  # ---------------------------------------------------------------------------
+  linux:
+    name: Linux release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
+            libstdc++-12-dev libblkid-dev uuid-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Build Linux
+        run: flutter build linux --release
+
+      - name: Package as a tarball
+        run: |
+          mkdir -p dist
+          tar -czf "dist/standup-${GITHUB_REF_NAME}-linux-x64.tar.gz" \
+            -C build/linux/x64/release bundle
+          ls -la dist
+
+      # Fail loudly if the desktop entry or the icon set did not get installed.
+      # CMake owns both, and a missing .desktop produces an app that launches
+      # but never appears in any desktop menu.
+      - name: Verify desktop integration
+        run: |
+          test -f bundle/share/applications/standup_app.desktop || \
+            (echo "::error::.desktop entry missing from the bundle" && exit 1)
+          test -f bundle/share/icons/hicolor/512x512/apps/standup_app.png || \
+            (echo "::error::512px icon missing from the bundle" && exit 1)
+          find bundle/share -type f | sort
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-linux
+          path: dist
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Assemble one release containing every target. Downloads only from jobs that
+  # succeeded, so a platform that could not be built is simply absent rather
+  # than breaking the whole release.
+  # ---------------------------------------------------------------------------
+  publish:
+    name: Publish release
+    needs: [android, windows, linux]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Download artefacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: List release contents
+        run: |
+          ls -laR dist
+          # Nothing to release is a failed release, not an empty one.
+          test -n "$(ls -A dist)" || (echo "::error::no artefacts were produced" && exit 1)
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; replacing its assets."
+            gh release delete "$GITHUB_REF_NAME" --yes --cleanup-tag
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            --title "CSPH StandUp $GITHUB_REF_NAME" \
+            --generate-notes \
+            dist/*

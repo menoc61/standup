@@ -305,3 +305,65 @@ class ClockIntegrityTracker {
     return _streak;
   }
 }
+
+/// A user-configured "do not disturb" period, stored as `HH:MM-HH:MM`.
+///
+/// ## Why this is a value type
+///
+/// Two subsystems independently parsed and interpreted this string: the UI, to
+/// decide whether to show a reminder, and the notification scheduler, to decide
+/// whether to fire one. They had diverged once already — the UI copy handled
+/// wrapping windows, the scheduler copy did not, so `22:00-06:00` suppressed
+/// reminders in the app while the scheduled notification still fired overnight.
+/// Two copies of the same rule will do it again, so there is now one.
+class QuietHours {
+  /// Minutes past local midnight.
+  final int start;
+  final int end;
+
+  const QuietHours({required this.start, required this.end});
+
+  /// Parses `HH:MM-HH:MM`, returning `null` for anything malformed.
+  ///
+  /// Returning null rather than throwing matters: the value is user-editable
+  /// and persisted, so a corrupted row must not be able to stop the app
+  /// launching. A null window means "no quiet hours", which is the safe default.
+  static QuietHours? parse(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    final parts = raw.split('-');
+    if (parts.length != 2) return null;
+    final start = _parseHhMm(parts[0]);
+    final end = _parseHhMm(parts[1]);
+    if (start == null || end == null) return null;
+    return QuietHours(start: start, end: end);
+  }
+
+  static int? _parseHhMm(String value) {
+    final bits = value.split(':');
+    if (bits.length != 2) return null;
+    final hours = int.tryParse(bits[0]);
+    final minutes = int.tryParse(bits[1]);
+    if (hours == null || minutes == null) return null;
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+  }
+
+  /// Whether [when] falls inside the window.
+  ///
+  /// The end is exclusive so an exact `22:00-22:00` covers a single minute
+  /// rather than nothing, and a window that wraps midnight (`22:00-06:00`)
+  /// covers the whole overnight span.
+  bool contains(DateTime when) {
+    final local = when.toLocal();
+    final minutes = local.hour * 60 + local.minute;
+    if (start <= end) return minutes >= start && minutes < end;
+    return minutes >= start || minutes < end;
+  }
+
+  /// Convenience for the common "parse and test" path.
+  static bool isQuietAt(String? raw, DateTime when) =>
+      parse(raw)?.contains(when) ?? false;
+
+  @override
+  String toString() => '$start-$end';
+}

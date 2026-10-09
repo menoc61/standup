@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:standup_app/data/models/stand_window.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -338,7 +339,6 @@ class NotificationService {
       await cancelReminder(firstId + i);
     }
 
-    final window = _parseQuietWindow(quietHours);
     final offset = actionWindowMinutes > 0
         ? Duration(minutes: actionWindowMinutes)
         : Duration.zero;
@@ -354,7 +354,7 @@ class NotificationService {
       if (when.isBefore(DateTime.now().subtract(const Duration(minutes: 1)))) {
         continue;
       }
-      if (_isInsideQuietWindow(when, window)) {
+      if (_isInsideQuietWindow(when, quietHours)) {
         skippedInQuietHours++;
         continue;
       }
@@ -382,41 +382,8 @@ class NotificationService {
 
   /// Parses `"HH:MM-HH:MM"` into minutes-from-midnight bounds. A malformed or
   /// absent value returns null, which disables quiet hours.
-  static ({int start, int end})? _parseQuietWindow(String? raw) {
-    if (raw == null || raw.isEmpty) return null;
-    final parts = raw.split('-');
-    if (parts.length != 2) return null;
-    final start = _parseHhMm(parts[0]);
-    final end = _parseHhMm(parts[1]);
-    if (start == null || end == null) return null;
-    return (start: start, end: end);
-  }
-
-  static int? _parseHhMm(String value) {
-    final bits = value.split(':');
-    if (bits.length != 2) return null;
-    final hours = int.tryParse(bits[0]);
-    final minutes = int.tryParse(bits[1]);
-    if (hours == null || minutes == null) return null;
-    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-    return hours * 60 + minutes;
-  }
-
-  static bool _isInsideQuietWindow(
-    DateTime when,
-    ({int start, int end})? window,
-  ) {
-    if (window == null) return false;
-    final local = when.toLocal();
-    final minutes = local.hour * 60 + local.minute;
-    final start = window.start;
-    final end = window.end;
-    // Wrapping windows such as 22:00-06:00 cover the whole overnight span.
-    if (start <= end) {
-      return minutes >= start && minutes < end;
-    }
-    return minutes >= start || minutes < end;
-  }
+  static bool _isInsideQuietWindow(DateTime when, String? raw) =>
+      QuietHours.isQuietAt(raw, when);
 
   Future<void> dispatchLaunchAction() async {
     try {

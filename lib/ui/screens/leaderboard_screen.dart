@@ -145,10 +145,7 @@ class LeaderboardScreen extends StatelessWidget {
     final locale = Localizations.localeOf(context).toLanguageTag();
     final formatter = DateFormat.MMMd(locale);
     final now = DateTime.now();
-    final todayKey =
-        '${now.year.toString().padLeft(4, '0')}-'
-        '${now.month.toString().padLeft(2, '0')}-'
-        '${now.day.toString().padLeft(2, '0')}';
+    final todayKey = WorkdayMetrics.dateKey(now);
 
     final rows = history
         .map(

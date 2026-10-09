@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:standup_app/core/app_strings.dart';
 
 /// A persistent, non-dismissible notification that counts down to the next
 /// movement break.
@@ -149,17 +150,16 @@ class LiveCountdownService {
 
   Future<void> _post(DateTime target) async {
     final french = _languageCode == 'fr';
+    // Round up rather than truncate, so a break due in 300ms reads as "0:01" and
+    // never as "0:00" while it is still in the future. formatClock truncates, so
+    // the rounding has to happen before it is called — the alternative is a
+    // second copy of the mm:ss formatting that will drift.
     final remaining = target.difference(DateTime.now());
     final accent = accentResolver?.call();
-
-    // Ceil rather than truncate, so a break due in 300ms reads as "0:01" and
-    // never as "0:00" while it is still in the future.
-    final totalSeconds = remaining.isNegative
-        ? 0
-        : (remaining.inMilliseconds / 1000).ceil();
-    final minutes = totalSeconds ~/ 60;
-    final seconds = totalSeconds % 60;
-    final countdown = '$minutes:${seconds.toString().padLeft(2, '0')}';
+    final rounded = remaining.isNegative
+        ? Duration.zero
+        : Duration(seconds: (remaining.inMilliseconds / 1000).ceil());
+    final countdown = formatClock(rounded);
 
     final title = french
         ? 'Prochaine pause dans $countdown'

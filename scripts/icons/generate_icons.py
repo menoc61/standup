@@ -40,6 +40,28 @@ BRAND = (4, 114, 177)
 
 WHITE = (255, 255, 255)
 
+# Linux desktop integration.
+#
+# GTK resolves `Icon=` in the .desktop entry against the installed icon theme by
+# stem, ignoring the extension. Both the stem and the `Icon=` line are derived
+# from this constant, so the entry can never name files that were not written.
+ICON_STEM = "standup_app_icon"
+DESKTOP_STEM = "standup_app"
+
+DESKTOP_FILE = f"""[Desktop Entry]
+Type=Application
+Name=CSPH StandUp
+GenericName=Wellbeing Reminder
+Comment=Hourly stand-up and posture-break reminders with anonymised team analytics.
+Exec={DESKTOP_STEM}
+Icon={ICON_STEM}
+Terminal=false
+Categories=Utility;Health;
+Keywords=wellbeing;health;posture;standup;ergonomics;
+StartupNotify=true
+StartupWMClass={DESKTOP_STEM}
+"""
+
 
 def artwork_bbox(image: Image.Image) -> tuple[int, int, int, int]:
     """Return the bounding box of the non-white artwork.
@@ -267,6 +289,67 @@ def build_monochrome(
     return tile
 
 
+def generate_widget_logos(logo: Image.Image) -> None:
+    """The logo shown *inside* the home-screen widget, on each platform.
+
+    ## Why these are generated rather than left alone
+
+    The launcher icons were regenerated for the rebrand but these two were not,
+    so the app drawer showed the new mark while the widget itself still showed
+    the retired wordmark. They are separate files with separate lifecycles, which
+    is exactly why they drift.
+
+    Both are square, opaque and 1024px: the widget renders them as a small chip
+    inside a rounded container, and a small bitmap scaled up shows its blur. The
+    artwork is inset a little so it does not touch the chip's rounded edge.
+    """
+    print("Widget logos")
+    write_png(
+        build_tile(logo, 1024, inset=0.06),
+        REPO_ROOT
+        / "android"
+        / "app"
+        / "src"
+        / "main"
+        / "res"
+        / "drawable-nodpi"
+        / "standup_logo.png",
+    )
+    write_png(
+        build_tile(logo, 1024, inset=0.06),
+        REPO_ROOT
+        / "ios"
+        / "StandUpWidget"
+        / "Assets.xcassets"
+        / "standup_logo.imageset"
+        / "standup_logo.png",
+    )
+
+
+def generate_linux(logo: Image.Image) -> None:
+    """Linux desktop icons and the `.desktop` entry.
+
+    The Linux runner was added without any of the template's icon assets, so the
+    window had no icon and there was no `.desktop` file for a desktop
+    environment to map the binary to. Both are generated here so they cannot
+    drift either.
+
+    The `.desktop` file is written by this script rather than committed by hand
+    because it must name the same icon stem as the PNGs below, and a mismatch
+    between the two is invisible until someone installs the app.
+    """
+    print("Linux")
+    assets = REPO_ROOT / "linux" / "assets" / "icons"
+
+    for size in (16, 24, 32, 48, 64, 128, 256, 512):
+        write_png(build_tile(logo, size, round_corners=True), assets / f"{ICON_STEM}_{size}.png")
+
+    (REPO_ROOT / "linux" / "runner" / f"{DESKTOP_STEM}.desktop").write_text(
+        DESKTOP_FILE, encoding="utf-8"
+    )
+    print(f"  linux/runner/{DESKTOP_STEM}.desktop")
+
+
 def main() -> int:
     if not SOURCE.exists():
         print(f"Brand asset missing: {SOURCE}", file=sys.stderr)
@@ -279,6 +362,8 @@ def main() -> int:
     generate_apple(logo)
     generate_windows(logo)
     generate_android_foreground(logo)
+    generate_widget_logos(logo)
+    generate_linux(logo)
 
     print("\nDone. Re-run after any change to the brand asset.")
     return 0

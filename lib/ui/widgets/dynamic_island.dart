@@ -72,7 +72,7 @@ class _DynamicIslandState extends State<DynamicIsland>
     super.dispose();
   }
 
-  String _formatDuration(Duration d) {
+  String formatClock(Duration d) {
     final minutes = d.inMinutes;
     final seconds = d.inSeconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
@@ -171,7 +171,7 @@ class _DynamicIslandState extends State<DynamicIsland>
         ),
         // Right: Formatted Timer
         Text(
-          _formatDuration(widget.remainingDuration),
+          formatClock(widget.remainingDuration),
           style: TextStyle(
             color: widget.accentColor,
             fontWeight: FontWeight.w800,
@@ -254,7 +254,7 @@ class _DynamicIslandState extends State<DynamicIsland>
               Text(
                 isAlert
                     ? '5-minute posture reset ready'
-                    : '${_formatDuration(widget.remainingDuration)} until break',
+                    : '${formatClock(widget.remainingDuration)} until break',
                 style: TextStyle(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontSize: 11,

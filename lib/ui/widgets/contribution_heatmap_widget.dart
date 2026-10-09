@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/data/models/workday_metrics.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/data/models/daily_analytics.dart';
 
@@ -227,7 +228,7 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
       for (int d = 0; d < 7; d++) {
         final dayOffset = (w * 7) + d;
         final cellDate = startDate.add(Duration(days: dayOffset));
-        final dateKey = DateFormat('yyyy-MM-dd').format(cellDate);
+        final dateKey = WorkdayMetrics.dateKey(cellDate);
         final dayData = dataMap[dateKey];
         final isFuture = cellDate.isAfter(now);
 

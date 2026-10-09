@@ -38,19 +38,31 @@ class WorkdayMetrics {
         .map((day) => day.date)
         .toSet();
     var cursor = DateTime(now.year, now.month, now.day);
-    if (!completedDates.contains(_dateKey(cursor))) {
+    if (!completedDates.contains(dateKey(cursor))) {
       cursor = cursor.subtract(const Duration(days: 1));
     }
 
     var streak = 0;
-    while (completedDates.contains(_dateKey(cursor))) {
+    while (completedDates.contains(dateKey(cursor))) {
       streak++;
       cursor = cursor.subtract(const Duration(days: 1));
     }
     return streak;
   }
 
-  static String _dateKey(DateTime date) =>
+  /// Formats [date] as the `yyyy-MM-dd` key used by `AnalyticsDailyTable.date`.
+  ///
+  /// ## Why this is not `DateFormat('yyyy-MM-dd')`
+  ///
+  /// Three call sites had grown their own copy of this: one using `intl`, two
+  /// doing manual `padLeft`. A locale-aware formatter can emit a different
+  /// separator or calendar under some configurations, which would silently stop
+  /// matching rows already stored — a streak would go to zero and a heatmap would
+  /// blank, with no error anywhere.
+  ///
+  /// The format is part of the storage contract, so it is derived arithmetically
+  /// and never from a locale.
+  static String dateKey(DateTime date) =>
       '${date.year.toString().padLeft(4, '0')}-'
       '${date.month.toString().padLeft(2, '0')}-'
       '${date.day.toString().padLeft(2, '0')}';

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=CSPH StandUp
+GenericName=Wellbeing Reminder
+Comment=Hourly stand-up and posture-break reminders with anonymised team analytics.
+Exec=standup_app
+Icon=standup_app_icon
+Terminal=false
+Categories=Utility;Health;
+Keywords=wellbeing;health;posture;standup;ergonomics;
+StartupNotify=true
+StartupWMClass=standup_app

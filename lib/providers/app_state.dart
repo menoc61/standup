@@ -223,28 +223,8 @@ class AppState extends ChangeNotifier {
   /// accepted. The UI shows this so a refusal is never silent.
   String? get lastActionRejection => _lastActionRejection;
 
-  static bool _inQuietHours(String? raw) {
-    if (raw == null || raw.isEmpty) return false;
-    final parts = raw.split('-');
-    if (parts.length != 2) return false;
-    int? parse(String value) {
-      final bits = value.split(':');
-      if (bits.length != 2) return null;
-      final hours = int.tryParse(bits[0]);
-      final minutes = int.tryParse(bits[1]);
-      if (hours == null || minutes == null) return null;
-      if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-      return hours * 60 + minutes;
-    }
-
-    final start = parse(parts[0]);
-    final end = parse(parts[1]);
-    if (start == null || end == null) return false;
-    final now = DateTime.now();
-    final current = now.hour * 60 + now.minute;
-    if (start <= end) return current >= start && current < end;
-    return current >= start || current < end;
-  }
+  static bool _inQuietHours(String? raw) =>
+      QuietHours.isQuietAt(raw, DateTime.now());
 
   // ---------------------------------------------------------------------------
   // Initialization

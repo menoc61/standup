@@ -1,8 +1,8 @@
 import 'package:drift/drift.dart';
-import 'package:intl/intl.dart';
 import 'package:standup_app/data/local/app_database.dart';
 import 'package:standup_app/data/models/daily_analytics.dart';
 import 'package:standup_app/data/models/reminder_log.dart';
+import 'package:standup_app/data/models/workday_metrics.dart';
 import 'package:standup_app/data/models/user_preferences.dart';
 import 'package:standup_app/data/models/user_profile.dart';
 
@@ -237,9 +237,8 @@ class LocalDatabaseRepository {
   // ---------------------------------------------------------------------------
   // Daily Analytics
   // ---------------------------------------------------------------------------
-  String getTodayDateString() {
-    return DateFormat('yyyy-MM-dd').format(DateTime.now());
-  }
+  /// Today as the analytics table's date key.
+  String getTodayDateString() => WorkdayMetrics.dateKey(DateTime.now());
 
   Future<DailyAnalytics> getAnalyticsForDate(String userId, String date) async {
     final query = _db.select(_db.analyticsDailyTable)

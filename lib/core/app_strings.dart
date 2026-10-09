@@ -54,6 +54,26 @@ String formatDurationLabel(BuildContext context, int minutes) {
   return '$hours h $remainder min';
 }
 
+/// Formats [d] as `mm:ss` for the countdown readouts.
+///
+/// ## Why this lives next to [formatDurationLabel]
+///
+/// Four widgets each had their own copy — the home screen, the countdown ring,
+/// the Dynamic Island, and the ongoing notification. They all agreed today, which
+/// is exactly the problem: a change to one would silently disagree with the
+/// others, and a countdown that renders `9:60` on the ring but `10:00` on the
+/// widget looks broken rather than wrong.
+///
+/// Minutes are not wrapped at 60, so a 90-minute duration renders as `90:00`
+/// rather than rolling over.
+String formatClock(Duration d) {
+  final totalSeconds = d.isNegative ? 0 : d.inSeconds;
+  final minutes = totalSeconds ~/ 60;
+  final seconds = totalSeconds % 60;
+  return '${minutes.toString().padLeft(2, '0')}:'
+      '${seconds.toString().padLeft(2, '0')}';
+}
+
 /// Exposed for the bilingual parity test.
 ///
 /// The dictionary is the single source of truth for French copy, so a test that

@@ -52,6 +52,12 @@ def note(message)
   puts "  #{message}"
 end
 
+# Warnings go to stderr so they are visible even when the script's output is
+# being filtered, and never abort the run.
+def warn_once(message)
+  warn "  WARNING: #{message}"
+end
+
 def section(title)
   puts "\n#{title}"
   puts '-' * title.length
@@ -232,17 +238,29 @@ if File.exist?(scheme_path)
 else
   scheme = Xcodeproj::XCScheme.new
   scheme.add_build_target(widget)
+
   # Pre-actions make the Flutter toolchain run first, otherwise the extension is
   # built against a stale Generated.xcconfig and fails to find the app's
   # headers. This is the same trick Flutter's own template uses.
   #
-  # The pre-action belongs to the scheme's *build action*, not the scheme.
-  # XCScheme#add_pre_action does not exist and raises NoMethodError, which is how
-  # this script failed in CI.
-  scheme.build_action.pre_actions << {
-    name: 'Run Flutter Build',
-    shell_script: '/bin/sh "$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh" build'
-  }
+  # Two things have bitten this before, so it is best-effort rather than fatal:
+  # a scheme pre-action lives on the scheme's *build action* (XCScheme has no
+  # #add_pre_action), and a freshly constructed BuildAction has a nil
+  # #pre_actions until something assigns it. Neither should stop the target
+  # itself from being created, which is what the caller actually needs.
+  begin
+    scheme.build_action.pre_actions ||= []
+    scheme.build_action.pre_actions << Xcodeproj::XCScheme::PreAction.new(
+      'Run Flutter Build',
+      :shell_script,
+      '/bin/sh "$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh" build'
+    )
+  rescue StandardError => e
+    warn_once "could not add the Flutter pre-action to the scheme (#{e.class}: #{e.message})"
+    warn_once 'the target is still created; if the build later reports a stale'
+    warn_once 'Generated.xcconfig, add the pre-action in Xcode by hand.'
+  end
+
   scheme.save_as(PROJECT_PATH, WIDGET_TARGET_NAME, true)
   note "created shared scheme #{WIDGET_TARGET_NAME}"
 end

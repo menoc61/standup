@@ -119,14 +119,6 @@ end
 
 group = project.main_group.find_subpath(WIDGET_TARGET_NAME, true)
 
-# The group's path has to be set explicitly. Without it Xcode resolves every
-# relative file reference against the *project* directory, so a reference to
-# `CSPHStandUpWidget.swift` becomes ios/CSPHStandUpWidget.swift instead of
-# ios/StandUpWidget/CSPHStandUpWidget.swift, and the build fails with
-# "Build input files cannot be found". Setting it here is what makes every
-# reference below correct.
-group.set_path(WIDGET_TARGET_NAME) if group.path.nil?
-
 # Fail before touching the project if a source is missing, so a renamed file
 # produces a clear message instead of a dozen confusing Xcode errors later.
 SOURCES.each do |name|
@@ -134,17 +126,31 @@ SOURCES.each do |name|
   die "missing source file #{path}" unless File.exist?(path)
 end
 
-existing_names = widget.source_build_phase.files_references.compact.map(&:display_name)
+# File references are created against the *project*, with a project-relative
+# path, and then filed under the group for tidiness.
+#
+# This matters more than it looks. A reference created through a group resolves
+# against that group's path, and a group from find_subpath has none, so Xcode
+# falls back to the project directory: a reference to `CSPHStandUpWidget.swift`
+# became ios/CSPHStandUpWidget.swift instead of
+# ios/StandUpWidget/CSPHStandUpWidget.swift, and the build failed with six
+# "Build input files cannot be found" errors. Using project.new_file removes the
+# group from the resolution path entirely, so the result does not depend on
+# group-path semantics across gem versions.
+def project_reference(project, group, relative)
+  ref = project.files.find { |f| f.path == relative }
+  ref ||= project.new_file(relative)
+  group << ref unless group.children.include?(ref)
+  ref
+end
 
 SOURCES.each do |name|
-  if existing_names.include?(name)
-    note "#{name} already referenced"
-    next
-  end
-  ref = group.files.find { |f| f.display_name == name }
-  ref ||= group.new_reference(name)
+  relative = File.join(WIDGET_TARGET_NAME, name)
+  ref = project_reference(project, group, relative)
+  next if widget.source_build_phase.files_references.include?(ref)
+
   widget.add_file_references([ref])
-  note "added #{name}"
+  note "added #{relative}"
 end
 
 # Resources: the Info.plist is referenced through the build settings, not as a
@@ -154,9 +160,13 @@ end
 if widget.resources_build_phase.files_references.any? { |f| f.display_name == 'Assets.xcassets' }
   note 'Assets.xcassets already in the resources phase'
 elsif Dir.exist?(ASSET_CATALOG)
-  catalog_ref = group.new_reference('Assets.xcassets')
+  # Project-relative, for the same reason the Swift sources are: a group-based
+  # reference would resolve to ios/Assets.xcassets, which does not exist.
+  catalog_ref = project_reference(
+    project, group, File.join(WIDGET_TARGET_NAME, 'Assets.xcassets')
+  )
   widget.add_resources([catalog_ref])
-  note 'added Assets.xcassets (app logo)'
+  note 'added StandUpWidget/Assets.xcassets (app logo)'
 else
   die "missing #{ASSET_CATALOG}; the widget view references Image(\"standup_logo\")"
 end

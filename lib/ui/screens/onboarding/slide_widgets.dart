@@ -743,8 +743,13 @@ class PreferencesSlide extends StatelessWidget {
           // The swatch list comes from `AppColors.accents` rather than being
           // written out here, so the picker can never offer an option the theme
           // does not know how to render.
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+          // Wrap rather than Row: six 48dp touch targets are 288dp wide, which is wider
+          // than a 320dp phone minus its horizontal padding. A Row overflows
+          // outright; a Wrap reflows to a second line instead.
+          Wrap(
+            alignment: WrapAlignment.spaceEvenly,
+            spacing: 8,
+            runSpacing: 8,
             children: AppColors.accents.map((option) {
               final isSel = selectedColor == option.id;
               final col = option.swatch;
@@ -802,24 +807,33 @@ class PreferencesSlide extends StatelessWidget {
 
           // Sound Toggle & Test
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    appString(context, 'Sound Chimes'),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
+              // Expanded: the French subtitle ("Jouer un son apaisant lors des
+              // rappels") plus a 59px switch is wider than a 320dp phone.
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      appString(context, 'Sound Chimes'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                  Text(
-                    appString(context, 'Play relaxing chimes on break alerts'),
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
+                    Text(
+                      appString(
+                        context,
+                        'Play relaxing chimes on break alerts',
+                      ),
+                      style: theme.textTheme.bodySmall,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Switch(
                 value: soundEnabled,
                 onChanged: onSoundChanged,
@@ -913,12 +927,17 @@ class PermissionsSlide extends StatelessWidget {
               children: [
                 Icon(granted ? Icons.check_circle : Icons.lock_open, size: 18),
                 const SizedBox(width: 8),
-                Text(
-                  appString(
-                    context,
-                    granted
-                        ? 'Permissions Enabled ✓'
-                        : 'Enable Notifications & Alarms',
+                Flexible(
+                  child: Text(
+                    appString(
+                      context,
+                      granted
+                          ? 'Permissions Enabled ✓'
+                          : 'Enable Notifications & Alarms',
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ],
@@ -958,9 +977,17 @@ class PrivacySlide extends StatelessWidget {
             children: [
               Icon(Icons.shield, color: accentColor, size: 28),
               const SizedBox(width: 10),
-              Text(
-                appString(context, 'Privacy by Design'),
-                style: theme.textTheme.headlineMedium,
+              // The longest title in the onboarding in French
+              // ("La confidentialité dès la conception") — roughly twice the
+              // English length, and it overflowed a 23px headline on every
+              // phone.
+              Expanded(
+                child: Text(
+                  appString(context, 'Privacy by Design'),
+                  style: theme.textTheme.headlineMedium,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),

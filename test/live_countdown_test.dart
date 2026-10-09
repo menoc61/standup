@@ -39,8 +39,8 @@ void main() {
       // AppState wires this up, but the service must not assume it exists.
       service.accentResolver = null;
       expect(service.accentResolver, isNull);
-      service.accentResolver = () => const Color(0xFFDA244D);
-      expect(service.accentResolver?.call(), const Color(0xFFDA244D));
+      service.accentResolver = () => const Color(0xFF0472B1);
+      expect(service.accentResolver?.call(), const Color(0xFF0472B1));
     });
 
     test('dispose is safe to call twice', () {

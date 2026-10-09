@@ -1,9 +1,54 @@
 # StandUp: Cross-Platform Employee Health & Wellness Reminder App
 
+[![CI](https://github.com/menoc61/standup/actions/workflows/ci.yml/badge.svg)](https://github.com/menoc61/standup/actions/workflows/ci.yml)
+[![Flutter](https://img.shields.io/badge/Flutter-3.47.4-02569A.svg)](https://docs.flutter.dev/release/release-notes)
+[![Dart](https://img.shields.io/badge/Dart-3.13.3-0175C2.svg)](https://dart.dev)
+[![License: MIT](https://img.shields.io/badge/License-MIT-0472B1.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-0472B1.svg)](CONTRIBUTING.md)
+
+![platform](https://img.shields.io/badge/platform-Android%20|%20iOS%20|%20Web%20|%20Windows%20|%20macOS%20|%20Linux-555555?logo=flutter) ![offline-first](https://img.shields.io/badge/offline--first-16a34a) ![privacy](https://img.shields.io/badge/privacy-no%20tracking%20%2F%20no%20ads-16a34a) ![i18n](https://img.shields.io/badge/i18n-fr%20%7C%20en-2563eb)
+
 > **Flutter + Supabase + Drift (SQLite)**  
 > Truly cross-platform (Web, macOS, Windows, Linux, iOS, Android) employee wellness application that encourages teams to stand up, stretch, and move for 5 minutes every hour to eliminate posture fatigue and sedentary health risks.
 
 The default interface language is French for CSPH Cameroon; English is selectable in **Settings → Language**. Language choice is stored on the device.
+
+```mermaid
+flowchart LR
+    subgraph Native["Native surfaces"]
+        AND["Android<br/>app + widget + notification"]
+        IOS["iOS<br/>app + WidgetKit + Live Activity"]
+        DESK["Desktop<br/>Windows · macOS · Linux"]
+        WEB["Web<br/>PWA, installable"]
+    end
+
+    subgraph Core["Shared Dart application"]
+        APP["CSPH StandUp<br/>Flutter UI + domain rules"]
+    end
+
+    subgraph Data["Storage"]
+        DRIFT[("Drift / SQLite<br/>on-device, source of truth")]
+        SB[("Supabase<br/>optional sync")]
+        WH["Shared widget container<br/>App Group / HomeWidget prefs"]
+    end
+
+    AND --> APP
+    IOS --> APP
+    DESK --> APP
+    WEB --> APP
+    APP <--> DRIFT
+    APP -. "when credentials exist" .-> SB
+    APP <--> WH
+    WH --> AND
+    WH --> IOS
+
+    style APP fill:#0472B1,color:#fff,stroke:#023b5c
+    style DRIFT fill:#f3f4f6,stroke:#6b7280
+    style SB fill:#fef3c7,stroke:#b45309
+```
+
+One codebase, six platforms. On-device Drift is always the source of truth;
+Supabase is an optional mirror that the app works fully without.
 
 ---
 
@@ -283,11 +328,122 @@ A determined user with a rooted phone can still edit their own device. What they
 
 ## 🔁 Continuous Integration
 
-`.github/workflows/ci.yml` runs on every push and pull request:
+`.github/workflows/ci.yml` runs on every push and pull request. Every job is
+gated behind `verify`, so a linter warning or failing test stops the builds
+rather than letting them run to completion and produce broken artifacts.
 
-- `verify` — `flutter analyze --fatal-infos --fatal-warnings`, `flutter test`, a `dart format` check, and a **Drift code freshness** check that fails if `app_database.g.dart` is stale.
-- `build-android` — release APK with R8 enabled, uploaded as an artifact.
-- `build-web` — release web bundle, asserting `sqlite3.wasm` and `drift_worker.js` are emitted.
-- `build-apple` / `build-windows` — disabled by default; enable with the repository variables `RUN_APPLE_CI` / `RUN_WINDOWS_CI` because they need a macOS or self-hosted Windows runner.
+| Job | Runner | Output |
+| --- | --- | --- |
+| `verify` | `ubuntu-latest` | Analysis, 142 tests, `dart format` check, Drift codegen freshness |
+| `build-android` | `ubuntu-latest` | Release APK (R8 enabled) |
+| `build-web` | `ubuntu-latest` | Release web bundle incl. Drift WASM assets |
+| `build-linux` | `ubuntu-latest` | Release Linux bundle |
+| `build-windows` | `windows-latest` | Release Windows bundle |
+| `build-apple` | `macos-14` | iOS + macOS release — **opt-in** via `vars.RUN_APPLE_CI` |
 
-Set `Settings → Secrets → SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` to inject credentials from the environment rather than committing them.
+Android, web, Linux and Windows build on stock hosted runners. Apple builds are
+opt-in because they are unsigned (no signing identity is configured) and the
+WidgetKit extension must be installed first; see
+[docs/PLATFORM_SETUP.md](docs/PLATFORM_SETUP.md).
+
+Set `Settings → Secrets → SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` to inject
+credentials from the environment rather than committing them.
+
+```mermaid
+flowchart LR
+    P["push / pull request"] --> V["verify<br/>analyze · test · format · codegen"]
+    V -->|pass| A["Android<br/>APK"]
+    V -->|pass| W["Web<br/>bundle"]
+    V -->|pass| L["Linux<br/>bundle"]
+    V -->|pass| WI["Windows<br/>bundle"]
+    V -->|pass| AP["Apple<br/>opt-in · macos-14"]
+
+    V -->|fail| X["stop — nothing builds"]
+    X --> R["artifact from a red build<br/>is worse than no artifact"]
+
+    style V fill:#f3f4f6,stroke:#6b7280
+    style X fill:#dc2626,color:#fff,stroke:#7f1d1d
+    style AP fill:#fde68a,stroke:#b45309
+```
+
+Every build is gated behind `verify`, so a lint warning or a failing test stops
+the pipeline instead of letting it produce artifacts that are broken in a way the
+log does not explain.
+
+---
+
+## 📚 Further documentation
+
+| Document | Covers |
+| --- | --- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layering, state management, adaptive layout, the reminder state machine, testing |
+| [docs/PLATFORM_SETUP.md](docs/PLATFORM_SETUP.md) | Per-platform prerequisites, WidgetKit target install, the widget action round trip |
+| [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md) | Environment variables, schema, validation queries |
+| [docs/INSTALL_AND_LAUNCH.md](docs/INSTALL_AND_LAUNCH.md) | Getting the app running on a device |
+
+## 🎨 Branding and app icons
+
+Every platform icon is **generated** from the single brand asset
+`assets/branding/csph_standup_logo.png`. If you change the logo, regenerate
+everything:
+
+```bash
+python scripts/icons/generate_icons.py   # requires Pillow
+```
+
+This writes the PWA icon set and favicon, the macOS `AppIcon` set, the Windows
+`.ico` (multi-resolution), and the Android adaptive foreground and monochrome
+layers. Generating rather than hand-editing is deliberate: the previous state had
+Android on the new mark while web and macOS were still the stock Flutter logo,
+which is invisible in review because every file just looks like "a png".
+
+The brand colour is **sampled** from that asset rather than hardcoded, and
+`test/contrast_test.dart` asserts both the sampled value and that the accent
+clears WCAG AA on each surface. Re-export the logo and the test tells you the
+colour changed, instead of letting the app quietly drift from its own mark.
+
+> ⚠️ **The current asset is a placeholder.** It was upscaled from a 178×157
+> JPEG, so the shipped icons are soft and show JPEG artifacts at large sizes.
+> Drop in a 1024×1024 PNG of the same artwork and re-run the generator — no code
+> change is needed.
+
+### What a rebrand has to touch
+
+A new mark is more than a picture swap. These are all the places the identity was
+duplicated, and a partial rebrand leaves them disagreeing with each other:
+
+| Concern | Location |
+| --- | --- |
+| Brand tokens and contrast | `lib/core/app_colors.dart`, `test/contrast_test.dart` |
+| Widget palette + its fallback | `lib/data/local/widget_palette.dart` |
+| Android widget fallbacks | `StandUpWidgetProvider.kt`, `res/layout/`, `res/drawable/` |
+| Apple widget fallbacks | `ios/StandUpWidget/WidgetPayload.swift` |
+| Browser chrome colour | `web/manifest.json`, `web/index.html` |
+| Windows icon corners | `scripts/icons/generate_icons.py` (`BRAND`) |
+| Diagram styling | `README.md`, `docs/*.md` |
+
+```mermaid
+flowchart LR
+    LOGO["assets/branding/<br/>csph_standup_logo.png"] --> GEN["generate_icons.py"]
+    GEN --> WEB["web icons + favicon"]
+    GEN --> MAC["macOS AppIcon set"]
+    GEN --> WIN["Windows .ico"]
+    GEN --> AND["Android adaptive<br/>foreground + monochrome"]
+
+    LOGO -.->|"sampled"| TOKENS["AppColors.brand<br/>#0472B1"]
+    TOKENS --> TEST["contrast_test.dart<br/>asserts AA per surface"]
+    TOKENS --> PAL["widget_palette.dart"]
+    PAL --> AND
+    PAL --> IOS["WidgetPayload.swift<br/>fallbacks"]
+
+    style LOGO fill:#f3f4f6,stroke:#6b7280
+    style GEN fill:#0472B1,color:#fff,stroke:#023b5c
+    style TEST fill:#16a34a,color:#fff,stroke:#14532d
+```
+
+## 📄 Licence
+
+Source code is MIT — see [LICENSE](LICENSE).
+
+The CSPH name and logo are **not** covered by that licence. They remain the
+property of CSPH and may only be used to identify the official application.

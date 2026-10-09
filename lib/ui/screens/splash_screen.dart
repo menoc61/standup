@@ -21,17 +21,29 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  /// Advances to the next screen. Held in a field so [dispose] can cancel it.
+  ///
+  /// An unheld `Timer` outlives its `State` and keeps the closure — and
+  /// everything it captures — reachable until it fires.
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
     // Play subtle entry sound
     widget.appState.audioService.playChime();
 
-    Timer(const Duration(milliseconds: 2400), () {
-      if (mounted) {
-        widget.onSplashFinished();
-      }
+    _timer = Timer(const Duration(milliseconds: 2400), () {
+      if (!mounted) return;
+      widget.onSplashFinished();
     });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _timer = null;
+    super.dispose();
   }
 
   @override

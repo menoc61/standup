@@ -27,14 +27,18 @@ from PIL import Image
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SOURCE = REPO_ROOT / "assets" / "branding" / "csph_standup_logo.png"
 
-# Brand colours, matching lib/core/app_colors.dart.
-CRIMSON = (218, 36, 77)
-WHITE = (255, 255, 255)
-
 # Anything lighter than this is treated as empty background when measuring the
 # artwork bounds. The source is a 24-bit RGB image with the white background
 # baked in, so there is no alpha channel to threshold against.
 BACKGROUND_THRESHOLD = 245
+
+# Brand colour, mirroring AppColors.brand. Used only to fill the corner squares
+# of the Windows tile, where leaving them white shows a white frame once Explorer
+# masks the icon. Kept in step by `test/contrast_test.dart`, which asserts the
+# same value against AppColors.brand.
+BRAND = (4, 114, 177)
+
+WHITE = (255, 255, 255)
 
 
 def artwork_bbox(image: Image.Image) -> tuple[int, int, int, int]:
@@ -78,7 +82,7 @@ def build_tile(
     inset: float = 0.0,
     background: tuple[int, int, int] = WHITE,
     round_corners: bool = False,
-    rounded_colour: tuple[int, int, int] = CRIMSON,
+    rounded_colour: tuple[int, int, int] = BRAND,
 ) -> Image.Image:
     """Render the logo centred on a square background at ``size`` pixels.
 
@@ -117,7 +121,7 @@ def _apply_rounded_corners(image: Image.Image, colour: tuple[int, int, int]) -> 
 
     Windows renders a square icon inside a rounded container and darkens anything
     outside the mask, so leaving the corners white produces a visible white
-    frame. Filling them with the brand crimson keeps the tile reading as one
+    frame. Filling them with the brand colour keeps the tile reading as one
     shape at every size.
     """
     width, height = image.size

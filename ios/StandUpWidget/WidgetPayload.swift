@@ -175,10 +175,10 @@ struct WidgetPalette {
         }
         self.init(
             surface: read("c_surface", 0xFFFFFFFF),
-            surfaceAlt: read("c_surface_2", 0xFFE4E5E0),
+            surfaceAlt: read("c_surface_2", 0xFF3887BF),
             onSurface: read("c_on_surface", 0xFF0B0B0C),
             muted: read("c_muted", 0xFF6B6B70),
-            accent: read("c_accent", 0xFFDA244D),
+            accent: read("c_accent", 0xFF0472B1),
             onAccent: read("c_on_accent", 0xFFFFFFFF)
         )
     }
@@ -186,10 +186,10 @@ struct WidgetPalette {
     /// Matches the app's light palette, not the retired evergreen.
     static let fallback = WidgetPalette(
         surface: Color(white: 1.0),
-        surfaceAlt: Color(red: 0.894, green: 0.898, blue: 0.878),
+        surfaceAlt: Color(red: 0.220, green: 0.529, blue: 0.749),
         onSurface: Color(red: 0.043, green: 0.043, blue: 0.047),
         muted: Color(red: 0.420, green: 0.420, blue: 0.439),
-        accent: Color(red: 0.855, green: 0.141, blue: 0.302),
+        accent: Color(red: 0.016, green: 0.447, blue: 0.694),
         onAccent: Color(white: 1.0)
     )
 }

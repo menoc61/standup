@@ -37,6 +37,23 @@ const double kExpandedMinWidth = 720;
 /// Width at or above which a single column can hold a readable two-up grid.
 const double kMediumMinWidth = 600;
 
+/// Below this, the onboarding progress dots are compacted to a five-dot window.
+///
+/// Ten 44dp-wide jump targets plus a Continue button do not fit a phone, so the
+/// row collapses to a sliding window of five. Derived from the allocation, so a
+/// desktop window narrowed into split-screen compacts too.
+const double kCompactDotsMaxWidth = 440;
+
+/// Readable content ceiling for the onboarding slides.
+///
+/// Wider than [kContentMaxWidth] would leave the copy marooned, narrower than it
+/// and the explanatory paragraphs run past a comfortable measure.
+const double kOnboardingMaxWidth = 720;
+
+/// Slightly wider variant used on a desktop-sized window, where the extra room
+/// makes the longer paragraphs readable rather than merely possible.
+const double kOnboardingMaxWidthExpanded = 820;
+
 /// Readable upper bound for dashboard content.
 ///
 /// Without a cap, cards stretch to the full width of a desktop monitor and the

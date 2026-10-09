@@ -105,6 +105,18 @@ class AppState extends ChangeNotifier {
 
   /// Captures the transparent device profile from the running app. Called from
   /// the widget layer once a real screen size and locale are available.
+  /// Records the window size, pixel ratio and locale used for reporting.
+  ///
+  /// ## Why this does not notify
+  ///
+  /// The shell captures the profile during `build`. If this called
+  /// `notifyListeners`, the rebuild would reach the root `ListenableBuilder` that
+  /// is an *ancestor already built in this frame*, which trips Flutter's
+  /// "setState() or markNeedsBuild() called during build" assertion — a red
+  /// screen in debug on the very first frame, and a one-frame delay in release.
+  ///
+  /// No notification is needed: the only consumer is the Settings device report,
+  /// which reads the value while building, and the capture is guarded to run once.
   void captureDeviceProfile({
     required Size screenSize,
     required double pixelRatio,
@@ -116,7 +128,6 @@ class AppState extends ChangeNotifier {
       pixelRatio: pixelRatio,
       locale: locale,
     );
-    notifyListeners();
   }
 
   double get timerProgress {

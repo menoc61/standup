@@ -12,6 +12,7 @@ import 'package:standup_app/services/audio_service.dart';
 import 'package:standup_app/services/background_run_service.dart';
 import 'package:standup_app/services/haptics_service.dart';
 import 'package:standup_app/ui/screens/org_admin_screen.dart';
+import 'package:standup_app/ui/layout/adaptive.dart';
 import 'package:standup_app/ui/widgets/glass_card.dart';
 import 'package:standup_app/ui/widgets/segmented_choice.dart';
 import 'package:standup_app/ui/widgets/spring_button.dart';
@@ -107,7 +108,14 @@ class SettingsScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ).whenComplete(() {
+      // A TextEditingController owns a native text buffer. The two sibling
+      // dialogs in this file dispose theirs; this one did not, so every profile
+      // edit leaked three of them.
+      nameCtrl.dispose();
+      desigCtrl.dispose();
+      emailCtrl.dispose();
+    });
   }
 
   void _showAccountDialog(BuildContext context) {
@@ -518,456 +526,116 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(appString(context, 'Preferences & Settings'))),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () => appState.triggerCloudSync(),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            children: [
-              // ----------------------------------------------------------------
-              // Language
-              // ----------------------------------------------------------------
-              _GlassSection(
-                reduceMotion: reduceMotion,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        appString(context, 'Language'),
-                        style: theme.textTheme.titleSmall,
-                      ),
-                    ),
-                    SegmentedButton<String>(
-                      showSelectedIcon: false,
-                      segments: [
-                        ButtonSegment(
-                          value: 'fr',
-                          label: Text(appString(context, 'French')),
-                        ),
-                        ButtonSegment(
-                          value: 'en',
-                          label: Text(appString(context, 'English')),
-                        ),
-                      ],
-                      selected: {appState.languageCode},
-                      onSelectionChanged: (selection) =>
-                          appState.updateLanguage(selection.first),
-                    ),
-                  ],
-                ),
+        // Settings is a pushed route, so it sits outside the shell's
+        // constrainContent. Without a ceiling every card stretches to the full
+        // width of a desktop window.
+        child: constrainContent(
+          RefreshIndicator(
+            onRefresh: () => appState.triggerCloudSync(),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
               ),
-              const SizedBox(height: 16),
+              children: [
+                // ----------------------------------------------------------------
+                // Language
+                // ----------------------------------------------------------------
+                _GlassSection(
+                  reduceMotion: reduceMotion,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          appString(context, 'Language'),
+                          style: theme.textTheme.titleSmall,
+                        ),
+                      ),
+                      SegmentedButton<String>(
+                        showSelectedIcon: false,
+                        segments: [
+                          ButtonSegment(
+                            value: 'fr',
+                            label: Text(appString(context, 'French')),
+                          ),
+                          ButtonSegment(
+                            value: 'en',
+                            label: Text(appString(context, 'English')),
+                          ),
+                        ],
+                        selected: {appState.languageCode},
+                        onSelectionChanged: (selection) =>
+                            appState.updateLanguage(selection.first),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
 
-              // ----------------------------------------------------------------
-              // Profile & Team
-              // ----------------------------------------------------------------
-              _GlassSection(
-                reduceMotion: reduceMotion,
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: accent.withValues(alpha: 0.2),
-                          child: Text(
-                            user != null && user.name.isNotEmpty
-                                ? user.name[0].toUpperCase()
-                                : 'U',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: accent,
+                // ----------------------------------------------------------------
+                // Profile & Team
+                // ----------------------------------------------------------------
+                _GlassSection(
+                  reduceMotion: reduceMotion,
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 28,
+                            backgroundColor: accent.withValues(alpha: 0.2),
+                            child: Text(
+                              user != null && user.name.isNotEmpty
+                                  ? user.name[0].toUpperCase()
+                                  : 'U',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: accent,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                user?.name ??
-                                    appString(context, 'Employee User'),
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${user?.designation ?? appString(context, 'Member')} • ${user?.department ?? appString(context, 'General')}',
-                                style: theme.textTheme.bodySmall,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                user?.email ??
-                                    appString(context, 'No email linked'),
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined),
-                          tooltip: appString(context, 'Edit Employee Profile'),
-                          onPressed: () => _showEditProfileDialog(context),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 28),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        appString(context, 'Team'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    DropdownButtonFormField<String>(
-                      initialValue: departments.contains(user?.department)
-                          ? user?.department
-                          : departments.first,
-                      isExpanded: true,
-                      decoration: InputDecoration(
-                        labelText: appString(context, 'Your team'),
-                      ),
-                      items: departments
-                          .map(
-                            (d) => DropdownMenuItem(
-                              value: d,
-                              child: Text(appString(context, d)),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          appState.updateProfile(department: value);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      initialValue: user?.organizationName ?? '',
-                      decoration: InputDecoration(
-                        labelText: appString(context, 'Workspace label'),
-                        hintText: appString(
-                          context,
-                          'Optional team or workspace name',
-                        ),
-                      ),
-                      onFieldSubmitted: (value) => appState.updateProfile(
-                        organizationName: value.trim(),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // ----------------------------------------------------------------
-              // Reminder cadence & notifications
-              // ----------------------------------------------------------------
-              _SectionTitle(appString(context, 'Reminder Cadence')),
-              const SizedBox(height: 12),
-              _GlassSection(
-                reduceMotion: reduceMotion,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      appString(context, 'Frequency Interval'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [30, 60, 90].map((mins) {
-                        final isSel = prefs.notificationFrequency == mins;
-                        return Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4.0,
-                            ),
-                            child: InkWell(
-                              onTap: () => appState.updatePreferences(
-                                notificationFrequency: mins,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isSel ? accent : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isSel
-                                        ? accent
-                                        : theme.colorScheme.outlineVariant,
-                                  ),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  formatDurationLabel(context, mins),
-                                  style: TextStyle(
-                                    color: isSel
-                                        ? Colors.white
-                                        : theme.textTheme.bodyLarge?.color,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  user?.name ??
+                                      appString(context, 'Employee User'),
+                                  style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 13,
                                   ),
                                 ),
-                              ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${user?.designation ?? appString(context, 'Member')} • ${user?.department ?? appString(context, 'General')}',
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  user?.email ??
+                                      appString(context, 'No email linked'),
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
-                    const Divider(height: 28),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                appString(context, 'Daily stand goal'),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                ),
-                              ),
-                              Text(
-                                appString(
-                                  context,
-                                  'Target number of stand-ups per day',
-                                ),
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ],
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined),
+                            tooltip: appString(
+                              context,
+                              'Edit Employee Profile',
+                            ),
+                            onPressed: () => _showEditProfileDialog(context),
                           ),
-                        ),
-                        DropdownButton<int>(
-                          value: prefs.streakGoal,
-                          underline: const SizedBox.shrink(),
-                          items: [4, 6, 8, 10, 12]
-                              .map(
-                                (n) => DropdownMenuItem(
-                                  value: n,
-                                  child: Text('$n'),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) {
-                            if (value != null) {
-                              appState.updatePreferences(streakGoal: value);
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 28),
-                    _NotificationPermissionTile(
-                      accent: accent,
-                      appState: appState,
-                    ),
-                    const Divider(height: 20),
-                    _QuietHoursRow(
-                      accent: accent,
-                      quietHours: prefs.quietHours,
-                      onChanged: (value) => appState.updatePreferences(
-                        quietHours: value,
-                        clearQuietHours: value == null,
+                        ],
                       ),
-                    ),
-                    const Divider(height: 24),
-                    _ActionWindowSection(appState: appState, accent: accent),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // ----------------------------------------------------------------
-              // Appearance
-              // ----------------------------------------------------------------
-              _SectionTitle(appString(context, 'Appearance & Styling')),
-              const SizedBox(height: 12),
-              _GlassSection(
-                reduceMotion: reduceMotion,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      appString(context, 'App Theme Mode'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      appString(
-                        context,
-                        'Light, dark, or follow your device setting.',
-                      ),
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 12),
-                    // One accessible control replaces the previous row of
-                    // unlabelled InkWells. Each option carries an icon so the
-                    // three choices are distinguishable without reading them.
-                    SegmentedChoice<String>(
-                      semanticLabel: appString(context, 'App Theme Mode'),
-                      selected: prefs.themeMode,
-                      onChanged: (mode) =>
-                          appState.updatePreferences(themeMode: mode),
-                      singleRow: true,
-                      options: [
-                        SegmentedOption(
-                          value: 'system',
-                          label: appString(context, 'System'),
-                          icon: Icons.brightness_auto_outlined,
-                        ),
-                        SegmentedOption(
-                          value: 'light',
-                          label: appString(context, 'Light'),
-                          icon: Icons.light_mode_outlined,
-                        ),
-                        SegmentedOption(
-                          value: 'dark',
-                          label: appString(context, 'Dark'),
-                          icon: Icons.dark_mode_outlined,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      appString(context, 'Color Accent System'),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      appString(
-                        context,
-                        'The app is black and white. Your accent colours the actions.',
-                      ),
-                      style: theme.textTheme.bodySmall,
-                    ),
-                    const SizedBox(height: 12),
-                    // Options come from the palette, so this can never offer a
-                    // colour the theme cannot render.
-                    SegmentedChoice<String>(
-                      semanticLabel: appString(context, 'Color Accent System'),
-                      selected: prefs.colorSystem,
-                      onChanged: (id) =>
-                          appState.updatePreferences(colorSystem: id),
-                      options: [
-                        for (final option in AppColors.accents)
-                          SegmentedOption(
-                            value: option.id,
-                            label: appString(context, option.label),
-                            icon: Icons.circle,
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // ----------------------------------------------------------------
-              // Sounds & haptics
-              // ----------------------------------------------------------------
-              _SectionTitle(appString(context, 'Sounds & Haptics')),
-              const SizedBox(height: 12),
-              _GlassSection(
-                reduceMotion: reduceMotion,
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                appString(context, 'Acoustic Chimes'),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              Text(
-                                appString(
-                                  context,
-                                  'Play melodic alert on break cadence',
-                                ),
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: prefs.soundEnabled,
-                          activeThumbColor: accent,
-                          onChanged: (val) =>
-                              appState.updatePreferences(soundEnabled: val),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                appString(context, 'Vibration & Haptics'),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              Text(
-                                appString(
-                                  context,
-                                  'Use the native vibration on every action',
-                                ),
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: prefs.hapticsEnabled,
-                          activeThumbColor: accent,
-                          onChanged: (val) {
-                            appState.updatePreferences(hapticsEnabled: val);
-                            if (val) HapticsService.medium();
-                          },
-                        ),
-                      ],
-                    ),
-                    if (prefs.soundEnabled) ...[
-                      const Divider(height: 24),
+                      const Divider(height: 28),
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          appString(context, 'Reminder tone'),
+                          appString(context, 'Team'),
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 13,
@@ -975,261 +643,485 @@ class SettingsScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: AudioService.soundAssets.keys.map((key) {
-                          final isSel = prefs.selectedSound == key;
-                          return _SoundChip(
-                            label: appString(context, _soundLabel(key)),
-                            selected: isSel,
-                            accent: accent,
-                            onTap: () {
-                              appState.updatePreferences(selectedSound: key);
-                              appState.audioService.playSound(key);
-                            },
+                      DropdownButtonFormField<String>(
+                        initialValue: departments.contains(user?.department)
+                            ? user?.department
+                            : departments.first,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          labelText: appString(context, 'Your team'),
+                        ),
+                        items: departments
+                            .map(
+                              (d) => DropdownMenuItem(
+                                value: d,
+                                child: Text(appString(context, d)),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            appState.updateProfile(department: value);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        initialValue: user?.organizationName ?? '',
+                        decoration: InputDecoration(
+                          labelText: appString(context, 'Workspace label'),
+                          hintText: appString(
+                            context,
+                            'Optional team or workspace name',
+                          ),
+                        ),
+                        onFieldSubmitted: (value) => appState.updateProfile(
+                          organizationName: value.trim(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ----------------------------------------------------------------
+                // Reminder cadence & notifications
+                // ----------------------------------------------------------------
+                _SectionTitle(appString(context, 'Reminder Cadence')),
+                const SizedBox(height: 12),
+                _GlassSection(
+                  reduceMotion: reduceMotion,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        appString(context, 'Frequency Interval'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [30, 60, 90].map((mins) {
+                          final isSel = prefs.notificationFrequency == mins;
+                          return Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4.0,
+                              ),
+                              child: InkWell(
+                                onTap: () => appState.updatePreferences(
+                                  notificationFrequency: mins,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSel ? accent : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSel
+                                          ? accent
+                                          : theme.colorScheme.outlineVariant,
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    formatDurationLabel(context, mins),
+                                    style: TextStyle(
+                                      color: isSel
+                                          ? Colors.white
+                                          : theme.textTheme.bodyLarge?.color,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           );
                         }).toList(),
                       ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // ----------------------------------------------------------------
-              // Background run
-              // ----------------------------------------------------------------
-              _SectionTitle(appString(context, 'Background Run')),
-              const SizedBox(height: 12),
-              const _BackgroundRunSection(),
-              const SizedBox(height: 24),
-
-              // ----------------------------------------------------------------
-              // Device & privacy transparency
-              // ----------------------------------------------------------------
-              _SectionTitle(appString(context, 'Device & app')),
-              const SizedBox(height: 12),
-              _DeviceSection(appState: appState, accent: accent),
-              const SizedBox(height: 24),
-
-              // ----------------------------------------------------------------
-              // Account
-              // ----------------------------------------------------------------
-              _SectionTitle(appString(context, 'Account')),
-              const SizedBox(height: 12),
-              _GlassSection(
-                reduceMotion: reduceMotion,
-                child: Row(
-                  children: [
-                    Icon(
-                      appState.supabaseService.signedInUserId == null
-                          ? Icons.cloud_off_outlined
-                          : Icons.cloud_done_outlined,
-                      color: accent,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const Divider(height: 28),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            appString(
-                              context,
-                              appState.supabaseService.signedInUserId == null
-                                  ? 'Using this device'
-                                  : appState.supabaseService.signedInEmail ??
-                                        'Account connected',
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  appString(context, 'Daily stand goal'),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  appString(
+                                    context,
+                                    'Target number of stand-ups per day',
+                                  ),
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
                             ),
+                          ),
+                          DropdownButton<int>(
+                            value: prefs.streakGoal,
+                            underline: const SizedBox.shrink(),
+                            items: [4, 6, 8, 10, 12]
+                                .map(
+                                  (n) => DropdownMenuItem(
+                                    value: n,
+                                    child: Text('$n'),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                appState.updatePreferences(streakGoal: value);
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 28),
+                      _NotificationPermissionTile(
+                        accent: accent,
+                        appState: appState,
+                      ),
+                      const Divider(height: 20),
+                      _QuietHoursRow(
+                        accent: accent,
+                        quietHours: prefs.quietHours,
+                        onChanged: (value) => appState.updatePreferences(
+                          quietHours: value,
+                          clearQuietHours: value == null,
+                        ),
+                      ),
+                      const Divider(height: 24),
+                      _ActionWindowSection(appState: appState, accent: accent),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ----------------------------------------------------------------
+                // Appearance
+                // ----------------------------------------------------------------
+                _SectionTitle(appString(context, 'Appearance & Styling')),
+                const SizedBox(height: 12),
+                _GlassSection(
+                  reduceMotion: reduceMotion,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        appString(context, 'App Theme Mode'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        appString(
+                          context,
+                          'Light, dark, or follow your device setting.',
+                        ),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 12),
+                      // One accessible control replaces the previous row of
+                      // unlabelled InkWells. Each option carries an icon so the
+                      // three choices are distinguishable without reading them.
+                      SegmentedChoice<String>(
+                        semanticLabel: appString(context, 'App Theme Mode'),
+                        selected: prefs.themeMode,
+                        onChanged: (mode) =>
+                            appState.updatePreferences(themeMode: mode),
+                        singleRow: true,
+                        options: [
+                          SegmentedOption(
+                            value: 'system',
+                            label: appString(context, 'System'),
+                            icon: Icons.brightness_auto_outlined,
+                          ),
+                          SegmentedOption(
+                            value: 'light',
+                            label: appString(context, 'Light'),
+                            icon: Icons.light_mode_outlined,
+                          ),
+                          SegmentedOption(
+                            value: 'dark',
+                            label: appString(context, 'Dark'),
+                            icon: Icons.dark_mode_outlined,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        appString(context, 'Color Accent System'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        appString(
+                          context,
+                          'The app is black and white. Your accent colours the actions.',
+                        ),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 12),
+                      // Options come from the palette, so this can never offer a
+                      // colour the theme cannot render.
+                      SegmentedChoice<String>(
+                        semanticLabel: appString(
+                          context,
+                          'Color Accent System',
+                        ),
+                        selected: prefs.colorSystem,
+                        onChanged: (id) =>
+                            appState.updatePreferences(colorSystem: id),
+                        options: [
+                          for (final option in AppColors.accents)
+                            SegmentedOption(
+                              value: option.id,
+                              label: appString(context, option.label),
+                              icon: Icons.circle,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ----------------------------------------------------------------
+                // Sounds & haptics
+                // ----------------------------------------------------------------
+                _SectionTitle(appString(context, 'Sounds & Haptics')),
+                const SizedBox(height: 12),
+                _GlassSection(
+                  reduceMotion: reduceMotion,
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  appString(context, 'Acoustic Chimes'),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  appString(
+                                    context,
+                                    'Play melodic alert on break cadence',
+                                  ),
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: prefs.soundEnabled,
+                            activeThumbColor: accent,
+                            onChanged: (val) =>
+                                appState.updatePreferences(soundEnabled: val),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  appString(context, 'Vibration & Haptics'),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  appString(
+                                    context,
+                                    'Use the native vibration on every action',
+                                  ),
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: prefs.hapticsEnabled,
+                            activeThumbColor: accent,
+                            onChanged: (val) {
+                              appState.updatePreferences(hapticsEnabled: val);
+                              if (val) HapticsService.medium();
+                            },
+                          ),
+                        ],
+                      ),
+                      if (prefs.soundEnabled) ...[
+                        const Divider(height: 24),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            appString(context, 'Reminder tone'),
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
                             ),
                           ),
-                          Text(
-                            appString(
-                              context,
-                              appState.supabaseService.isInitialized
-                                  ? (appState.supabaseService.signedInUserId ==
-                                            null
-                                        ? 'Sign in to turn on account sync'
-                                        : 'Your account is securely connected')
-                                  : 'Cloud accounts need Supabase project keys',
-                            ),
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (appState.supabaseService.isInitialized)
-                      TextButton(
-                        onPressed:
-                            appState.supabaseService.signedInUserId == null
-                            ? () => _showAccountDialog(context)
-                            : () => appState.signOut(),
-                        child: Text(
-                          appString(
-                            context,
-                            appState.supabaseService.signedInUserId == null
-                                ? 'Connect'
-                                : 'Sign out',
-                          ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              if (appState.supabaseService.signedInUserId != null) ...[
-                _SectionTitle(appString(context, 'Workspace')),
-                const SizedBox(height: 12),
-                _GlassSection(
-                  reduceMotion: reduceMotion,
-                  child: Row(
-                    children: [
-                      Icon(Icons.groups_2_outlined, color: accent),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              user?.organizationName ??
-                                  appString(
-                                    context,
-                                    user?.organizationId == null
-                                        ? 'No workspace linked'
-                                        : 'Workspace linked',
-                                  ),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
-                            ),
-                            Text(
-                              appString(
-                                context,
-                                'Invite code connects your account to organization insights.',
-                              ),
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => _showJoinWorkspaceDialog(context),
-                        child: Text(appString(context, 'Join')),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // ----------------------------------------------------------------
-                // Organization admin
-                // ----------------------------------------------------------------
-                _SectionTitle(appString(context, 'Organization')),
-                const SizedBox(height: 12),
-                _GlassSection(
-                  reduceMotion: reduceMotion,
-                  child: Row(
-                    children: [
-                      Icon(Icons.admin_panel_settings_outlined, color: accent),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              appString(context, 'Organization dashboard'),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 13,
-                              ),
-                            ),
-                            Text(
-                              appString(
-                                context,
-                                'Anonymised adherence and team trends. No individual is ever named.',
-                              ),
-                              style: theme.textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Disabled rather than hidden when no workspace is linked:
-                      // the row keeps its position instead of shifting under
-                      // the user's finger once an invite code is applied.
-                      TextButton(
-                        onPressed: user?.organizationId == null
-                            ? null
-                            : () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) =>
-                                      OrgAdminScreen(appState: appState),
-                                ),
-                              ),
-                        child: Text(appString(context, 'Open')),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-
-              // ----------------------------------------------------------------
-              // Cloud sync & privacy
-              // ----------------------------------------------------------------
-              _SectionTitle(appString(context, 'Cloud Sync & Privacy')),
-              const SizedBox(height: 12),
-              _GlassSection(
-                reduceMotion: reduceMotion,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                appString(context, 'Contribute Statistics'),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              Text(
-                                appString(
-                                  context,
-                                  'Share anonymized daily counts with employer',
-                                ),
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: prefs.statisticsOptIn,
-                          activeThumbColor: accent,
-                          onChanged: (val) =>
-                              appState.updatePreferences(statisticsOptIn: val),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: AudioService.soundAssets.keys.map((key) {
+                            final isSel = prefs.selectedSound == key;
+                            return _SoundChip(
+                              label: appString(context, _soundLabel(key)),
+                              selected: isSel,
+                              accent: accent,
+                              onTap: () {
+                                appState.updatePreferences(selectedSound: key);
+                                appState.audioService.playSound(key);
+                              },
+                            );
+                          }).toList(),
                         ),
                       ],
-                    ),
-                    const Divider(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // ----------------------------------------------------------------
+                // Background run
+                // ----------------------------------------------------------------
+                _SectionTitle(appString(context, 'Background Run')),
+                const SizedBox(height: 12),
+                const _BackgroundRunSection(),
+                const SizedBox(height: 24),
+
+                // ----------------------------------------------------------------
+                // Device & privacy transparency
+                // ----------------------------------------------------------------
+                _SectionTitle(appString(context, 'Device & app')),
+                const SizedBox(height: 12),
+                _DeviceSection(appState: appState, accent: accent),
+                const SizedBox(height: 24),
+
+                // ----------------------------------------------------------------
+                // Account
+                // ----------------------------------------------------------------
+                _SectionTitle(appString(context, 'Account')),
+                const SizedBox(height: 12),
+                _GlassSection(
+                  reduceMotion: reduceMotion,
+                  child: Row(
+                    children: [
+                      Icon(
+                        appState.supabaseService.signedInUserId == null
+                            ? Icons.cloud_off_outlined
+                            : Icons.cloud_done_outlined,
+                        color: accent,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              appString(
+                                context,
+                                appState.supabaseService.signedInUserId == null
+                                    ? 'Using this device'
+                                    : appState.supabaseService.signedInEmail ??
+                                          'Account connected',
+                              ),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                            Text(
+                              appString(
+                                context,
+                                appState.supabaseService.isInitialized
+                                    ? (appState
+                                                  .supabaseService
+                                                  .signedInUserId ==
+                                              null
+                                          ? 'Sign in to turn on account sync'
+                                          : 'Your account is securely connected')
+                                    : 'Cloud accounts need Supabase project keys',
+                              ),
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (appState.supabaseService.isInitialized)
+                        TextButton(
+                          onPressed:
+                              appState.supabaseService.signedInUserId == null
+                              ? () => _showAccountDialog(context)
+                              : () => appState.signOut(),
+                          child: Text(
+                            appString(
+                              context,
+                              appState.supabaseService.signedInUserId == null
+                                  ? 'Connect'
+                                  : 'Sign out',
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                if (appState.supabaseService.signedInUserId != null) ...[
+                  _SectionTitle(appString(context, 'Workspace')),
+                  const SizedBox(height: 12),
+                  _GlassSection(
+                    reduceMotion: reduceMotion,
+                    child: Row(
                       children: [
+                        Icon(Icons.groups_2_outlined, color: accent),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                appString(context, 'Supabase Cloud Sync'),
+                                user?.organizationName ??
+                                    appString(
+                                      context,
+                                      user?.organizationId == null
+                                          ? 'No workspace linked'
+                                          : 'Workspace linked',
+                                    ),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 13,
@@ -1238,90 +1130,223 @@ class SettingsScreen extends StatelessWidget {
                               Text(
                                 appString(
                                   context,
-                                  switch (appState.syncStatus) {
-                                    SyncStatus.syncing =>
-                                      'Synchronizing in progress...',
-                                    SyncStatus.success => 'Daily totals synced',
-                                    SyncStatus.error =>
-                                      'Sync failed; your local data is safe',
-                                    _ => 'Local-only until Supabase Auth is configured',
-                                  },
+                                  'Invite code connects your account to organization insights.',
                                 ),
                                 style: theme.textTheme.bodySmall,
                               ),
                             ],
                           ),
                         ),
-                        SpringButton(
-                          onTap: () => appState.triggerCloudSync(),
-                          backgroundColor: accent,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          child: Text(
-                            appString(context, 'Sync Now'),
-                            style: const TextStyle(fontSize: 12),
-                          ),
+                        TextButton(
+                          onPressed: () => _showJoinWorkspaceDialog(context),
+                          child: Text(appString(context, 'Join')),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // ----------------------------------------------------------------
-              // Data & onboarding
-              // ----------------------------------------------------------------
-              SpringButton(
-                onTap: () => _showExportSheet(context),
-                backgroundColor: isDark
-                    ? Colors.white10
-                    : Colors.black.withValues(alpha: 0.05),
-                foregroundColor: theme.textTheme.bodyLarge?.color,
-                isFullWidth: true,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.download_outlined, size: 16),
-                    const SizedBox(width: 8),
-                    Text(appString(context, 'Export my data')),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              SpringButton(
-                onTap: onRerunOnboarding,
-                backgroundColor: isDark
-                    ? Colors.white10
-                    : Colors.black.withValues(alpha: 0.05),
-                foregroundColor: theme.textTheme.bodyLarge?.color,
-                isFullWidth: true,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.replay, size: 16),
-                    const SizedBox(width: 8),
-                    Text(appString(context, 'Replay 10-Slide Onboarding Tour')),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              Center(
-                child: Text(
-                  appString(
-                    context,
-                    'StandUp v1.0.0 • Production Flutter + Supabase + Drift',
                   ),
-                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+                  const SizedBox(height: 24),
+
+                  // ----------------------------------------------------------------
+                  // Organization admin
+                  // ----------------------------------------------------------------
+                  _SectionTitle(appString(context, 'Organization')),
+                  const SizedBox(height: 12),
+                  _GlassSection(
+                    reduceMotion: reduceMotion,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.admin_panel_settings_outlined,
+                          color: accent,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                appString(context, 'Organization dashboard'),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                appString(
+                                  context,
+                                  'Anonymised adherence and team trends. No individual is ever named.',
+                                ),
+                                style: theme.textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Disabled rather than hidden when no workspace is linked:
+                        // the row keeps its position instead of shifting under
+                        // the user's finger once an invite code is applied.
+                        TextButton(
+                          onPressed: user?.organizationId == null
+                              ? null
+                              : () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        OrgAdminScreen(appState: appState),
+                                  ),
+                                ),
+                          child: Text(appString(context, 'Open')),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+
+                // ----------------------------------------------------------------
+                // Cloud sync & privacy
+                // ----------------------------------------------------------------
+                _SectionTitle(appString(context, 'Cloud Sync & Privacy')),
+                const SizedBox(height: 12),
+                _GlassSection(
+                  reduceMotion: reduceMotion,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  appString(context, 'Contribute Statistics'),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  appString(
+                                    context,
+                                    'Share anonymized daily counts with employer',
+                                  ),
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: prefs.statisticsOptIn,
+                            activeThumbColor: accent,
+                            onChanged: (val) => appState.updatePreferences(
+                              statisticsOptIn: val,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  appString(context, 'Supabase Cloud Sync'),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  appString(context, switch (appState
+                                      .syncStatus) {
+                                    SyncStatus.syncing =>
+                                      'Synchronizing in progress...',
+                                    SyncStatus.success => 'Daily totals synced',
+                                    SyncStatus.error =>
+                                      'Sync failed; your local data is safe',
+                                    _ => 'Local-only until Supabase Auth is configured',
+                                  }),
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          SpringButton(
+                            onTap: () => appState.triggerCloudSync(),
+                            backgroundColor: accent,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: Text(
+                              appString(context, 'Sync Now'),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 24),
+
+                // ----------------------------------------------------------------
+                // Data & onboarding
+                // ----------------------------------------------------------------
+                SpringButton(
+                  onTap: () => _showExportSheet(context),
+                  backgroundColor: isDark
+                      ? Colors.white10
+                      : Colors.black.withValues(alpha: 0.05),
+                  foregroundColor: theme.textTheme.bodyLarge?.color,
+                  isFullWidth: true,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.download_outlined, size: 16),
+                      const SizedBox(width: 8),
+                      Text(appString(context, 'Export my data')),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SpringButton(
+                  onTap: onRerunOnboarding,
+                  backgroundColor: isDark
+                      ? Colors.white10
+                      : Colors.black.withValues(alpha: 0.05),
+                  foregroundColor: theme.textTheme.bodyLarge?.color,
+                  isFullWidth: true,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.replay, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        appString(context, 'Replay 10-Slide Onboarding Tour'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                Center(
+                  child: Text(
+                    appString(
+                      context,
+                      'StandUp v1.0.0 • Production Flutter + Supabase + Drift',
+                    ),
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),
@@ -1352,6 +1377,9 @@ class SettingsScreen extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
+      // The CSV grows with the user's history, so the sheet must be allowed to
+      // use more than the default 9/16 of the screen and must scroll internally.
+      isScrollControlled: true,
       builder: (sheetContext) => ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         child: BackdropFilter(
@@ -1382,9 +1410,16 @@ class SettingsScreen extends StatelessWidget {
                   style: Theme.of(sheetContext).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
-                SelectableText(
-                  csv,
-                  style: const TextStyle(fontSize: 10, fontFamily: 'monospace'),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: SelectableText(
+                      csv,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 SpringButton(

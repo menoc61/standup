@@ -232,8 +232,25 @@ void main() {
       // Sampled from assets/branding/csph_standup_logo.png. If the logo is ever
       // re-exported, this fails and the two are updated together rather than
       // the app quietly drifting from its own mark.
-      expect(AppColors.brand, const Color(0xFFDA244D));
-      expect(AppColors.brandSilver, const Color(0xFFE4E5E0));
+      expect(AppColors.brand, const Color(0xFF0472B1));
+      expect(AppColors.brandTint, const Color(0xFF3887BF));
+      expect(AppColors.brandOnDark, const Color(0xFF5AA8DC));
+    });
+
+    test('the brand accent is AA for body text on the light surface', () {
+      // A palette change that drops the default accent below 4.5:1 on white
+      // would make every accented label unreadable for low-vision users.
+      expect(
+        ratio(AppColors.brand, AppColors.lightBackground),
+        greaterThanOrEqualTo(4.5),
+      );
+    });
+
+    test('the dark-surface accent is AA for body text on the dark surface', () {
+      expect(
+        ratio(AppColors.brandOnDark, AppColors.darkBackground),
+        greaterThanOrEqualTo(4.5),
+      );
     });
   });
 }

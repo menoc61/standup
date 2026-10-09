@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:standup_app/core/app_colors.dart';
 
 import 'database_connection_native.dart'
     if (dart.library.js_interop) 'database_connection_web.dart'
@@ -28,7 +29,8 @@ class UserPreferencesTable extends Table {
   // dark mode would otherwise hand a new user a dark screen they did not ask
   // for. 'system' stays available as an explicit choice.
   TextColumn get themeMode => text().withDefault(const Constant('light'))();
-  TextColumn get colorSystem => text().withDefault(const Constant('emerald'))();
+  TextColumn get colorSystem =>
+      text().withDefault(const Constant(AppColors.defaultAccentId))();
   IntColumn get notificationFrequency =>
       integer().withDefault(const Constant(60))();
   BoolColumn get soundEnabled => boolean().withDefault(const Constant(true))();

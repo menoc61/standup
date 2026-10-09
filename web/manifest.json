@@ -5,7 +5,7 @@
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
-    "theme_color": "#DA244D",
+    "theme_color": "#0472B1",
     "description": "Rappels horaires pour se lever, s'étirer et rester actif au travail.",
     "lang": "fr",
     "dir": "ltr",

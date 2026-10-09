@@ -63,7 +63,7 @@ class WidgetPaletteHex {
   factory WidgetPaletteHex.forAccent(String colorSystem) {
     return WidgetPaletteHex(
       surface: _hex(AppColors.lightBackground),
-      surfaceAlt: _hex(AppColors.brandSilver),
+      surfaceAlt: _hex(AppColors.brandTint),
       onSurface: _hex(AppColors.ink),
       muted: _hex(AppColors.inkMuted),
       accent: _hex(AppColors.getAccentColor(colorSystem)),
@@ -82,10 +82,10 @@ class WidgetPaletteHex {
   static const String fallbackSurface = '#FFFFFFFF';
   static const String fallbackOnSurface = '#FF0B0B0C';
   static const String fallbackMuted = '#FF6B6B70';
-  static const String fallbackAccent = '#FFDA244D';
+  static const String fallbackAccent = '#FF0472B1';
   static const String fallbackOnAccent = '#FFFFFFFF';
-  static const String fallbackStreak = '#FFDA244D';
-  static const String fallbackSurfaceAlt = '#FFE4E5E0';
+  static const String fallbackStreak = '#FF0472B1';
+  static const String fallbackSurfaceAlt = '#FF3887BF';
 }
 
 /// Parses an `AARRGGBB` string into an Android colour, or returns null.

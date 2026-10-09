@@ -10,6 +10,7 @@ import 'package:standup_app/data/models/gamification_metrics.dart';
 import 'package:standup_app/data/models/workday_metrics.dart';
 import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/services/haptics_service.dart';
+import 'package:standup_app/ui/layout/adaptive.dart';
 import 'package:standup_app/ui/widgets/account_button.dart';
 import 'package:standup_app/ui/widgets/countdown_ring.dart';
 import 'package:standup_app/ui/widgets/dynamic_island.dart';
@@ -124,31 +125,31 @@ class _HomeScreenState extends State<HomeScreen> {
               builder: (context, constraints) {
                 // The shell's sidebar consumes space on desktop, so choose the
                 // dashboard layout from the actual content width, not the
-                // physical monitor width.
-                final useTwoColumnLayout = constraints.maxWidth >= 900;
-                return Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1480),
-                    child: useTwoColumnLayout
-                        ? _buildDesktopLayout(
-                            context,
-                            theme,
-                            isDark,
-                            accent,
-                            user,
-                            today,
-                            isAlert,
-                          )
-                        : _buildMobileLayout(
-                            context,
-                            theme,
-                            isDark,
-                            accent,
-                            user,
-                            today,
-                            isAlert,
-                          ),
-                  ),
+                // physical monitor width. The breakpoint comes from
+                // lib/ui/layout/adaptive.dart so it cannot drift from the one the
+                // shell uses to decide between a sidebar and a bottom bar.
+                final useTwoColumnLayout =
+                    windowClassOf(constraints) == WindowClass.expanded;
+                return constrainContent(
+                  useTwoColumnLayout
+                      ? _buildDesktopLayout(
+                          context,
+                          theme,
+                          isDark,
+                          accent,
+                          user,
+                          today,
+                          isAlert,
+                        )
+                      : _buildMobileLayout(
+                          context,
+                          theme,
+                          isDark,
+                          accent,
+                          user,
+                          today,
+                          isAlert,
+                        ),
                 );
               },
             ),
@@ -668,8 +669,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.accessibility_new, size: 18),
-                      SizedBox(width: 6),
-                      Text(appString(context, 'I Stood Up!')),
+                      const SizedBox(width: 6),
+                      // Flexible, not a bare Text: this row is a flex-4 share
+                      // of a phone's width, and the French label ("Je me suis
+                      // levé·e !") is far longer than the English one.
+                      Flexible(
+                        child: Text(
+                          appString(context, 'I Stood Up!'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -695,10 +705,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.snooze, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      appString(context, 'Snooze 10m'),
-                      style: const TextStyle(fontSize: 13),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        appString(context, 'Snooze 10m'),
+                        style: const TextStyle(fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
@@ -724,6 +738,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text(
                     appString(context, 'Skip'),
                     style: const TextStyle(fontSize: 13),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                   ),
                 ),
               ),
@@ -825,8 +842,18 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.fitness_center, size: 16),
-          SizedBox(width: 8),
-          Text(appString(context, 'Start 5-Min Guided Stretch Routine')),
+          const SizedBox(width: 8),
+          // The longest label in the app in French
+          // ("Commencer les étirements guidés (5 min)"), and it overflows even
+          // in English at 320px without a flex constraint.
+          Flexible(
+            child: Text(
+              appString(context, 'Start 5-Min Guided Stretch Routine'),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ),
         ],
       ),
     );

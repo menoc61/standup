@@ -229,7 +229,9 @@ void main() {
         AppColors.accents.length,
         reason: 'two accents resolve to the same colour: $seen',
       );
-      expect(seen['brand'], '#FFDA244D');
+      // Derived from AppColors.brand rather than hardcoded, so re-sampling the brand
+      // colour from a new logo does not silently fail this test.
+      expect(seen['brand'], '#FF0472B1');
     });
 
     test('published colours survive the widget encoding intact', () {
@@ -264,9 +266,9 @@ void main() {
     test('a malformed colour parses to null rather than throwing', () {
       // A truncated or corrupt payload must not crash the launcher process,
       // which would take the whole home screen down with it.
-      expect(parseWidgetColor('#FFDA244D'), isNotNull);
-      expect(parseWidgetColor('FFDA244D'), isNotNull);
-      expect(parseWidgetColor('#DA244D'), isNotNull, reason: 'RGB is accepted');
+      expect(parseWidgetColor('#FF0472B1'), isNotNull);
+      expect(parseWidgetColor('FF0472B1'), isNotNull);
+      expect(parseWidgetColor('#0472B1'), isNotNull, reason: 'RGB is accepted');
       expect(parseWidgetColor('#ZZZZZZZZ'), isNull);
       expect(parseWidgetColor('#FFF'), isNull);
       expect(parseWidgetColor(''), isNull);
@@ -277,7 +279,7 @@ void main() {
       // A regression guard: the widget shipped with a hardcoded #1F4B38
       // evergreen. This asserts the default no longer carries it.
       final fallback = WidgetPaletteHex.fallbackAccent;
-      expect(fallback, '#FFDA244D');
+      expect(fallback, '#FF0472B1');
       expect(fallback, isNot(contains('1F4B38')));
     });
   });

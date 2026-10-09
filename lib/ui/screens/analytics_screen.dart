@@ -67,14 +67,29 @@ class AnalyticsScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Cloud Sync Status Pill
+                //
+                // Expanded on the title: the French badge copy is far longer than
+                // the English ("Hors ligne tant que Supabase Auth n'est pas
+                // configuré"), so two unbounded texts in a spaceBetween Row
+                // overflow at phone widths.
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      appString(context, 'Consistency & Adherence'),
-                      style: theme.textTheme.titleMedium,
+                    Expanded(
+                      child: Text(
+                        appString(context, 'Consistency & Adherence'),
+                        style: theme.textTheme.titleMedium,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    _buildSyncStatusBadge(context, appState.syncStatus, accent),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: _buildSyncStatusBadge(
+                        context,
+                        appState.syncStatus,
+                        accent,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -121,25 +136,31 @@ class AnalyticsScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                appString(context, 'Contribution Heatmap'),
-                                style: theme.textTheme.titleMedium,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                appString(
-                                  context,
-                                  'GitHub-style hourly movement matrix',
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  appString(context, 'Contribution Heatmap'),
+                                  style: theme.textTheme.titleMedium,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ],
+                                const SizedBox(height: 2),
+                                Text(
+                                  appString(
+                                    context,
+                                    'GitHub-style hourly movement matrix',
+                                  ),
+                                  style: theme.textTheme.bodySmall,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -206,14 +227,27 @@ class AnalyticsScreen extends StatelessWidget {
                         accentColor: accent,
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      // Wrap rather than Row: three legend entries do not fit
+                      // side by side on a 320px phone, and the French labels are
+                      // longer than the English ones. A Row would overflow; a
+                      // Wrap reflows onto a second line instead.
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
                         children: [
-                          _buildLegendDot(AppColors.completed, 'Completed'),
-                          const SizedBox(width: 16),
-                          _buildLegendDot(AppColors.snoozed, 'Snoozed (10m)'),
-                          const SizedBox(width: 16),
-                          _buildLegendDot(AppColors.skipped, 'Skipped'),
+                          _buildLegendDot(
+                            AppColors.completed,
+                            appString(context, 'Completed'),
+                          ),
+                          _buildLegendDot(
+                            AppColors.snoozed,
+                            appString(context, 'Snoozed (10m)'),
+                          ),
+                          _buildLegendDot(
+                            AppColors.skipped,
+                            appString(context, 'Skipped'),
+                          ),
                         ],
                       ),
                     ],

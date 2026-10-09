@@ -139,4 +139,54 @@ void main() {
       expect(box.width, lessThanOrEqualTo(390));
     });
   });
+
+  group('Screen-specific ceilings', () {
+    test('the onboarding ceiling widens only on an expanded window', () {
+      // Two distinct numbers used to be inlined in the onboarding screen, which
+      // is how a third, unrelated breakpoint ended up in the codebase.
+      double onboardingCeiling(double width) =>
+          windowClassForWidth(width) == WindowClass.expanded
+          ? kOnboardingMaxWidthExpanded
+          : kOnboardingMaxWidth;
+
+      expect(onboardingCeiling(360), kOnboardingMaxWidth);
+      expect(onboardingCeiling(700), kOnboardingMaxWidth);
+      expect(onboardingCeiling(kExpandedMinWidth), kOnboardingMaxWidthExpanded);
+      expect(onboardingCeiling(1600), kOnboardingMaxWidthExpanded);
+    });
+
+    test('every content ceiling is a real, positive, finite number', () {
+      // A zero or negative maxWidth collapses the subtree silently, and a NaN
+      // from a bad constant makes layout throw at run time.
+      for (final width in <double>[
+        kContentMaxWidth,
+        kOnboardingMaxWidth,
+        kOnboardingMaxWidthExpanded,
+        kMediumMinWidth,
+        kExpandedMinWidth,
+        kCompactDotsMaxWidth,
+      ]) {
+        expect(width, greaterThan(0));
+        expect(width.isFinite, isTrue);
+      }
+    });
+
+    test('the onboarding ceilings are ordered narrow then wide', () {
+      expect(kOnboardingMaxWidthExpanded, greaterThan(kOnboardingMaxWidth));
+    });
+
+    test('the onboarding ceiling is tighter than the app ceiling', () {
+      // The onboarding copy is long-form prose. At the app-wide ceiling the
+      // paragraphs run well past a comfortable measure.
+      expect(kOnboardingMaxWidth, lessThan(kContentMaxWidth));
+    });
+
+    test('dot compaction triggers below a typical phone width', () {
+      // Ten 44dp jump targets plus a Continue button do not fit a 320dp phone,
+      // so the dot row has to compact there. A 360dp phone is below the
+      // threshold, which is the case this constant exists for.
+      expect(360, lessThan(kCompactDotsMaxWidth));
+      expect(kCompactDotsMaxWidth, lessThanOrEqualTo(kMediumMinWidth));
+    });
+  });
 }

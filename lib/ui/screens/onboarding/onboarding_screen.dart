@@ -8,6 +8,7 @@ import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/core/platform_motion.dart';
 import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/services/haptics_service.dart';
+import 'package:standup_app/ui/layout/adaptive.dart';
 import 'package:standup_app/ui/screens/onboarding/slide_widgets.dart';
 import 'package:standup_app/ui/widgets/spring_button.dart';
 
@@ -288,7 +289,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   builder: (context, constraints) => Center(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
-                        maxWidth: constraints.maxWidth > 920 ? 820 : 720,
+                        maxWidth:
+                            windowClassOf(constraints) == WindowClass.expanded
+                            ? kOnboardingMaxWidthExpanded
+                            : kOnboardingMaxWidth,
                       ),
                       child: PageView(
                         controller: _pageController,
@@ -441,61 +445,68 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Dot indicators
-                    Row(
-                      children: List.generate(_totalPages, (i) {
-                        final isSel = i == _currentPage;
-                        final compact = MediaQuery.sizeOf(context).width < 440;
-                        if (compact) {
-                          final firstVisible = (_currentPage - 2)
-                              .clamp(0, _totalPages - 5)
-                              .toInt();
-                          if (i < firstVisible || i >= firstVisible + 5) {
-                            return const SizedBox.shrink();
+                    LayoutBuilder(
+                      builder: (context, constraints) => Row(
+                        children: List.generate(_totalPages, (i) {
+                          final isSel = i == _currentPage;
+                          // From the allocation rather than the window, matching
+                          // the rest of the app. On a desktop window in
+                          // split-screen the wide dot row would otherwise be
+                          // kept even though there is no room for it.
+                          final compact =
+                              constraints.maxWidth < kCompactDotsMaxWidth;
+                          if (compact) {
+                            final firstVisible = (_currentPage - 2)
+                                .clamp(0, _totalPages - 5)
+                                .toInt();
+                            if (i < firstVisible || i >= firstVisible + 5) {
+                              return const SizedBox.shrink();
+                            }
                           }
-                        }
-                        // Each dot is a jump target. Previously they were
-                        // purely decorative, so returning to an earlier step
-                        // meant swiping backwards through every intermediate
-                        // slide. The hit area is padded out to 44x44 even
-                        // though the visual dot is only 5-18px wide.
-                        return Semantics(
-                          button: true,
-                          selected: isSel,
-                          label: appString(context, 'Go to step'),
-                          value: '${i + 1}',
-                          excludeSemantics: true,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(22),
-                            onTap: () => _goToPage(i),
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 14,
-                              ),
-                              child: Center(
-                                child: AnimatedContainer(
-                                  duration: reduceMotion
-                                      ? Duration.zero
-                                      : const Duration(milliseconds: 250),
-                                  margin: EdgeInsets.only(
-                                    right: compact ? 4 : 5,
-                                  ),
-                                  width: isSel
-                                      ? (compact ? 15 : 18)
-                                      : (compact ? 5 : 6),
-                                  height: compact ? 5 : 6,
-                                  decoration: BoxDecoration(
-                                    color: isSel
-                                        ? accent
-                                        : Colors.grey.withValues(alpha: 0.3),
-                                    borderRadius: BorderRadius.circular(3),
+                          // Each dot is a jump target. Previously they were
+                          // purely decorative, so returning to an earlier step
+                          // meant swiping backwards through every intermediate
+                          // slide. The hit area is padded out to 44x44 even
+                          // though the visual dot is only 5-18px wide.
+                          return Semantics(
+                            button: true,
+                            selected: isSel,
+                            label: appString(context, 'Go to step'),
+                            value: '${i + 1}',
+                            excludeSemantics: true,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(22),
+                              onTap: () => _goToPage(i),
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 14,
+                                ),
+                                child: Center(
+                                  child: AnimatedContainer(
+                                    duration: reduceMotion
+                                        ? Duration.zero
+                                        : const Duration(milliseconds: 250),
+                                    margin: EdgeInsets.only(
+                                      right: compact ? 4 : 5,
+                                    ),
+                                    width: isSel
+                                        ? (compact ? 15 : 18)
+                                        : (compact ? 5 : 6),
+                                    height: compact ? 5 : 6,
+                                    decoration: BoxDecoration(
+                                      color: isSel
+                                          ? accent
+                                          : Colors.grey.withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      }),
+                          );
+                        }),
+                      ),
                     ),
                     // Next / Continue button
                     if (_currentPage < _totalPages - 1)

@@ -80,21 +80,36 @@ class DepartmentMetric {
 }
 
 class HourlySkipMetric {
-  final String hour;
+  final String? hour;
   final int skipCount;
-  final String primaryReason;
 
-  HourlySkipMetric({
-    required this.hour,
-    required this.skipCount,
-    required this.primaryReason,
-  });
+  /// Why skips happened, or `null` when the user declined to say.
+  ///
+  /// Skipping is optional and the reason is free text, so an absent value is
+  /// normal. Substituting a plausible-sounding default here would invent data
+  /// about real people on an anonymised dashboard, which is exactly the sort of
+  /// thing the aggregation policy exists to prevent.
+  final String? primaryReason;
+
+  HourlySkipMetric({this.hour, this.skipCount = 0, this.primaryReason});
 
   factory HourlySkipMetric.fromJson(Map<String, dynamic> json) {
     return HourlySkipMetric(
-      hour: json['hour'] as String? ?? '12:00 PM',
+      // Absent stays absent. A fabricated "12:00 PM" would render as a measured
+      // peak hour that was never measured.
+      hour: _nonEmpty(json['hour']),
       skipCount: json['skip_count'] as int? ?? 0,
-      primaryReason: json['primary_reason'] as String? ?? 'Work focus',
+      primaryReason: _nonEmpty(json['primary_reason']),
     );
+  }
+
+  /// Trims a JSON string and returns `null` when it carries no information.
+  ///
+  /// An empty or whitespace-only value is an absent value, and letting it
+  /// through would put a blank line in the UI that looks like a rendering bug.
+  static String? _nonEmpty(dynamic value) {
+    if (value is! String) return null;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
   }
 }

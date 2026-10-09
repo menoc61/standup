@@ -272,10 +272,10 @@ private class Colors(values: Map<String, String>) {
 
     companion object {
         const val FALLBACK_SURFACE = 0xFFFFFFFF.toInt()
-        const val FALLBACK_SURFACE_ALT = 0xFFE4E5E0.toInt()
+        const val FALLBACK_SURFACE_ALT = 0xFF3887BF.toInt()
         const val FALLBACK_ON_SURFACE = 0xFF0B0B0C.toInt()
         const val FALLBACK_MUTED = 0xFF6B6B70.toInt()
-        const val FALLBACK_ACCENT = 0xFFDA244D.toInt()
+        const val FALLBACK_ACCENT = 0xFF0472B1.toInt()
         const val FALLBACK_ON_ACCENT = 0xFFFFFFFF.toInt()
     }
 }

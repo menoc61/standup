@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:home_widget/home_widget.dart';
 import 'package:standup_app/data/local/widget_palette.dart';
 import 'package:standup_app/data/models/gamification_metrics.dart';
@@ -360,9 +361,11 @@ void debugPrintSafe(String message) {
   // Kept as a function so the widget layer has a single, easily-swappable
   // logging seam without importing Flutter's foundation into a path that the
   // native side also touches.
-  assert(() {
-    // ignore: avoid_print
-    print('[WidgetBridge] $message');
-    return true;
-  }());
+  //
+  // Not wrapped in `assert`. These messages report a failure to publish a
+  // snapshot or to read one, and swallowing them in release and profile means a
+  // broken widget is completely silent in the field — the one environment where
+  // there is no console to look at. `debugPrint` throttles long output, so
+  // leaving it unconditional does not cost anything at runtime.
+  debugPrint('[WidgetBridge] $message');
 }

@@ -145,7 +145,7 @@ const Map<String, String> _french = {
   'Consistency & Adherence': 'Régularité et assiduité',
   'Contribution Heatmap': 'Carte des pauses',
   'GitHub-style hourly movement matrix':
-      'Activité quotidienne sur les 12 derniers mois',
+      'Activité quotidienne sur les 5 derniers mois',
   'Weekly Cadence Breakdown': 'Bilan hebdomadaire',
   'Daily completed vs snoozed vs skipped':
       'Pauses terminées, reportées et ignorées',
@@ -265,7 +265,9 @@ const Map<String, String> _french = {
   'tracked days': 'jours suivis',
   'Completed': 'Terminées',
   'Snoozed': 'Reportées',
+  'Snoozed (10m)': 'Reportées (10 min)',
   'Skipped': 'Ignorées',
+  'No reason given': 'Aucune raison indiquée',
   'Tap any square to inspect details. Green: completed • Amber: snoozed • Red: skipped': 'Touchez une case pour voir le détail. Vert : terminée • Ambre : reportée • Rouge : ignorée',
   'It\'s time to stand up! Your body will thank you.':
       'C’est le moment de vous lever ! Votre corps vous remerciera.',

@@ -571,7 +571,7 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultValue: const Constant('emerald'),
+    defaultValue: const Constant(AppColors.defaultAccentId),
   );
   static const VerificationMeta _notificationFrequencyMeta =
       const VerificationMeta('notificationFrequency');

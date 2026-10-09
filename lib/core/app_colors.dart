@@ -32,17 +32,23 @@ class AppColors {
 
   // ── Brand, sampled from the logo ───────────────────────────────────────────
 
-  /// The crimson of `UP` in the logo. Default accent.
+  /// The deep blue of the oval in the logo. Default accent.
   ///
-  /// On white this measures 4.84:1, so it is legal as body text; on near-black
-  /// it drops to 4.07:1, which is why [brandOnDark] exists.
-  static const Color brand = Color(0xFFDA244D);
+  /// Sampled from the brand asset at the most saturated blue present
+  /// (#0472B1). On white this measures 5.19:1, so it is AA for body text; on
+  /// near-black it drops to 3.65:1, which is why [brandOnDark] exists.
+  static const Color brand = Color(0xFF0472B1);
 
-  /// Brand crimson brightened for dark surfaces. 5.93:1 on [darkBackground].
-  static const Color brandOnDark = Color(0xFFF2547B);
+  /// Brand blue brightened for dark surfaces. 7.56:1 on [darkBackground].
+  static const Color brandOnDark = Color(0xFF5AA8DC);
 
-  /// The silver of `STAND` in the logo.
-  static const Color brandSilver = Color(0xFFE4E5E0);
+  /// The lighter blue of the figures in the logo. Used for tints and disabled
+  /// states that must still read as brand.
+  ///
+  /// This was `brandSilver`, taken from the silver `STAND` lettering of the
+  /// previous wordmark. That lettering no longer exists, so the token was
+  /// renamed rather than left pointing at a colour the logo does not contain.
+  static const Color brandTint = Color(0xFF3887BF);
 
   // ── Ink ramp ───────────────────────────────────────────────────────────────
 
@@ -133,7 +139,7 @@ class AppColors {
   static const Color amberPrimary = Color(0xFF92400E);
   static const Color violetPrimary = Color(0xFF6D28D9);
   static const Color emeraldPrimary = Color(0xFF14532D);
-  static const Color brandPrimary = Color(0xFFB01739); // 6.94:1 on white
+  static const Color brandPrimary = Color(0xFF04598A); // 7.50:1 on white
 
   /// Every accent the user can pick, in the order onboarding presents them.
   ///

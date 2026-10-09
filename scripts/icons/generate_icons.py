@@ -350,6 +350,44 @@ def generate_linux(logo: Image.Image) -> None:
     print(f"  linux/runner/{DESKTOP_STEM}.desktop")
 
 
+def generate_notification_icon(logo: Image.Image) -> None:
+    """The status-bar icon for Android notifications.
+
+    ## Why this cannot be the logo
+
+    Android tints the status-bar icon with the system foreground colour and
+    discards everything but its alpha channel. A full-colour logo therefore
+    renders as a white blob of the wrong shape — which is what the app showed
+    before this existed, because no `smallIcon` was set at all.
+
+    So the status-bar icon is the logo's silhouette, and the colour is supplied
+    by the system. The recognisable artwork is carried by the large icon and by
+    the widget instead.
+
+    Density buckets rather than one `-nodpi` file so Android picks a native
+    resolution for each bucket instead of scaling a single oversized bitmap.
+    """
+    print("Android notification icon")
+    for bucket, size in (
+        ("mdpi", 24),
+        ("hdpi", 36),
+        ("xhdpi", 48),
+        ("xxhdpi", 72),
+        ("xxxhdpi", 96),
+    ):
+        write_png(
+            build_monochrome(logo, size),
+            REPO_ROOT
+            / "android"
+            / "app"
+            / "src"
+            / "main"
+            / "res"
+            / f"drawable-{bucket}"
+            / "ic_notification.png",
+        )
+
+
 def main() -> int:
     if not SOURCE.exists():
         print(f"Brand asset missing: {SOURCE}", file=sys.stderr)
@@ -363,6 +401,7 @@ def main() -> int:
     generate_windows(logo)
     generate_android_foreground(logo)
     generate_widget_logos(logo)
+    generate_notification_icon(logo)
     generate_linux(logo)
 
     print("\nDone. Re-run after any change to the brand asset.")

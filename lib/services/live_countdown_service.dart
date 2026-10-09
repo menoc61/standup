@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:standup_app/core/app_strings.dart';
+import 'package:standup_app/services/notification_service.dart';
 
 /// A persistent, non-dismissible notification that counts down to the next
 /// movement break.
@@ -174,6 +175,11 @@ class LiveCountdownService {
       channelDescription: _channel.description,
       importance: Importance.low,
       priority: Priority.low,
+      // Same white silhouette the reminder notifications use. Android tints it
+      // with the system colour, so the brand mark cannot be carried here; the
+      // colour comes from the system, not from the artwork.
+      icon: NotificationService.androidSmallIcon,
+      largeIcon: await NotificationService.notificationLargeIcon,
       // Ongoing means the user cannot swipe it away by accident; the countdown
       // is not a transient event they should be able to lose.
       ongoing: true,

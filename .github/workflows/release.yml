@@ -223,13 +223,91 @@ jobs:
           retention-days: 30
 
   # ---------------------------------------------------------------------------
+  # Apple. iOS and macOS, unsigned.
+  #
+  # Two things make this more than `flutter build ios`:
+  #   * the WidgetKit extension target has to be added to the Xcode project
+  #     first, which is what scripts/ios/add_widget_target.rb does;
+  #   * both targets need the App Group capability, which is set on the target
+  #     by the same script so signing has something to attach to.
+  #
+  # Unsigned, so these are verification and simulator artefacts rather than
+  # App Store submissions. Publishing to the App Store needs a certificate that
+  # the repository does not hold.
+  # ---------------------------------------------------------------------------
+  apple:
+    name: Apple release
+    needs: verify
+    runs-on: macos-14
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+
+      - name: Install the WidgetKit extension target
+        run: |
+          gem install xcodeproj --no-document
+          ruby scripts/ios/add_widget_target.rb
+          # Fail here rather than deep inside a Swift compile if the target did
+          # not land; the error from the build step is otherwise opaque.
+          grep -q StandUpWidget ios/Runner.xcodeproj/project.pbxproj || \
+            (echo "::error::the WidgetKit target was not added to Runner.xcodeproj" && exit 1)
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Build iOS (no codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Build macOS
+        run: flutter build macos --release
+
+      - name: Package iOS Runner.app
+        run: |
+          mkdir -p dist
+          # A .app is a directory, so it has to be zipped rather than copied.
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios/iphoneos/Runner.app "dist/standup-${GITHUB_REF_NAME}-ios.app.zip"
+          ls -la dist
+
+      - name: Package macOS app
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            "build/macos/Build/Products/Release/standup_app.app" \
+            "dist/standup-${GITHUB_REF_NAME}-macos.zip"
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-apple
+          path: dist
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
   # Assemble one release containing every target. Downloads only from jobs that
   # succeeded, so a platform that could not be built is simply absent rather
   # than breaking the whole release.
   # ---------------------------------------------------------------------------
   publish:
     name: Publish release
-    needs: [android, windows, linux]
+    # apple is listed with `!cancelled()` so a platform that could not be built
+    # on this runner does not block the three that could. The release notes say
+    # which are missing.
+    needs: [android, windows, linux, apple]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

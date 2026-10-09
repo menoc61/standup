@@ -118,6 +118,22 @@ end
 # ── Sources ──────────────────────────────────────────────────────────────────
 
 group = project.main_group.find_subpath(WIDGET_TARGET_NAME, true)
+
+# The group's path has to be set explicitly. Without it Xcode resolves every
+# relative file reference against the *project* directory, so a reference to
+# `CSPHStandUpWidget.swift` becomes ios/CSPHStandUpWidget.swift instead of
+# ios/StandUpWidget/CSPHStandUpWidget.swift, and the build fails with
+# "Build input files cannot be found". Setting it here is what makes every
+# reference below correct.
+group.set_path(WIDGET_TARGET_NAME) if group.path.nil?
+
+# Fail before touching the project if a source is missing, so a renamed file
+# produces a clear message instead of a dozen confusing Xcode errors later.
+SOURCES.each do |name|
+  path = File.join(WIDGET_DIR, name)
+  die "missing source file #{path}" unless File.exist?(path)
+end
+
 existing_names = widget.source_build_phase.files_references.compact.map(&:display_name)
 
 SOURCES.each do |name|

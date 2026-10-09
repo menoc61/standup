@@ -275,10 +275,32 @@ jobs:
         run: |
           gem install xcodeproj --no-document
           ruby scripts/ios/add_widget_target.rb
-          # Fail here rather than deep inside a Swift compile if the target did
-          # not land; the error from the build step is otherwise opaque.
-          grep -q StandUpWidget ios/Runner.xcodeproj/project.pbxproj || \
-            (echo "::error::the WidgetKit target was not added to Runner.xcodeproj" && exit 1)
+
+      # Assert the references resolve to files that exist.
+      #
+      # A file reference whose group has no path silently resolves against the
+      # project directory, so the pbxproj looks correct and the build dies much
+      # later with "Build input files cannot be found". Checking here names the
+      # actual file that is wrong.
+      - name: Verify the widget target's sources resolve
+        run: |
+          fail=0
+          for f in CSPHStandUpWidget StandUpIntents StandUpProvider \
+                   StandUpWidgetView WidgetPayload WidgetStyle; do
+            if grep -q "StandUpWidget/$f.swift" ios/Runner.xcodeproj/project.pbxproj; then
+              echo "ok   StandUpWidget/$f.swift"
+            else
+              echo "::error::$f.swift is not referenced under ios/StandUpWidget/" >&2
+              fail=1
+            fi
+          done
+          # The bare filename with no directory means the reference resolves
+          # against ios/ rather than ios/StandUpWidget/.
+          if grep -qE 'path = [A-Za-z]+\.swift;' ios/Runner.xcodeproj/project.pbxproj; then
+            echo "::error::a Swift reference has no directory prefix" >&2
+            fail=1
+          fi
+          exit $fail
 
       - name: Resolve dependencies
         run: flutter pub get

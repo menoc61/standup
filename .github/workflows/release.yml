@@ -153,9 +153,14 @@ jobs:
 
       - name: Package as a zip
         run: |
+          # Compress-Archive does not create the destination directory, so the
+          # first release failed here rather than at the upload step.
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
           Compress-Archive -Path build\windows\x64\runner\Release\* `
-            -DestinationPath "dist\standup-$env:GITHUB_REF_NAME-windows-x64.zip"
-          Get-Item "dist\standup-$env:GITHUB_REF_NAME-windows-x64.zip" | Format-List Name,Length
+            -DestinationPath "dist\standup-$env:GITHUB_REF_NAME-windows-x64.zip" `
+            -Force
+          Get-Item "dist\standup-$env:GITHUB_REF_NAME-windows-x64.zip" |
+            Format-List Name,Length
 
       - uses: actions/upload-artifact@v4
         with:
@@ -206,15 +211,24 @@ jobs:
           ls -la dist
 
       # Fail loudly if the desktop entry or the icon set did not get installed.
-      # CMake owns both, and a missing .desktop produces an app that launches
-      # but never appears in any desktop menu.
+      # CMake owns both, and a missing .desktop produces an app that launches but
+      # never appears in any desktop menu.
+      #
+      # The bundle lives under build/linux/x64/release/bundle, not at the
+      # repository root — checking the wrong path is how the first release
+      # published without a working Linux icon.
       - name: Verify desktop integration
         run: |
-          test -f bundle/share/applications/standup_app.desktop || \
+          bundle=build/linux/x64/release/bundle
+          test -f "$bundle/share/applications/standup_app.desktop" || \
             (echo "::error::.desktop entry missing from the bundle" && exit 1)
-          test -f bundle/share/icons/hicolor/512x512/apps/standup_app.png || \
+          test -f "$bundle/share/icons/hicolor/512x512/apps/standup_app.png" || \
             (echo "::error::512px icon missing from the bundle" && exit 1)
-          find bundle/share -type f | sort
+          # GTK resolves Icon= by stem against the installed theme, so the name
+          # in the entry has to match the name that was actually installed.
+          grep -q "^Icon=standup_app$" "$bundle/share/applications/standup_app.desktop" || \
+            (echo "::error::Icon= does not match the installed icon stem" && exit 1)
+          find "$bundle/share" -type f | sort
 
       - uses: actions/upload-artifact@v4
         with:

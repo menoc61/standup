@@ -235,9 +235,14 @@ else
   # Pre-actions make the Flutter toolchain run first, otherwise the extension is
   # built against a stale Generated.xcconfig and fails to find the app's
   # headers. This is the same trick Flutter's own template uses.
-  scheme.add_pre_action.shell_script = <<~SCRIPT
-    /bin/sh -c "$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh build"
-  SCRIPT
+  #
+  # The pre-action belongs to the scheme's *build action*, not the scheme.
+  # XCScheme#add_pre_action does not exist and raises NoMethodError, which is how
+  # this script failed in CI.
+  scheme.build_action.pre_actions << {
+    name: 'Run Flutter Build',
+    shell_script: '/bin/sh "$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh" build'
+  }
   scheme.save_as(PROJECT_PATH, WIDGET_TARGET_NAME, true)
   note "created shared scheme #{WIDGET_TARGET_NAME}"
 end

@@ -104,7 +104,17 @@ const Set<String> intentionallyIdenticalInFrench = {
   'Violet', // the colour name is the same in French
 };
 
+// English keys, resolved through appString. They were rendered raw, so a
+// French user saw an English header above a French slide.
 const Map<String, String> _french = {
+  'Welcome': 'Bienvenue',
+  'Why movement matters': 'Pourquoi bouger compte',
+  'A simple solution': 'Une solution simple',
+  'How it works': 'Comment ça marche',
+  'Your profile': 'Votre profil',
+  'Preferences': 'Préférences',
+  'Privacy': 'Confidentialité',
+  'Ready': 'Prêt',
   'StandUp': 'CSPH • StandUp',
   'Timer': 'Rappels',
   'Org Health': 'Santé de l’organisation',

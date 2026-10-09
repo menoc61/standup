@@ -189,7 +189,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final accent = AppColors.getAccentColor(_colorSystem);
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
-    final stepLabels = [
+    // English keys, resolved through appString. They were rendered raw, so a
+    // French user saw an English header above a French slide.
+    const stepLabels = [
       'Welcome',
       'Why movement matters',
       'A simple solution',
@@ -267,7 +269,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ),
                         ),
                         child: Text(
-                          stepLabels[_currentPage],
+                          appString(context, stepLabels[_currentPage]),
                           key: ValueKey(_currentPage),
                           style: Theme.of(context).textTheme.labelLarge
                               ?.copyWith(fontWeight: FontWeight.w700),
@@ -438,99 +440,118 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               // Bottom Controls
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
+                  horizontal: 20,
                   vertical: 16,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Dot indicators
-                    LayoutBuilder(
-                      builder: (context, constraints) => Row(
-                        children: List.generate(_totalPages, (i) {
-                          final isSel = i == _currentPage;
-                          // From the allocation rather than the window, matching
-                          // the rest of the app. On a desktop window in
-                          // split-screen the wide dot row would otherwise be
-                          // kept even though there is no room for it.
-                          final compact =
-                              constraints.maxWidth < kCompactDotsMaxWidth;
-                          if (compact) {
-                            final firstVisible = (_currentPage - 2)
-                                .clamp(0, _totalPages - 5)
-                                .toInt();
-                            if (i < firstVisible || i >= firstVisible + 5) {
-                              return const SizedBox.shrink();
-                            }
-                          }
-                          // Each dot is a jump target. Previously they were
-                          // purely decorative, so returning to an earlier step
-                          // meant swiping backwards through every intermediate
-                          // slide. The hit area is padded out to 44x44 even
-                          // though the visual dot is only 5-18px wide.
-                          return Semantics(
-                            button: true,
-                            selected: isSel,
-                            label: appString(context, 'Go to step'),
-                            value: '${i + 1}',
-                            excludeSemantics: true,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(22),
-                              onTap: () => _goToPage(i),
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 14,
-                                ),
-                                child: Center(
-                                  child: AnimatedContainer(
-                                    duration: reduceMotion
-                                        ? Duration.zero
-                                        : const Duration(milliseconds: 250),
-                                    margin: EdgeInsets.only(
-                                      right: compact ? 4 : 5,
+                // The LayoutBuilder wraps the whole Row rather than sitting
+                // inside it. A Row hands non-flex children unbounded main-axis
+                // constraints, so a LayoutBuilder nested as one of its children
+                // sees infinite width and the compaction below can never be
+                // true. That left ten expanded dots, which pushed the Continue
+                // button off the right edge of the screen.
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final compact = constraints.maxWidth < kCompactDotsMaxWidth;
+                    return Row(
+                      children: [
+                        // Dot indicators
+                        Flexible(
+                          child: Row(
+                            children: List.generate(_totalPages, (i) {
+                              final isSel = i == _currentPage;
+                              if (compact) {
+                                final firstVisible = (_currentPage - 2)
+                                    .clamp(0, _totalPages - 5)
+                                    .toInt();
+                                if (i < firstVisible || i >= firstVisible + 5) {
+                                  return const SizedBox.shrink();
+                                }
+                              }
+                              // Each dot is a jump target, padded out to a 44x44
+                              // hit area even though the dot itself is 5-18px.
+                              // Without the hit area, returning to an earlier
+                              // step meant swiping back through every
+                              // intermediate slide.
+                              return Semantics(
+                                button: true,
+                                selected: isSel,
+                                label: appString(context, 'Go to step'),
+                                value: '',
+                                excludeSemantics: true,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(22),
+                                  onTap: () => _goToPage(i),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 14,
                                     ),
-                                    width: isSel
-                                        ? (compact ? 15 : 18)
-                                        : (compact ? 5 : 6),
-                                    height: compact ? 5 : 6,
-                                    decoration: BoxDecoration(
-                                      color: isSel
-                                          ? accent
-                                          : Colors.grey.withValues(alpha: 0.3),
-                                      borderRadius: BorderRadius.circular(3),
+                                    child: Center(
+                                      child: AnimatedContainer(
+                                        duration: reduceMotion
+                                            ? Duration.zero
+                                            : const Duration(milliseconds: 250),
+                                        margin: EdgeInsets.only(
+                                          right: compact ? 3 : 5,
+                                        ),
+                                        width: isSel
+                                            ? (compact ? 14 : 18)
+                                            : (compact ? 5 : 6),
+                                        height: compact ? 5 : 6,
+                                        decoration: BoxDecoration(
+                                          color: isSel
+                                              ? accent
+                                              : Colors.grey.withValues(
+                                                  alpha: 0.3,
+                                                ),
+                                          borderRadius: BorderRadius.circular(
+                                            3,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
+                              );
+                            }),
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        // Next / Continue button
+                        if (_currentPage < _totalPages - 1)
+                          Flexible(
+                            child: SpringButton(
+                              onTap: _isCompleting ? null : _goToNextPage,
+                              backgroundColor: accent,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      appString(context, 'Continue'),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.end,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Icon(Icons.arrow_forward, size: 16),
+                                ],
                               ),
                             ),
-                          );
-                        }),
-                      ),
-                    ),
-                    // Next / Continue button
-                    if (_currentPage < _totalPages - 1)
-                      SpringButton(
-                        onTap: _isCompleting ? null : _goToNextPage,
-                        backgroundColor: accent,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              appString(context, 'Continue'),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(width: 6),
-                            Icon(Icons.arrow_forward, size: 16),
-                          ],
-                        ),
-                      ),
-                  ],
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],

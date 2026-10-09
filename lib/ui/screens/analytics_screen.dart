@@ -320,21 +320,27 @@ class AnalyticsScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 14),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      // Wrap, like the legend above it: the French labels are
+                      // longer than the English ones and three non-flex children
+                      // in a spaceBetween Row overflow once the total exceeds the
+                      // card width.
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.spaceBetween,
                         children: [
                           _buildDistItem(
-                            'Completed',
+                            appString(context, 'Completed'),
                             totalCompleted,
                             AppColors.completed,
                           ),
                           _buildDistItem(
-                            'Snoozed',
+                            appString(context, 'Snoozed'),
                             totalSnoozed,
                             AppColors.snoozed,
                           ),
                           _buildDistItem(
-                            'Skipped',
+                            appString(context, 'Skipped'),
                             totalSkipped,
                             AppColors.skipped,
                           ),

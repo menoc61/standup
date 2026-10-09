@@ -453,6 +453,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   builder: (context, constraints) {
                     final compact = constraints.maxWidth < kCompactDotsMaxWidth;
                     return Row(
+                      // spaceBetween, and not the default `start`: both
+                      // children are loose-fit Flexible, so without it all the
+                      // free space lands to the right of the button and the
+                      // Continue button floats next to the dots instead of
+                      // sitting at the trailing edge.
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         // Dot indicators
                         Flexible(

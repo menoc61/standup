@@ -147,7 +147,7 @@ class AppColors {
   /// onboarding picker and [getAccentColor] cannot disagree about which options
   /// exist.
   static const List<AccentOption> accents = [
-    AccentOption(id: 'brand', label: 'Crimson', swatch: brand),
+    AccentOption(id: 'brand', label: 'Brand Blue', swatch: brand),
     // The monochrome swatch is ink itself: choosing it is how a user asks for
     // the app to have no accent at all.
     AccentOption(id: 'ink', label: 'Monochrome', swatch: ink),

@@ -72,12 +72,6 @@ class _DynamicIslandState extends State<DynamicIsland>
     super.dispose();
   }
 
-  String formatClock(Duration d) {
-    final minutes = d.inMinutes;
-    final seconds = d.inSeconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
-  }
-
   void _toggleExpanded() {
     HapticsService.light();
     setState(() => _isExpanded = !_isExpanded);

@@ -32,17 +32,27 @@ class NotificationService {
 
   /// The brand mark as the notification's large icon, in full colour.
   ///
-  /// Cached because a session may post several reminders and re-reading the
-  /// asset each time is wasted work on a device that has none to spare.
+  /// A dedicated 192px RGBA asset rather than the logo itself: the logo is an
+  /// opaque 1024px image whose baked-in white background Android would draw as
+  /// a block down the side of every notification, and re-decoding 415 KB on
+  /// every post would put a multi-megabyte bitmap through the platform channel
+  /// five times a minute for the ongoing countdown.
+  ///
+  /// Cached because the countdown re-posts on a timer.
   static AndroidBitmap<Uint8List>? _largeIcon;
 
   static Future<AndroidBitmap<Uint8List>?> _loadLargeIcon() async {
     if (_largeIcon != null) return _largeIcon;
     try {
       final data = await rootBundle.load(
-        'assets/branding/csph_standup_logo.png',
+        'assets/branding/notification_large.png',
       );
-      _largeIcon = ByteArrayAndroidBitmap(data.buffer.asUint8List());
+      // Honour the view's own offset and length. `buffer.asUint8List()` with no
+      // arguments hands Android whatever else shares the backing store, which
+      // silently corrupts the image rather than failing.
+      _largeIcon = ByteArrayAndroidBitmap(
+        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+      );
     } catch (e) {
       // A missing large icon degrades to the small icon rather than dropping
       // the notification, so this is a warning and not a failure.

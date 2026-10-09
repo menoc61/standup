@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/data/models/workday_metrics.dart';
 import 'package:standup_app/data/models/daily_analytics.dart';
 
 class WeeklyAdherenceBarChart extends StatelessWidget {
@@ -29,7 +30,7 @@ class WeeklyAdherenceBarChart extends StatelessWidget {
 
     for (int i = 6; i >= 0; i--) {
       final date = now.subtract(Duration(days: i));
-      final dateKey = DateFormat('yyyy-MM-dd', locale).format(date);
+      final dateKey = WorkdayMetrics.dateKey(date);
       final item = dataMap[dateKey];
       final label = DateFormat('E', locale).format(date).substring(0, 1);
       dayLabels.add(label);

@@ -798,19 +798,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  static String formatClock(Duration d) {
-    final minutes = d.inMinutes;
-    final seconds = d.inSeconds % 60;
-    if (minutes >= 60) {
-      final hours = minutes ~/ 60;
-      final restMinutes = minutes % 60;
-      return restMinutes == 0
-          ? '${hours}h'
-          : '${hours}h${restMinutes.toString().padLeft(2, '0')}';
-    }
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
-  }
-
   Widget _buildStretchButton(BuildContext context, Color accent) {
     return SpringButton(
       onTap: () => _showGuidedStretchDialog(context),

@@ -472,6 +472,7 @@ const Map<String, String> _french = {
   'Your progress in this walkthrough will be lost.':
       'Votre progression dans cette présentation sera perdue.',
   'Crimson': 'Cramoisi',
+  'Brand Blue': 'Bleu de la marque',
   'Monochrome': 'Monochrome',
   'Blue': 'Bleu',
   'Teal': 'Sarcelle',

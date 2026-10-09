@@ -47,6 +47,7 @@ WHITE = (255, 255, 255)
 # from this constant, so the entry can never name files that were not written.
 ICON_STEM = "standup_app_icon"
 DESKTOP_STEM = "standup_app"
+APPLICATION_ID = "com.healthwellness.standup_app"
 
 DESKTOP_FILE = f"""[Desktop Entry]
 Type=Application
@@ -54,12 +55,12 @@ Name=CSPH StandUp
 GenericName=Wellbeing Reminder
 Comment=Hourly stand-up and posture-break reminders with anonymised team analytics.
 Exec={DESKTOP_STEM}
-Icon={ICON_STEM}
+Icon={DESKTOP_STEM}
 Terminal=false
 Categories=Utility;Health;
 Keywords=wellbeing;health;posture;standup;ergonomics;
 StartupNotify=true
-StartupWMClass={DESKTOP_STEM}
+StartupWMClass={APPLICATION_ID}
 """
 
 
@@ -388,6 +389,61 @@ def generate_notification_icon(logo: Image.Image) -> None:
         )
 
 
+def generate_notification_large(logo: Image.Image) -> None:
+    """The brand mark as an RGBA tile for the notification's large icon.
+
+    ## Why this is not simply the logo asset
+
+    The source asset is 1024x903 RGB with the white background baked in. Android
+    draws the large icon as an opaque square at the leading edge of the
+    notification, so shipping it raw puts a white block down the side of every
+    reminder — glaring on a dark shade, and never theme-aware.
+
+    It is also 415 KB, and `BitmapFactory.decodeByteArray` re-decodes it on every
+    post. The ongoing countdown posts every five seconds, so that is a large
+    bitmap decoded on the Android main thread several times a minute for a 48dp
+    slot.
+
+    So: cropped to the artwork, transparent background, square, and 192px — about
+    an order of magnitude smaller and the correct aspect.
+    """
+    print("Notification large icon")
+    write_png(
+        build_rgba_tile(logo, 192),
+        REPO_ROOT / "assets" / "branding" / "notification_large.png",
+    )
+
+
+def build_rgba_tile(logo: Image.Image, size: int, *, inset: float = 0.0) -> Image.Image:
+    """Crop the artwork to its bounds, then fit it on a transparent square.
+
+    Unlike [build_tile] this leaves the background transparent rather than
+    painting it white, so it can be composited over any surface.
+    """
+    mark = logo.convert("RGB").crop(artwork_bbox(logo))
+
+    drawable = int(size * (1.0 - 2 * inset))
+    if drawable <= 0:
+        raise SystemExit(f"inset {inset} leaves no room to draw the logo at {size}px")
+
+    scale = min(drawable / mark.width, drawable / mark.height)
+    target = (max(1, round(mark.width * scale)), max(1, round(mark.height * scale)))
+    resized = mark.resize(target, Image.LANCZOS).convert("RGBA")
+
+    # Anything near-white becomes transparent, which is what removes the baked-in
+    # background without needing a source file with an alpha channel.
+    pixels = resized.load()
+    for y in range(resized.height):
+        for x in range(resized.width):
+            r, g, b, a = pixels[x, y]
+            if r >= BACKGROUND_THRESHOLD and g >= BACKGROUND_THRESHOLD and b >= BACKGROUND_THRESHOLD:
+                pixels[x, y] = (0, 0, 0, 0)
+
+    tile = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    tile.paste(resized, ((size - target[0]) // 2, (size - target[1]) // 2), resized)
+    return tile
+
+
 def main() -> int:
     if not SOURCE.exists():
         print(f"Brand asset missing: {SOURCE}", file=sys.stderr)
@@ -402,6 +458,7 @@ def main() -> int:
     generate_android_foreground(logo)
     generate_widget_logos(logo)
     generate_notification_icon(logo)
+    generate_notification_large(logo)
     generate_linux(logo)
 
     print("\nDone. Re-run after any change to the brand asset.")

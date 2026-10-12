@@ -82,6 +82,103 @@ void main() {
     });
   });
 
+  // Every cadence Settings offers (settings_screen.dart) and onboarding offers.
+  // The 90-minute option is the one that exposed the anchoring bug.
+  group('Every offered cadence opens a reachable window', () {
+    const cadences = [30, 60, 90];
+
+    for (final cadence in cadences) {
+      test(
+        'cadence $cadence opens a window for every window slot in the day',
+        () {
+          // Sweep every minute of two consecutive days. This is the test that
+          // would have caught the hour-anchored boundary walk: at cadence 90
+          // it reported zero open minutes in the whole sweep, so a break could
+          // never be logged at any instant of any day.
+          const windowMinutes = StandWindow.defaultActionWindowMinutes;
+          var openMinutes = 0;
+          final windows = <DateTime>{};
+
+          for (var day = 1; day <= 2; day++) {
+            for (var minuteOfDay = 0; minuteOfDay < 24 * 60; minuteOfDay++) {
+              final now = DateTime(2026, 1, day).add(
+                Duration(minutes: minuteOfDay),
+              );
+              final window = StandWindow.activeWindow(
+                now: now,
+                actionWindowMinutes: windowMinutes,
+                cadenceMinutes: cadence,
+              );
+              if (window != null) {
+                openMinutes++;
+                windows.add(window.start);
+              }
+            }
+          }
+
+          expect(
+            openMinutes,
+            greaterThan(0),
+            reason:
+                'cadence $cadence produced no open window anywhere in a '
+                'two-day sweep, so no break could ever be recorded',
+          );
+          // Every window must be exactly the configured width, and distinct
+          // windows must not overlap or repeat.
+          for (final start in windows) {
+            final span = StandWindow.activeWindow(
+              now: start,
+              actionWindowMinutes: windowMinutes,
+              cadenceMinutes: cadence,
+            )!;
+            expect(span.length, const Duration(minutes: windowMinutes));
+          }
+          expect(
+            windows.length,
+            // The sweep spans two whole days, so there is exactly one window
+            // per cadence interval in that span, and the final boundary lands
+            // on the end of day two (its window opens on day one, already
+            // counted), giving intervals rather than intervals + 1.
+            (24 * 60 * 2) ~/ cadence,
+            reason: 'cadence $cadence should yield one window per interval',
+          );
+        },
+      );
+    }
+
+    test('nextWindow never advertises a window activeWindow cannot open', () {
+      // The banner counts down to nextWindow while the action gate consults
+      // activeWindow. If they disagree the UI promises a break it then refuses.
+      for (final cadence in cadences) {
+        for (var minuteOfDay = 0; minuteOfDay < 24 * 60; minuteOfDay++) {
+          final now = DateTime(2026, 1, 1).add(Duration(minutes: minuteOfDay));
+          final next = StandWindow.nextWindow(
+            now: now,
+            cadenceMinutes: cadence,
+          )!;
+
+          // The advertised window must actually open when it says it does.
+          final atStart = StandWindow.activeWindow(
+            now: next.start,
+            cadenceMinutes: cadence,
+          );
+          expect(
+            atStart,
+            isNotNull,
+            reason:
+                'cadence $cadence: nextWindow advertised '
+                '${next.start} but activeWindow returns null there',
+          );
+          expect(atStart!.start, next.start);
+          expect(atStart.end, next.end);
+
+          // And it must be genuinely in the future.
+          expect(next.end.isAfter(now), isTrue);
+        }
+      }
+    });
+  });
+
   group('StandWindow countdowns', () {
     test('reports remaining time inside an open window', () {
       expect(

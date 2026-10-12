@@ -48,6 +48,20 @@ bool _isGenerated(String path) {
   return p.split('/').any(_generated.contains);
 }
 
+/// Deliberate, narrow exceptions to the brand scan.
+///
+/// Each entry is a historical reference a user has to be able to act on, not a
+/// live branding surface. Anything added here has to justify itself: the guard
+/// is only useful if it stays strict, so a new entry means re-examining whether
+/// the mention is actually load-bearing.
+const _allowedMentions = <String, String>{
+  // Tells a v1.0.0 upgrader which settings folder the old release created,
+  // because the rename moves it and their settings reset once. Removing the
+  // literal would make the note unactionable.
+  'docs/INSTALL_AND_LAUNCH.md':
+      'documents the legacy v1.0.0 settings folder name for upgraders',
+};
+
 /// Every authored source file under the repository root.
 List<File> sourceFilesIn(String directory) {
   final root = Directory(directory);
@@ -77,14 +91,15 @@ void main() {
       for (final file in sourceFilesIn(repoRoot)) {
         // The guard's own name and these literals must not trip the scan.
         if (file.path.endsWith('brand_regression_test.dart')) continue;
+        final relative = file.path
+            .substring(repoRoot.length)
+            .replaceAll(r'\', '/')
+            .replaceFirst(RegExp('^/'), '');
+        if (_allowedMentions.containsKey(relative)) continue;
+
         final contents = file.readAsStringSync();
         if (RegExp('csph', caseSensitive: false).hasMatch(contents)) {
-          offenders.add(
-            file.path
-                .substring(repoRoot.length)
-                .replaceAll(r'\', '/')
-                .replaceFirst(RegExp('^/'), ''),
-          );
+          offenders.add(relative);
         }
       }
       expect(
@@ -93,7 +108,9 @@ void main() {
         reason:
             'The retired brand is back in:\n${offenders.join('\n')}\n'
             'A rebrand that changes references but not the files they point at '
-            'builds green and ships broken, which is how this one got here.',
+            'builds green and ships broken, which is how this one got here.\n'
+            'If a mention is genuinely load-bearing, add it to '
+            '_allowedMentions with a reason.',
       );
     });
 

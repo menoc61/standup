@@ -168,18 +168,27 @@ class StandWindow {
 
   /// The first cadence-aligned boundary at or after [now].
   ///
-  /// Boundaries are aligned to the local clock, so every device produces stable
-  /// "top of the hour" anchors without shipping a timezone database.
+  /// Boundaries are anchored to **local midnight**, not to the current hour.
+  /// Anchoring to the hour made the sequence depend on which hour [now] fell
+  /// in, so it was not continuous: at a 90-minute cadence the boundaries from
+  /// 01:00 were 01:00, 02:30, 04:00 while those from 02:00 were 02:00, 03:30,
+  /// 05:00. Those two sequences never coincide, so parts of every hour fell
+  /// between them and no window was ever open — with 90 minutes offered in
+  /// Settings, the app could never record a break at any instant of any day.
+  ///
+  /// Anchoring at midnight makes one continuous sequence of boundaries for the
+  /// whole day, which is what every cadence needs and what keeps [nextWindow]
+  /// and [activeWindow] describing the same windows.
   static DateTime _boundaryAtOrAfter(DateTime now, int cadenceMinutes) {
-    final hourStart = DateTime(now.year, now.month, now.day, now.hour);
-    final minutesIntoHour = now.minute;
+    final midnight = DateTime(now.year, now.month, now.day);
+    final minutesIntoDay = now.difference(midnight).inMinutes;
 
     // Round up to the next cadence step. Using ceil keeps an exact boundary
-    // (minute == 0) on itself rather than pushing it to the following step.
-    final steps = minutesIntoHour == 0
-        ? 0
-        : (minutesIntoHour + cadenceMinutes - 1) ~/ cadenceMinutes;
-    return hourStart.add(Duration(minutes: steps * cadenceMinutes));
+    // (a whole number of cadence steps past midnight) on itself rather than
+    // pushing it to the following step, so the window that closes there stays
+    // inclusive of its own start.
+    final steps = (minutesIntoDay + cadenceMinutes - 1) ~/ cadenceMinutes;
+    return midnight.add(Duration(minutes: steps * cadenceMinutes));
   }
 
   static void _validate(int actionWindowMinutes, int cadenceMinutes) {

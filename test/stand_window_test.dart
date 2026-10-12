@@ -2,6 +2,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:standup_app/data/models/stand_window.dart';
 
 void main() {
+  // Every cadence Settings offers (settings_screen.dart) and onboarding offers.
+  // The 90-minute option is the one that exposed the anchoring bug.
+  const cadences = [30, 60, 90];
+
   group('StandWindow.activeWindow', () {
     test('opens in the last five minutes of the hour', () {
       // 09:58 is inside the 09:55 -> 10:00 window.
@@ -80,13 +84,101 @@ void main() {
         throwsArgumentError,
       );
     });
+  test('lastBoundaryAtOrBefore returns the boundary that just closed', () {
+      // Exact boundary stays on itself.
+      expect(
+        StandWindow.lastBoundaryAtOrBefore(now: DateTime(2026, 1, 1, 10)),
+        DateTime(2026, 1, 1, 10),
+      );
+      // One microsecond earlier is the previous one.
+      expect(
+        StandWindow.lastBoundaryAtOrBefore(
+          now: DateTime(2026, 1, 1, 10).subtract(
+            const Duration(microseconds: 1),
+          ),
+        ),
+        DateTime(2026, 1, 1, 9),
+      );
+      // A millisecond earlier, too: this is the case that truncating whole
+      // minutes gets wrong, because it rounds 09:59:59.999 down to 599 and
+      // then pushes the floor forward to 10:00.
+      expect(
+        StandWindow.lastBoundaryAtOrBefore(
+          now: DateTime(2026, 1, 1, 10).subtract(const Duration(milliseconds: 1)),
+        ),
+        DateTime(2026, 1, 1, 9),
+      );
+      // Just after a boundary.
+      expect(
+        StandWindow.lastBoundaryAtOrBefore(now: DateTime(2026, 1, 1, 10, 0, 0, 1)),
+        DateTime(2026, 1, 1, 10),
+      );
+      // Just before a boundary.
+      expect(
+        StandWindow.lastBoundaryAtOrBefore(now: DateTime(2026, 1, 1, 9, 59, 59)),
+        DateTime(2026, 1, 1, 9),
+      );
+    });
+
+test('every completion key reconstructs a real window', () {
+      // The dedupe key is the closing instant of a window: the open one while a
+      // window is open, and the one that has just closed once it is not. The
+      // recovery below is the invariant _alreadyCompletedInWindow depends on -
+      // it turns the key back into [end - window, end) and searches there.
+      DateTime keyFor(DateTime when, int cadence) {
+        final open = StandWindow.activeWindow(now: when, cadenceMinutes: cadence);
+        return open?.end ??
+            StandWindow.lastBoundaryAtOrBefore(
+              now: when,
+              cadenceMinutes: cadence,
+            );
+      }
+
+      for (final cadence in cadences) {
+        for (var minuteOfDay = 0; minuteOfDay < 24 * 60; minuteOfDay++) {
+          final now = DateTime(2026, 1, 1).add(Duration(minutes: minuteOfDay));
+          final key = keyFor(now, cadence);
+
+          // The window the key claims to be must actually exist and close there.
+          final reconstructed = StandWindow.activeWindow(
+            now: key.subtract(const Duration(minutes: 1)),
+            cadenceMinutes: cadence,
+          );
+          expect(
+            reconstructed,
+            isNotNull,
+            reason: 'cadence $cadence at $now: key $key does not name a window',
+          );
+          expect(
+            reconstructed!.end,
+            key,
+            reason: 'cadence $cadence at $now: key $key does not close the '
+                'window it reconstructs',
+          );
+
+          // Every minute inside that one window must produce the SAME key, or
+          // tapping at two different points in a single break could record it
+          // twice. The key does change as a window opens - that is the handover
+          // from the previous window - so this is checked per window.
+          for (var offset = 0;
+              offset < StandWindow.defaultActionWindowMinutes;
+              offset++) {
+            final inside = key.subtract(Duration(minutes: offset));
+            expect(
+              keyFor(inside, cadence),
+              key,
+              reason: 'cadence $cadence: minute $inside inside the window '
+                  'ending $key produced a different key',
+            );
+          }
+        }
+      }
+    });
   });
 
   // Every cadence Settings offers (settings_screen.dart) and onboarding offers.
   // The 90-minute option is the one that exposed the anchoring bug.
   group('Every offered cadence opens a reachable window', () {
-    const cadences = [30, 60, 90];
-
     for (final cadence in cadences) {
       test(
         'cadence $cadence opens a window for every window slot in the day',

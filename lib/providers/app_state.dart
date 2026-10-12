@@ -543,39 +543,40 @@ class AppState extends ChangeNotifier {
     );
     if (window != null) return window.end.millisecondsSinceEpoch;
 
-    final cadenceMs = _cadenceMinutes * 60 * 1000;
-    return when.millisecondsSinceEpoch ~/ cadenceMs;
+    // Outside a window the key is still a closing instant, just the one that
+    // has already passed. Returning a cadence bucket index here instead made
+    // this function return two different kinds of number, and
+    // _alreadyCompletedInWindow could not tell them apart reliably once the
+    // window had closed in between.
+    return StandWindow.lastBoundaryAtOrBefore(
+      now: when,
+      cadenceMinutes: _cadenceMinutes,
+    ).millisecondsSinceEpoch;
   }
 
   /// Asks the database whether the window identified by [key] was already used.
   ///
-  /// A key derived from an active window is the window's closing instant, which
-  /// is the lower bound to search from; the width comes from the configured
-  /// action window. A key derived outside any window is a coarse cadence bucket
-  /// instead, so it is searched over the whole cadence slot.
+  /// [key] is always the closing instant of a window, so the window is
+  /// recovered from it directly instead of by looking up whichever window is
+  /// active now. That distinction is the fix: an in-flight guided stretch is
+  /// checked after its window has closed, and looking up the active window
+  /// there returned null, which sent the lookup down a bucket-index path that
+  /// multiplied an epoch value by a cadence in milliseconds and threw a
+  /// RangeError. The catch below turned that into "not already recorded", so
+  /// the guard reported false for exactly the case it exists to prevent and a
+  /// second break was logged.
   ///
-  /// Any failure resolves to `false` so a database problem cannot silently block
-  /// a legitimate break; the analytics transaction is what actually guarantees
+  /// Any failure still resolves to `false` so a database problem cannot block a
+  /// legitimate break; the analytics transaction is what actually guarantees
   /// the totals stay correct.
   Future<bool> _alreadyCompletedInWindow(DateTime now, int key) async {
     try {
-      final active = StandWindow.activeWindow(
-        now: now,
-        actionWindowMinutes: _actionWindowMinutes,
-        cadenceMinutes: _cadenceMinutes,
-      );
-      if (active != null && active.end.millisecondsSinceEpoch == key) {
-        return await localRepo.hasCompletedReminderInWindow(
-          _userProfile!.id,
-          active.start,
-          active.end,
-        );
-      }
-      final cadenceMs = _cadenceMinutes * 60 * 1000;
+      final end = DateTime.fromMillisecondsSinceEpoch(key);
+      final start = end.subtract(Duration(minutes: _actionWindowMinutes));
       return await localRepo.hasCompletedReminderInWindow(
         _userProfile!.id,
-        DateTime.fromMillisecondsSinceEpoch(key * cadenceMs),
-        DateTime.fromMillisecondsSinceEpoch((key + 1) * cadenceMs),
+        start,
+        end,
       );
     } catch (e) {
       debugPrint('Completion dedupe check failed: $e');

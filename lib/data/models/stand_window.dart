@@ -80,6 +80,30 @@ class StandWindow {
     );
   }
 
+  /// The most recent cadence-aligned boundary at or before [now].
+  ///
+  /// The closing instant of the window that has already passed. This is what
+  /// makes a window key a single key space: the end of the open window when
+  /// one is open, and the end of the last one when none is. Previously callers
+  /// fell back to a cadence bucket index in the second case, which is a
+  /// different kind of number entirely and could not be interpreted as an
+  /// instant.
+  static DateTime lastBoundaryAtOrBefore({
+    required DateTime now,
+    int cadenceMinutes = defaultCadenceMinutes,
+  }) {
+    _validate(defaultActionWindowMinutes, cadenceMinutes);
+    final midnight = DateTime(now.year, now.month, now.day);
+    final cadenceMs = cadenceMinutes * 60 * 1000;
+    // Floor, not round: stepping [now] back one interval has to land on a real
+    // boundary. Doing this with inMinutes truncates towards zero and loses the
+    // sub-minute part, so 09:59:59.999999 computed as 599 minutes and the floor
+    // pushed the answer forward to 10:00 - the boundary after now.
+    final elapsedMs = now.difference(midnight).inMilliseconds;
+    final steps = elapsedMs <= 0 ? 0 : elapsedMs ~/ cadenceMs;
+    return midnight.add(Duration(milliseconds: steps * cadenceMs));
+  }
+
   /// Time remaining until [now] leaves the active window. Zero when the window
   /// is not currently open, which lets the UI collapse to a "closed" state
   /// without a separate branch.

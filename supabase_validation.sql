@@ -249,7 +249,16 @@ FROM public.analytics_daily AS a
 WHERE a.organization_id IS NOT NULL
   AND a.trusted
   AND NOT a.clock_suspect
-GROUP BY a.organization_id, a.date;
+  -- Both of these were missing here and were the reason this script was
+  -- unsafe to apply after the schema. A Postgres view runs with its owner's
+  -- privileges and does not inherit RLS from the base table, so without these
+  -- predicates every authenticated employee could read every organisation's
+  -- adherence totals, and a cohort of one was enough to expose a department.
+  -- The schema file defines these views WITH them; this script must not
+  -- redefine them without.
+  AND private.is_org_admin(a.organization_id)
+GROUP BY a.organization_id, a.date
+HAVING COUNT(DISTINCT a.user_id) >= 5;
 
 CREATE OR REPLACE VIEW public.org_department_analytics
 WITH (security_barrier = true) AS
@@ -272,7 +281,9 @@ WHERE a.organization_id IS NOT NULL
   AND a.trusted
   AND NOT a.clock_suspect
   AND p.department IS NOT NULL
-GROUP BY a.organization_id, a.date, p.department;
+  AND private.is_org_admin(a.organization_id)
+GROUP BY a.organization_id, a.date, p.department
+HAVING COUNT(DISTINCT a.user_id) >= 5;
 
 -- -----------------------------------------------------------------------------
 -- 6. Verification

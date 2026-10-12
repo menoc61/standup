@@ -891,6 +891,31 @@ cmd_release() {
       if [[ -d "${win_dir}" ]]; then
         powershell -NoProfile -Command "Compress-Archive -Path '${win_dir}\*' -DestinationPath '${out}\standup-windows.zip' -Force" \
           && produced+=("standup-windows.zip") && success "packaged"
+
+        # The installer is built from scripts/windows/standup.iss by Inno Setup,
+        # which only runs on Windows. This branch already requires Windows, so
+        # unlike the iOS/macOS artefacts the installer is not skipped here for
+        # platform reasons — say so explicitly rather than quietly producing a
+        # zip where standup.ps1 would also produce a setup executable.
+        #
+        # ProgramW6432 stands in for ProgramFiles(x86): a variable name with
+        # parentheses cannot be dereferenced safely in every POSIX shell.
+        local iscc_found=""
+        local iscc_candidate
+        for iscc_candidate in \
+          "${LOCALAPPDATA:-}/Programs/Inno Setup 6/ISCC.exe" \
+          "${ProgramFiles:-}/Inno Setup 6/ISCC.exe" \
+          "${ProgramW6432:-}/Inno Setup 6/ISCC.exe"; do
+          if [[ -x "${iscc_candidate}" ]]; then
+            iscc_found="${iscc_candidate}"
+            break
+          fi
+        done
+        if [[ -n "${iscc_found}" ]]; then
+          log "installer: ISCC at ${iscc_found} — run scripts/standup.ps1 to build it"
+        else
+          warn "Inno Setup not found — installer not built (winget install JRSoftware.InnoSetup)"
+        fi
       fi
     fi
   else

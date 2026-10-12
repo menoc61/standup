@@ -111,6 +111,12 @@ const Map<String, String> _french = {
   'BREAK IN PROGRESS': 'PAUSE EN COURS',
   'Movement Time': 'Temps de mouvement',
   'until next 5-min stand': 'avant la prochaine pause de 5 min',
+  // Dynamic island. These were hard-coded English literals, so a French user
+  // saw an English header on the one compact surface that has room for none of
+  // the longer phrasing.
+  'Time to Stand Up!': 'C\'est l\'heure de vous lever !',
+  '5-minute posture reset ready': 'Pause de 5 minutes prête',
+  '{time} until break': '{time} avant la pause',
   'Welcome': 'Bienvenue',
   'Why movement matters': 'Pourquoi bouger compte',
   'A simple solution': 'Une solution simple',

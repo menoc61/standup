@@ -209,7 +209,7 @@ class _DynamicIslandState extends State<DynamicIsland>
               Row(
                 children: [
                   Text(
-                    isAlert ? 'Time to Stand Up!' : 'Focus Cadence',
+                    appString(context, isAlert ? 'Time to Stand Up!' : 'FOCUS CADENCE'),
                     style: theme.textTheme.titleSmall?.copyWith(fontSize: 13),
                   ),
                   const SizedBox(width: 8),
@@ -247,8 +247,12 @@ class _DynamicIslandState extends State<DynamicIsland>
               const SizedBox(height: 2),
               Text(
                 isAlert
-                    ? '5-minute posture reset ready'
-                    : '${formatClock(widget.remainingDuration)} until break',
+                    ? appString(context, '5-minute posture reset ready')
+                    : appStringArgs(
+                        context,
+                        '{time} until break',
+                        {'time': formatClock(widget.remainingDuration)},
+                      ),
                 style: TextStyle(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontSize: 11,
@@ -276,8 +280,8 @@ class _DynamicIslandState extends State<DynamicIsland>
                   color: AppColors.completed,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'Stand',
+                child: Text(
+                  appString(context, 'Stand'),
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,

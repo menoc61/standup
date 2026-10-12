@@ -106,7 +106,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     final user = widget.appState.userProfile;
     final today = widget.appState.todayAnalytics;
-    final isAlert = widget.appState.remainingDuration == Duration.zero;
+    // The alert means "your break window is open, go now", so it belongs to the
+    // window being open rather than to the countdown having run out.
+    // remainingDuration counts down to the window's CLOSING instant, so it
+    // reached zero only AFTER the break had expired - the one moment the action
+    // is refused. That made the app announce "It's time to stand up! Your body
+    // will thank you." exactly when the user could no longer log a stand-up.
+    final isAlert = widget.appState.isActionWindowOpen;
     return Scaffold(
       // Let the paper-toned canvas sit behind the dashboard panels.
       backgroundColor: Colors.transparent,
@@ -560,7 +566,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPostureCard(ThemeData theme, bool isDark, Color accent) {
-    final isAlert = widget.appState.remainingDuration == Duration.zero;
+    final isAlert = widget.appState.isActionWindowOpen;
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Row(

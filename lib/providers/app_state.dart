@@ -346,14 +346,20 @@ class AppState extends ChangeNotifier {
 
     if (_nextReminderTime != null) {
       _remainingDuration = ReminderClock.remaining(now, _nextReminderTime!);
-      if (_remainingDuration == Duration.zero) {
-        // The window has shut. Announce it once, and never for a window that
-        // was already acted on.
-        if (!_isBreakActive && !_reminderAlertPlayed) {
-          _reminderAlertPlayed = true;
-          if (!isInQuietHours) unawaited(audioService.playChime());
-        }
-      }
+    }
+
+    // The chime is the invitation to stand, so it belongs to the moment a
+    // window OPENS - that is the first instant a break can be recorded. It used
+    // to fire when _nextReminderTime (the window's CLOSING instant) passed, so
+    // the app stayed silent exactly when the opportunity appeared and nagged
+    // instead after the window had expired, which is the one moment the user
+    // can no longer act. The doc comment further down already described the
+    // opposite intent, and the onboarding copy says "stand up when you hear
+    // the gentle chime".
+    final windowOpen = isActionWindowOpen;
+    if (windowOpen && !_isBreakActive && !_reminderAlertPlayed) {
+      _reminderAlertPlayed = true;
+      if (!isInQuietHours) unawaited(audioService.playChime());
     }
 
     // When the boundary passes, roll forward to the following window.
@@ -479,6 +485,13 @@ class AppState extends ChangeNotifier {
 
     await _persistReminderInterval();
     await _scheduleReminderQueue(_nextReminderTime!);
+    // This path is taken on app launch and on resume, and _syncLiveCountdown
+    // was only ever called from _scheduleNextInterval. So a cold launch started
+    // the timer and the OS queue but never started the ongoing notification,
+    // leaving no countdown on screen until the next cadence roll-over - up to
+    // an hour later. The claim in _syncLiveCountdown's own doc comment that
+    // every path updating the timer updates the shade was not true of launch.
+    await _syncLiveCountdown();
   }
 
   Future<void> _persistReminderInterval() async {

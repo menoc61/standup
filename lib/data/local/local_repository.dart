@@ -47,6 +47,25 @@ class LocalDatabaseRepository {
         );
   }
 
+  /// Selects the profile for [userId] if this device already holds one,
+  /// otherwise returns null.
+  Future<UserProfile?> getUserProfileById(String userId) async {
+    final row = await (_db.select(
+      _db.userProfilesTable,
+    )..where((t) => t.id.equals(userId))).getSingleOrNull();
+    if (row == null) return null;
+    return UserProfile(
+      id: row.id,
+      name: row.name,
+      designation: row.designation,
+      department: row.department,
+      email: row.email,
+      organizationId: row.organizationId,
+      role: row.role,
+      createdAt: row.createdAt,
+    );
+  }
+
   /// Reassigns this device's local history to the authenticated account.
   /// The operation is atomic so a partial sign-in can never split local data.
   Future<void> reassignLocalUser(

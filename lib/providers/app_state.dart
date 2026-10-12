@@ -23,6 +23,15 @@ import 'package:standup_app/services/haptics_service.dart';
 import 'package:standup_app/services/live_countdown_service.dart';
 import 'package:standup_app/services/notification_service.dart';
 
+/// Prefix for a profile that has never been claimed by a cloud account.
+///
+/// Minted at init for a device-only profile, and the discriminator that decides
+/// whether local history may be handed to an account on sign-in: a `local_` id
+/// has no owner to protect, an account id does.
+const String kLocalUserIdPrefix = 'local_';
+
+bool _isLocalUserId(String userId) => userId.startsWith(kLocalUserIdPrefix);
+
 class AppState extends ChangeNotifier {
   final LocalDatabaseRepository localRepo;
   final SupabaseService supabaseService;
@@ -244,7 +253,7 @@ class AppState extends ChangeNotifier {
 
     // 1. Load Profile
     _userProfile = await localRepo.getUserProfile();
-    final userId = _userProfile?.id ?? 'local_${const Uuid().v4()}';
+    final userId = _userProfile?.id ?? '$kLocalUserIdPrefix${const Uuid().v4()}';
 
     if (_userProfile == null) {
       _userProfile = UserProfile(
@@ -1011,7 +1020,20 @@ class AppState extends ChangeNotifier {
       if (_userProfile == null) return;
       final previousId = _userProfile!.id;
       if (previousId != accountId) {
-        await localRepo.reassignLocalUser(previousId, accountId);
+        if (_isLocalUserId(previousId)) {
+          // The normal path: this device's own, never-synced history is
+          // claimed by the account the user just signed in to.
+          await localRepo.reassignLocalUser(previousId, accountId);
+        } else {
+          // Switching between two real accounts. The previous id belongs to
+          // the account that just signed out, so its rows must stay under
+          // that id. Reassigning here would hand the previous employee's
+          // break history, streak and preferences to whoever signs in next -
+          // and markAllAnalyticsAsUnsynced below would then upload it into
+          // the new account and its organisation's aggregates.
+          await _switchToAccountProfile(accountId, email);
+          return;
+        }
       }
       _userProfile = _userProfile!.copyWith(id: accountId, email: email);
       await localRepo.saveUserProfile(_userProfile!);
@@ -1027,6 +1049,38 @@ class AppState extends ChangeNotifier {
     });
     _accountTransition = operation.catchError((Object _) {});
     await operation;
+  }
+
+  /// Loads the incoming account's own profile, or creates a blank one.
+  ///
+  /// Leaves the signed-out account's rows untouched under its own id, so
+  /// signing back into it restores that account's history rather than finding
+  /// it overwritten.
+  Future<void> _switchToAccountProfile(String accountId, String? email) async {
+    final existing = await localRepo.getUserProfileById(accountId);
+    _userProfile =
+        existing?.copyWith(email: email ?? existing.email) ??
+        UserProfile(
+          id: accountId,
+          name: 'Employee',
+          role: 'employee',
+          email: email,
+        );
+    await localRepo.saveUserProfile(_userProfile!);
+
+    _preferences = await localRepo.getUserPreferences(accountId) ??
+        UserPreferences.defaultPreferences(accountId);
+    final preferences = _preferences!;
+    await localRepo.saveUserPreferences(preferences);
+    audioService.soundEnabled = preferences.soundEnabled;
+    audioService.selectedSound = preferences.selectedSound;
+    HapticsService.enabled = preferences.hapticsEnabled;
+
+    _todayAnalytics = await localRepo.getAnalyticsForDate(
+      accountId,
+      localRepo.getTodayDateString(),
+    );
+    _dailyHistory = await localRepo.getAllDailyAnalytics(accountId);
   }
 
   Future<void> _handleAuthStateChanged() async {

@@ -124,9 +124,10 @@ jobs:
           retention-days: 30
 
   # ---------------------------------------------------------------------------
-  # Windows. Requires no secret: the bundle is unsigned, which is enough to
-  # download and run, and signing needs a certificate the repository does not
-  # hold yet.
+  # Windows. Requires no secret today: the bundle is unsigned, which is enough
+  # to download and run, and signing needs a certificate the repository does
+  # not hold yet. The job ships both a zip (as before) and an Inno Setup
+  # installer, which is what staff should be pointed at.
   # ---------------------------------------------------------------------------
   windows:
     name: Windows release
@@ -161,6 +162,33 @@ jobs:
             -Force
           Get-Item "dist\standup-$env:GITHUB_REF_NAME-windows-x64.zip" |
             Format-List Name,Length
+
+      # The zip is kept for parity and for users who unpack by hand, but the
+      # installer is the artifact to point staff at: it gives a Start Menu
+      # entry, an Add/Remove Programs entry, a real uninstall and an upgrade
+      # path. The zip has none of those.
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress --limit-output
+
+      - name: Build the installer
+        run: |
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:\s*(\S+)' |
+            Select-Object -First 1).Matches.Groups[1].Value
+          if (-not $version) { throw 'Could not read version from pubspec.yaml' }
+
+          # Signing is opt-in: the certificate is a repository secret that does
+          # not exist yet. Until it does, the installer is unsigned, which
+          # means SmartScreen still warns - see docs/INSTALL_AND_LAUNCH.md.
+          $args = @(
+            "/DAppVersion=$version"
+            "/DBuildRoot=$PWD\build\windows\x64\runner\Release"
+            "/DOutputDir=$PWD\dist"
+            "scripts\windows\standup.iss"
+          )
+          if ($env:WINDOWS_SIGNTOOL) { $args = "/DSignToolCommand=$env:WINDOWS_SIGNTOOL" + $args }
+          & "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" @args
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with $LASTEXITCODE" }
+          Get-ChildItem dist\*.exe | Format-List Name,Length
 
       - uses: actions/upload-artifact@v4
         with:

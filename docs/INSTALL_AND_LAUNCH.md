@@ -57,6 +57,48 @@ For a locally testable release-mode APK, use `flutter build apk --release`. Stor
 
 ### Windows desktop
 
+#### Installing a release (for most people)
+
+Each GitHub release ships a `standup-<version>-windows-x64-setup.exe`. Download
+it and run it. It installs per-user, so there is **no administrator prompt** and
+it works on machines where you cannot install software system-wide. You get a
+Start Menu entry, a desktop shortcut and a proper Add/Remove Programs entry.
+
+The same release also ships `standup-<version>-windows-x64.zip`. That is the
+raw build folder — use the installer unless you specifically need the portable
+copy.
+
+> **Windows may warn you.** The binaries are not code-signed, so Windows
+> SmartScreen shows a blue *"Windows protected your PC"* dialog. The packaging
+> does not change that — SmartScreen judges the signature, not the file format.
+> To proceed: click **More info**, then **Run anyway**. Only do this for a
+> build you obtained from this project's own releases.
+>
+> Signing is the real fix and is not wired up yet; see the note in
+> [LICENSE](LICENSE) and the `SignToolCommand` hook in
+> `scripts/windows/standup.iss`.
+
+#### Where your data lives
+
+Nothing the app writes sits inside the install folder, so uninstalling never
+destroys your history:
+
+| Data | Location |
+| --- | --- |
+| Break history, streaks, analytics | `%USERPROFILE%\Documents\standup_app.sqlite` |
+| Language, accent and reminder settings | `%APPDATA%\com.healthwellness\CNPS StandUp\shared_preferences.json` |
+
+To fully remove the app, uninstall it from Add/Remove Programs and then delete
+those two files.
+
+> **Note for upgraders from v1.0.0.** That release registered its settings
+> folder under `CSPH StandUp`. After upgrading, Windows looks in
+> `CNPS StandUp`, so your language and reminder settings reset to defaults
+> once. Your break history in `Documents` is untouched. This is deliberate and
+> will not be corrected in this build.
+
+#### Building it yourself
+
 After installing the Visual Studio C++ workload and restarting the terminal:
 
 ```powershell
@@ -66,6 +108,10 @@ flutter build windows --release
 ```
 
 The release bundle is under `build/windows/x64/runner/Release/`. Launch `standup_app.exe` from that directory; keep the adjacent DLLs and `data` directory with it. For a test build without packaging, use `flutter build windows --debug` and launch the executable under `build/windows/x64/runner/Debug/`.
+
+To also produce the installer locally, install Inno Setup
+(`winget install JRSoftware.InnoSetup`) and run the release command — it builds
+both the zip and the setup executable into `dist/`.
 
 ### Web, iOS, macOS, and Linux
 

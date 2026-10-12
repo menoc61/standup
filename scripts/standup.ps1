@@ -532,6 +532,30 @@ function Invoke-Setup {
     Write-Success 'environment prepared'
 }
 
+# ── Windows installer ────────────────────────────────────────────────────────
+
+<#
+.SYNOPSIS
+Locates the Inno Setup command-line compiler, or returns nothing.
+
+.DESCRIPTION
+ISCC has moved between Program Files and the per-user Programs folder across
+Inno Setup releases, and a per-user install is the common case on developer
+machines. Probing both beats hard-coding one path that works on CI and not on
+a laptop.
+#>
+function Get-InnoCompiler {
+    $candidates = @(
+        (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe'),
+        (Join-Path $env:ProgramFiles 'Inno Setup 6\ISCC.exe'),
+        (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe')
+    )
+    foreach ($path in $candidates) {
+        if ($path -and (Test-Path -LiteralPath $path)) { return $path }
+    }
+    return $null
+}
+
 function Invoke-Codegen {
     Write-Section 'Drift code generation'
     Invoke-Flutter pub run build_runner build --delete-conflicting-outputs
@@ -1047,6 +1071,26 @@ function Invoke-Release {
                 Compress-Archive -Path (Join-Path $runner '*') -DestinationPath $zip
                 $produced += 'standup-windows.zip'
                 Write-Success 'packaged'
+
+                # The zip is kept for parity, but the installer is what a user
+                # should be pointed at: it adds a Start Menu entry, an
+                # Add/Remove Programs entry and an upgrade path, none of which
+                # a zip has. Requires Inno Setup; skipped with a warning rather
+                # than failing the release, because the zip already succeeded.
+                $iscc = Get-InnoCompiler
+                if ($iscc) {
+                    $iss = Join-Path $Script:ProjectRoot 'scripts\windows\standup.iss'
+                    $setup = & $iscc "/DBuildRoot=$runner" "/DOutputDir=$dist" $iss 2>&1
+                    if ($LASTEXITCODE -eq 0) {
+                        $built = Get-ChildItem (Join-Path $dist '*.exe') -ErrorAction SilentlyContinue
+                        foreach ($f in $built) { $produced += $f.Name }
+                        Write-Success "installer built ($($built.Count) file(s))"
+                    } else {
+                        Write-Warn "ISCC failed; zip still produced`n$setup"
+                    }
+                } else {
+                    Write-Warn 'Inno Setup not found (winget install JRSoftware.InnoSetup); installer skipped'
+                }
             }
         } catch {
             Write-Err "windows release failed: $_"

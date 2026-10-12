@@ -272,20 +272,23 @@ class _MainShellState extends State<MainShell> {
       floatingActionButton: ReminderFab(appState: widget.appState),
       body: _buildAnimatedScreenStack(context, screens),
       bottomNavigationBar: GlassBottomBar(
-        items: const [
+        // Not const: the labels resolve through appString, and a const list
+        // cannot call it. The bar is the primary navigation, so leaving these
+        // as English literals meant a French user got an English nav bar.
+        items: [
           GlassBarItem(
             icon: Icons.timer_outlined,
-            label: 'Timer',
+            label: appString(context, 'Timer'),
             nativeSymbolName: 'timer',
           ),
           GlassBarItem(
             icon: Icons.emoji_events_outlined,
-            label: 'Leaderboard',
+            label: appString(context, 'Leaderboard'),
             nativeSymbolName: 'trophy.fill',
           ),
           GlassBarItem(
             icon: Icons.grid_view_outlined,
-            label: 'Analytics',
+            label: appString(context, 'Analytics'),
             nativeSymbolName: 'chart.bar.fill',
           ),
         ],
@@ -545,6 +548,9 @@ class _GlassSidebar extends StatelessWidget {
     required this.onDestinationSelected,
   });
 
+  // Labels are English keys resolved with appString at the call site, matching
+  // the mobile bar. A const list here is what kept the sidebar English in a
+  // French session.
   static const _destinations = [
     (icon: Icons.timer_outlined, selected: Icons.timer, label: 'Timer'),
     (

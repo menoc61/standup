@@ -71,7 +71,9 @@ class CountdownRing extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        isBreakActive ? "BREAK IN PROGRESS" : "FOCUS CADENCE",
+                        isBreakActive
+                            ? appString(context, 'BREAK IN PROGRESS')
+                            : appString(context, 'FOCUS CADENCE'),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w800,
@@ -97,7 +99,9 @@ class CountdownRing extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  isBreakActive ? "Movement Time" : "until next 5-min stand",
+                  isBreakActive
+                      ? appString(context, 'Movement Time')
+                      : appString(context, 'until next 5-min stand'),
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.2,

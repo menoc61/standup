@@ -152,8 +152,8 @@ class _StandUpAppState extends State<StandUpApp> with WidgetsBindingObserver {
 
         return MaterialApp(
           title: widget.appState.languageCode == 'fr'
-              ? 'CSPH • Bien-être au travail'
-              : 'CSPH • StandUp Wellness',
+              ? 'CNPS • Bien-être au travail'
+              : 'CNPS • StandUp Wellness',
           locale: Locale(widget.appState.languageCode),
           supportedLocales: const [Locale('fr'), Locale('en')],
           localizationsDelegates: const [

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 /// ## Where these values come from
 ///
 /// The two brand constants are sampled directly from
-/// `assets/branding/csph_standup_logo.png`, where `STAND` is silver and `UP` is
+/// `assets/branding/CNPS_standup_logo.png`, where `STAND` is silver and `UP` is
 /// crimson. Everything else is derived from those two plus a neutral ink ramp,
 /// which is why the app still reads as the same product as the logo without the
 /// screen being *tinted* green.

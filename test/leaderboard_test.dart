@@ -193,7 +193,7 @@ OrgAnalytics _org(List<DepartmentMetric> departments) {
   );
   return OrgAnalytics(
     organizationId: 'org_1',
-    organizationName: 'CSPH',
+    organizationName: 'CNPS',
     date: '2026-01-07',
     activeUsers: departments.length * 5,
     totalSent: completed,

@@ -11,7 +11,7 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
     <application
-        android:label="CSPH StandUp"
+        android:label="CNPS StandUp"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
@@ -31,7 +31,7 @@
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/csph_standup_widget_info"/>
+                android:resource="@xml/cnps_standup_widget_info"/>
         </receiver>
 
         <activity

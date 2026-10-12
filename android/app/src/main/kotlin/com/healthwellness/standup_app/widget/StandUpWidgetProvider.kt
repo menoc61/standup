@@ -57,7 +57,7 @@ class StandUpWidgetProvider : AppWidgetProvider() {
         const val PREFS_NAME = "HomeWidgetPreferences"
 
         /** URI the button broadcasts. Mirrored by `WidgetActionCallback`. */
-        const val URI_COMPLETE = "csphwidget://complete"
+        const val URI_COMPLETE = "CNPSwidget://complete"
 
         private const val TAG = "StandUpWidget"
 
@@ -95,7 +95,7 @@ class StandUpWidgetProvider : AppWidgetProvider() {
     }
 
     private fun buildViews(context: Context): RemoteViews {
-        val views = RemoteViews(context.packageName, R.layout.csph_standup_widget)
+        val views = RemoteViews(context.packageName, R.layout.cnps_standup_widget)
         val values = snapshot(context)
         val colors = Colors(values)
 
@@ -203,7 +203,7 @@ class StandUpWidgetProvider : AppWidgetProvider() {
             HomeWidgetLaunchIntent.getActivity(
                 context,
                 MainActivity::class.java,
-                Uri.parse("csphwidget://open")
+                Uri.parse("CNPSwidget://open")
             )
         )
 

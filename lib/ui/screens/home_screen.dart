@@ -516,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Color accent,
     user,
   ) {
-    final name = user?.name.split(' ').first ?? 'CSPH';
+    final name = user?.name.split(' ').first ?? 'CNPS';
     final hour = DateTime.now().hour;
     final greeting = hour < 12
         ? 'Good Morning'

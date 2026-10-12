@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 CSPH — Comité Syndical de la Prévention et de la Santé au Travail
+Copyright (c) 2026 CNPS — Caisse Nationale de la Prévoyance Sociale
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -26,8 +26,14 @@ SOFTWARE.
 
 The MIT licence covers the source code in this repository.
 
-It does **not** grant rights to the CSPH name, logo, or other trademarks. Those
-remain the property of CSPH and may only be used to identify the official
-application. The logo at `assets/branding/csph_standup_logo.png` and every icon
-derived from it by `scripts/icons/generate_icons.py` are covered by this
-restriction.
+It does **not** grant rights to the CNPS name, logo, or other trademarks. The
+CNPS name and any marks issued by CNPS remain the property of CNPS — Caisse
+Nationale de la Prévoyance Sociale — and may only be used to identify the
+official application.
+
+The artwork at `assets/branding/CNPS_standup_logo.png`, and every icon derived
+from it by `scripts/icons/generate_icons.py`, is original project artwork. It is
+**not** an official CNPS logo and is not covered by any CNPS trademark claim. It
+carries the project name only. Replace it with official CNPS brand assets, and
+re-run `scripts/icons/generate_icons.py`, before distributing this application
+under the CNPS name.

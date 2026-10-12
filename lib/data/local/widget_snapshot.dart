@@ -204,15 +204,15 @@ class WidgetBridge {
   /// required for `updateWidget` to find it.
   static const _qualifiedProviderAndroid =
       'com.healthwellness.standup_app.widget.StandUpWidgetProvider';
-  static const _providerIOS = 'CSPHStandUpWidget';
+  static const _providerIOS = 'CNPSStandUpWidget';
 
   static const String keySnapshot = 'snapshot';
 
   /// Route used by the widget's action button, on both platforms.
-  static const String uriComplete = 'csphwidget://complete';
+  static const String uriComplete = 'CNPSwidget://complete';
 
   /// Route used when the widget body is tapped, to open the app.
-  static const String uriOpen = 'csphwidget://open';
+  static const String uriOpen = 'CNPSwidget://open';
 
   /// App Group shared with the WidgetKit extension.
   ///

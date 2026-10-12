@@ -169,14 +169,14 @@ void main() {
   group('Widget action routing', () {
     test('the complete route is recognised', () {
       // Mirrors the URI the native providers broadcast.
-      expect(WidgetBridge.uriComplete, 'csphwidget://complete');
+      expect(WidgetBridge.uriComplete, 'CNPSwidget://complete');
     });
 
     test('the provider names match the native declarations', () {
       // Android: com.healthwellness.standup_app.widget.StandUpWidgetProvider
-      // iOS: the WidgetKit bundle's CSPHStandUpWidget
+      // iOS: the WidgetKit bundle's CNPSStandUpWidget
       // A mismatch here fails silently at runtime, so it is asserted.
-      expect(WidgetBridge.uriOpen, 'csphwidget://open');
+      expect(WidgetBridge.uriOpen, 'CNPSwidget://open');
     });
   });
 

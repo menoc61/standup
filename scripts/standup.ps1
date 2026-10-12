@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    CSPH StandUp — project control script (PowerShell).
+    CNPS StandUp — project control script (PowerShell).
 
 .DESCRIPTION
     One entry point for everything this repository needs: environment setup,
@@ -96,7 +96,7 @@ Set-Location $Script:ProjectRoot
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-$Script:AppName = 'CSPH StandUp'
+$Script:AppName = 'CNPS StandUp'
 $Script:AndroidPackage = 'com.healthwellness.standup_app'
 $Script:IOSBundleId = 'com.healthwellness.standupApp'
 $Script:Platforms = @('android', 'ios', 'web', 'windows', 'macos', 'linux')
@@ -471,7 +471,7 @@ function Invoke-Doctor {
         Write-Warn 'Android receiver not registered in the manifest'
     }
 
-    $iosWidget = 'ios\StandUpWidget\CSPHStandUpWidget.swift'
+    $iosWidget = 'ios\StandUpWidget\CNPSStandUpWidget.swift'
     if (Test-Path (Join-Path $Script:ProjectRoot $iosWidget)) {
         $pbxproj = 'ios\Runner.xcodeproj\project.pbxproj'
         if ((Test-Path (Join-Path $Script:ProjectRoot $pbxproj)) -and
@@ -982,12 +982,12 @@ function Invoke-Widget {
         'info' {
             Write-Section 'Home-screen widgets'
             Write-Host "  Android provider : $($Script:AndroidPackage).widget.StandUpWidgetProvider"
-            Write-Host '  Android layout   : android\app\src\main\res\layout\csph_standup_widget.xml'
-            Write-Host '  iOS kind         : CSPHStandUpWidget'
+            Write-Host '  Android layout   : android\app\src\main\res\layout\CNPS_standup_widget.xml'
+            Write-Host '  iOS kind         : CNPSStandUpWidget'
             Write-Host "  App Group        : group.$($Script:IOSBundleId)"
             Write-Host ''
             Write-Host 'Add the widget:'
-            Write-Host '  Android: long-press the home screen -> Widgets -> CSPH StandUp'
+            Write-Host '  Android: long-press the home screen -> Widgets -> CNPS StandUp'
             Write-Host '  iOS:     long-press the home screen -> + -> search StandUp'
             Write-Host ''
             Write-Host 'After a language change or a logged break, run:'

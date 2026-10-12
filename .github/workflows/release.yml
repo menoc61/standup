@@ -285,7 +285,7 @@ jobs:
       - name: Verify the widget target's sources resolve
         run: |
           fail=0
-          for f in CSPHStandUpWidget StandUpIntents StandUpProvider \
+          for f in CNPSStandUpWidget StandUpIntents StandUpProvider \
                    StandUpWidgetView WidgetPayload WidgetStyle; do
             if grep -q "StandUpWidget/$f.swift" ios/Runner.xcodeproj/project.pbxproj; then
               echo "ok   StandUpWidget/$f.swift"
@@ -372,6 +372,6 @@ jobs:
             gh release delete "$GITHUB_REF_NAME" --yes --cleanup-tag
           fi
           gh release create "$GITHUB_REF_NAME" \
-            --title "CSPH StandUp $GITHUB_REF_NAME" \
+            --title "CNPS StandUp $GITHUB_REF_NAME" \
             --generate-notes \
             dist/*

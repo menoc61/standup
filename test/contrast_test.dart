@@ -229,7 +229,7 @@ void main() {
     });
 
     test('brand constants match the logo asset', () {
-      // Sampled from assets/branding/csph_standup_logo.png. If the logo is ever
+      // Sampled from assets/branding/CNPS_standup_logo.png. If the logo is ever
       // re-exported, this fails and the two are updated together rather than
       // the app quietly drifting from its own mark.
       expect(AppColors.brand, const Color(0xFF0472B1));

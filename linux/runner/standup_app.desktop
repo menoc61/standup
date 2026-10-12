@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=CSPH StandUp
+Name=CNPS StandUp
 GenericName=Wellbeing Reminder
 Comment=Hourly stand-up and posture-break reminders with anonymised team analytics.
 Exec=standup_app

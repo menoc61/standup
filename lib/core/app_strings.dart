@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-/// Small, app-owned UI dictionary. French is the default for CSPH Cameroon;
+/// Small, app-owned UI dictionary. French is the default for CNPS Cameroon;
 /// English remains available in Settings. Unknown copy stays visible as-is so
 /// new text is never hidden by a missing translation.
 String appString(BuildContext context, String english) {
@@ -107,6 +107,10 @@ const Set<String> intentionallyIdenticalInFrench = {
 // English keys, resolved through appString. They were rendered raw, so a
 // French user saw an English header above a French slide.
 const Map<String, String> _french = {
+  'FOCUS CADENCE': 'RYTHME DE CONCENTRATION',
+  'BREAK IN PROGRESS': 'PAUSE EN COURS',
+  'Movement Time': 'Temps de mouvement',
+  'until next 5-min stand': 'avant la prochaine pause de 5 min',
   'Welcome': 'Bienvenue',
   'Why movement matters': 'Pourquoi bouger compte',
   'A simple solution': 'Une solution simple',
@@ -115,7 +119,7 @@ const Map<String, String> _french = {
   'Preferences': 'Préférences',
   'Privacy': 'Confidentialité',
   'Ready': 'Prêt',
-  'StandUp': 'CSPH • StandUp',
+  'StandUp': 'CNPS • StandUp',
   'Timer': 'Rappels',
   'Org Health': 'Santé de l’organisation',
   'Org': 'Org.',
@@ -192,7 +196,7 @@ const Map<String, String> _french = {
   'Privacy-Enforced: RLS hides individual timestamps & employee names.': 'Confidentialité renforcée : les règles RLS masquent les noms et les horaires individuels.',
   'Department Adherence Leaderboard': 'Assiduité par service',
   'Peak Skip Hours Analysis': 'Heures où les rappels sont le plus ignorés',
-  'HEALTH & WELLNESS CADENCE': 'BIEN-ÊTRE AU TRAVAIL • CSPH CAMEROUN',
+  'HEALTH & WELLNESS CADENCE': 'BIEN-ÊTRE AU TRAVAIL • CNPS CAMEROUN',
   'StandUp Ergonomics': 'Bouger mieux au travail',
   'The Sedentary Trap': 'Les effets de la sédentarité',
   'The 5-Minute Solution': 'La pause de 5 minutes',
@@ -315,7 +319,7 @@ const Map<String, String> _french = {
   'Exact reminder timestamps & skip logs stay strictly on your device.': 'Les horaires des rappels et votre historique restent sur votre appareil.',
   'Anonymized Aggregates': 'Données agrégées et anonymisées',
   'Only daily counts (e.g. 7 stands completed) sync to Supabase for company metrics.': 'Seuls des totaux quotidiens (par exemple, sept pauses terminées) sont transmis à Supabase.',
-  'ORG HEALTH': 'BIEN-ÊTRE CSPH',
+  'ORG HEALTH': 'BIEN-ÊTRE CNPS',
   'Organization health insights': 'Indicateurs de bien-être de l’organisation',
   'How StandUp Works': 'Comment fonctionne StandUp',
   'Gentle Scheduled Chimes': 'Des rappels doux',
@@ -331,7 +335,7 @@ const Map<String, String> _french = {
   'Production Flutter + Supabase + Drift':
       'Application Flutter + Supabase + Drift',
   'EMPLOYEE HEALTH & WELLNESS CADENCE':
-      'SANTÉ ET BIEN-ÊTRE AU TRAVAIL • CSPH CAMEROUN',
+      'SANTÉ ET BIEN-ÊTRE AU TRAVAIL • CNPS CAMEROUN',
   'Org Adherence': 'Assiduité de l’organisation',
   'Auto': 'Auto',
   'Continue': 'Continuer',
@@ -382,7 +386,7 @@ const Map<String, String> _french = {
   'Copy CSV to clipboard': 'Copier le CSV dans le presse-papiers',
   'CSV copied to your clipboard': 'CSV copié dans le presse-papiers',
   'StandUp v1.0.0 • Production Flutter + Supabase + Drift':
-      'CSPH StandUp v1.0.0 • Flutter + Supabase + Drift',
+      'CNPS StandUp v1.0.0 • Flutter + Supabase + Drift',
   'Your progress': 'Votre progression',
   'Leaderboard': 'Classement',
   'Level': 'Niveau',

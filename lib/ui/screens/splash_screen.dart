@@ -59,7 +59,7 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // The supplied CSPH StandUp mark is also the installed app icon.
+            // The supplied CNPS StandUp mark is also the installed app icon.
             Container(
                   width: 184,
                   height: 164,
@@ -79,9 +79,9 @@ class _SplashScreenState extends State<SplashScreen> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(26),
                     child: Image.asset(
-                      'assets/branding/csph_standup_logo.png',
+                      'assets/branding/CNPS_standup_logo.png',
                       fit: BoxFit.contain,
-                      semanticLabel: 'CSPH StandUp',
+                      semanticLabel: 'CNPS StandUp',
                     ),
                   ),
                 )

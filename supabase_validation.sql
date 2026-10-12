@@ -1,5 +1,5 @@
 -- =============================================================================
--- CSPH StandUp — server-side analytics validation
+-- CNPS StandUp — server-side analytics validation
 -- =============================================================================
 -- Run this AFTER supabase_schema.sql in the same Supabase SQL editor.
 --

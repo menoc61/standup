@@ -2,12 +2,12 @@
 
 Why this exists
 ---------------
-The Android launcher icon had been replaced with the CSPH mark, but the web and
+The Android launcher icon had been replaced with the CNPS mark, but the web and
 macOS icons were still the stock Flutter logo. Two platforms shipping different
 icons for the same app is a branding bug, and it is invisible in a code review
 because each file just looks like "a png".
 
-Everything is derived from ``assets/branding/csph_standup_logo.png`` so the icons
+Everything is derived from ``assets/branding/CNPS_standup_logo.png`` so the icons
 cannot drift apart again: re-run this script after changing the brand asset.
 
 Usage
@@ -25,7 +25,7 @@ from pathlib import Path
 from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SOURCE = REPO_ROOT / "assets" / "branding" / "csph_standup_logo.png"
+SOURCE = REPO_ROOT / "assets" / "branding" / "CNPS_standup_logo.png"
 
 # Anything lighter than this is treated as empty background when measuring the
 # artwork bounds. The source is a 24-bit RGB image with the white background
@@ -51,7 +51,7 @@ APPLICATION_ID = "com.healthwellness.standup_app"
 
 DESKTOP_FILE = f"""[Desktop Entry]
 Type=Application
-Name=CSPH StandUp
+Name=CNPS StandUp
 GenericName=Wellbeing Reminder
 Comment=Hourly stand-up and posture-break reminders with anonymised team analytics.
 Exec={DESKTOP_STEM}

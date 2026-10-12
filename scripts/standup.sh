@@ -34,11 +34,11 @@ cd "${PROJECT_ROOT}"
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-APP_NAME="CSPH StandUp"
+APP_NAME="CNPS StandUp"
 ANDROID_PACKAGE="com.healthwellness.standup_app"
 IOS_BUNDLE_ID="com.healthwellness.standupApp"
 WIDGET_PROVIDER="com.healthwellness.standup_app.widget.StandUpWidgetProvider"
-WIDGET_IOS_KIND="CSPHStandUpWidget"
+WIDGET_IOS_KIND="CNPSStandUpWidget"
 
 # Platforms the project knows how to build. `all` is expanded by build_all.
 PLATFORMS=(android ios web windows macos linux)
@@ -372,7 +372,7 @@ cmd_doctor() {
   else
     warn "Android receiver not registered in the manifest"
   fi
-  if [[ -f "${PROJECT_ROOT}/ios/StandUpWidget/CSPHStandUpWidget.swift" ]]; then
+  if [[ -f "${PROJECT_ROOT}/ios/StandUpWidget/CNPSStandUpWidget.swift" ]]; then
     if grep -q "StandUpWidget" "${PROJECT_ROOT}/ios/Runner.xcodeproj/project.pbxproj" 2>/dev/null; then
       success "iOS widget target installed"
     else
@@ -821,12 +821,12 @@ cmd_widget() {
     info)
       section "Home-screen widgets"
       log  "Android provider : ${WIDGET_PROVIDER}"
-      log  "Android layout   : android/app/src/main/res/layout/csph_standup_widget.xml"
+      log  "Android layout   : android/app/src/main/res/layout/CNPS_standup_widget.xml"
       log  "iOS kind         : ${WIDGET_IOS_KIND}"
       log  "App Group        : group.${IOS_BUNDLE_ID}"
       log  ""
       log  "Add the widget:"
-      log  "  Android: long-press the home screen -> Widgets -> CSPH StandUp"
+      log  "  Android: long-press the home screen -> Widgets -> CNPS StandUp"
       log  "  iOS:     long-press the home screen -> + -> search StandUp"
       log  ""
       log  "After a language change or a logged break, run:"

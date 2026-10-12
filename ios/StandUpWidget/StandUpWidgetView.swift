@@ -22,7 +22,7 @@ struct StandUpWidgetView: View {
             content
                 .padding(family == .systemSmall ? 12 : 14)
         }
-        .widgetURL(URL(string: "csphwidget://open"))
+        .widgetURL(URL(string: "CNPSwidget://open"))
     }
 
     @ViewBuilder

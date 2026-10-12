@@ -1,4 +1,4 @@
-# Connecting CSPH StandUp to Supabase
+# Connecting CNPS StandUp to Supabase
 
 This is the complete path from an empty Supabase project to a working cloud
 connection. Everything here is written for the Supabase SQL editor; no CLI or
@@ -118,7 +118,7 @@ role in a controlled backend. Never from the client.
 ```sql
 -- 1. Create the organisation
 INSERT INTO public.organizations (name, domain)
-VALUES ('CSPH Cameroon', 'csph.cm')
+VALUES ('CNPS Cameroon', 'CNPS.cm')
 RETURNING id;
 
 -- 2. Generate an invite code

@@ -35,7 +35,7 @@ APP_GROUP = 'group.com.healthwellness.standupApp'
 WIDGET_DEPLOYMENT_TARGET = '17.0'
 
 SOURCES = %w[
-  CSPHStandUpWidget.swift
+  CNPSStandUpWidget.swift
   StandUpIntents.swift
   StandUpProvider.swift
   StandUpWidgetView.swift
@@ -131,9 +131,9 @@ end
 #
 # This matters more than it looks. A reference created through a group resolves
 # against that group's path, and a group from find_subpath has none, so Xcode
-# falls back to the project directory: a reference to `CSPHStandUpWidget.swift`
-# became ios/CSPHStandUpWidget.swift instead of
-# ios/StandUpWidget/CSPHStandUpWidget.swift, and the build failed with six
+# falls back to the project directory: a reference to `CNPSStandUpWidget.swift`
+# became ios/CNPSStandUpWidget.swift instead of
+# ios/StandUpWidget/CNPSStandUpWidget.swift, and the build failed with six
 # "Build input files cannot be found" errors. Using project.new_file removes the
 # group from the resolution path entirely, so the result does not depend on
 # group-path semantics across gem versions.

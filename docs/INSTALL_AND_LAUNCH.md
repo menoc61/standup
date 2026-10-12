@@ -2,7 +2,7 @@
 
 This guide covers local development and test builds for Android, Windows, iOS, macOS, Linux, and web. It is a Flutter application with Drift/SQLite local storage. Supabase is optional: without project credentials, the app runs in local-only mode.
 
-The interface starts in French for CSPH Cameroon. Select **English** in Settings to switch languages; the selection is stored on the device. CSPH branding does not imply that cloud accounts are connected: the CSPH Supabase project URL and publishable key must be supplied separately.
+The interface starts in French for CNPS Cameroon. Select **English** in Settings to switch languages; the selection is stored on the device. CNPS branding does not imply that cloud accounts are connected: the CNPS Supabase project URL and publishable key must be supplied separately.
 
 ## Requirements
 

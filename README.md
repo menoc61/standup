@@ -11,7 +11,7 @@
 > **Flutter + Supabase + Drift (SQLite)**  
 > Truly cross-platform (Web, macOS, Windows, Linux, iOS, Android) employee wellness application that encourages teams to stand up, stretch, and move for 5 minutes every hour to eliminate posture fatigue and sedentary health risks.
 
-The default interface language is French for CSPH Cameroon; English is selectable in **Settings → Language**. Language choice is stored on the device.
+The default interface language is French for CNPS Cameroon; English is selectable in **Settings → Language**. Language choice is stored on the device.
 
 ```mermaid
 flowchart LR
@@ -23,7 +23,7 @@ flowchart LR
     end
 
     subgraph Core["Shared Dart application"]
-        APP["CSPH StandUp<br/>Flutter UI + domain rules"]
+        APP["CNPS StandUp<br/>Flutter UI + domain rules"]
     end
 
     subgraph Data["Storage"]
@@ -184,7 +184,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 The web build now uses Drift's SQLite WebAssembly backend and browser storage instead of an in-memory database. Mobile and desktop reminders use OS-scheduled local notifications, with a rolling queue of up to 48 alerts. The queue refreshes when the app starts, resumes, or a reminder is handled. iOS and Android can still defer delivery based on system settings; Xiaomi/Redmi devices may need StandUp allowed to run in the background. Linux timers and browser reminders require the app or tab to remain open.
 
-**CSPH Supabase setup:** the client accepts only the CSPH project's URL and publishable key through `--dart-define`. The connected Supabase MCP currently exposes only inactive `xmoni` and `farmassist` projects, so neither is used for CSPH. See the install guide before enabling cloud accounts; do not paste a service-role key into the client.
+**CNPS Supabase setup:** the client accepts only the CNPS project's URL and publishable key through `--dart-define`. The connected Supabase MCP currently exposes only inactive `xmoni` and `farmassist` projects, so neither is used for CNPS. See the install guide before enabling cloud accounts; do not paste a service-role key into the client.
 
 ---
 
@@ -384,7 +384,7 @@ log does not explain.
 ## 🎨 Branding and app icons
 
 Every platform icon is **generated** from the single brand asset
-`assets/branding/csph_standup_logo.png`. If you change the logo, regenerate
+`assets/branding/CNPS_standup_logo.png`. If you change the logo, regenerate
 everything:
 
 ```bash
@@ -424,7 +424,7 @@ duplicated, and a partial rebrand leaves them disagreeing with each other:
 
 ```mermaid
 flowchart LR
-    LOGO["assets/branding/<br/>csph_standup_logo.png"] --> GEN["generate_icons.py"]
+    LOGO["assets/branding/<br/>CNPS_standup_logo.png"] --> GEN["generate_icons.py"]
     GEN --> WEB["web icons + favicon"]
     GEN --> MAC["macOS AppIcon set"]
     GEN --> WIN["Windows .ico"]
@@ -445,5 +445,9 @@ flowchart LR
 
 Source code is MIT — see [LICENSE](LICENSE).
 
-The CSPH name and logo are **not** covered by that licence. They remain the
-property of CSPH and may only be used to identify the official application.
+The CNPS name and any marks issued by CNPS are **not** covered by that licence.
+They remain the property of CNPS — Caisse Nationale de la Prévoyance Sociale —
+and may only be used to identify the official application.
+
+The artwork in `assets/branding/CNPS_standup_logo.png`, and every icon generated
+from it, is original project artwork and is **not** an official CNPS logo.

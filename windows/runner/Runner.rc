@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.healthwellness" "\0"
-            VALUE "FileDescription", "CSPH StandUp" "\0"
+            VALUE "FileDescription", "CNPS StandUp" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "standup_app" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.healthwellness. All rights reserved." "\0"
             VALUE "OriginalFilename", "standup_app.exe" "\0"
-            VALUE "ProductName", "CSPH StandUp" "\0"
+            VALUE "ProductName", "CNPS StandUp" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

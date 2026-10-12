@@ -46,7 +46,7 @@
             android:layout_height="26dp"
             android:background="@drawable/widget_logo_chip"
             android:padding="3dp"
-            android:contentDescription="@string/csph_widget_logo_description"
+            android:contentDescription="@string/cnps_widget_logo_description"
             android:src="@drawable/standup_logo" />
 
         <TextView

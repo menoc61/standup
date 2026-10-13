@@ -124,56 +124,100 @@ class AppTheme {
         );
 
     final baseText = Typography.material2021().black;
+    // Fraunces and IBM Plex Sans are variable fonts. fontWeight selects the
+    // right face from the family, but on its own it does not move a variable
+    // font's `wght` axis, so the axis is set explicitly on every style that
+    // needs a weight other than the file's default.
     final textTheme = baseText.copyWith(
       displayLarge: baseText.displayLarge?.copyWith(
         color: ink,
+        fontFamily: 'Fraunces',
+        fontSize: 44,
         fontWeight: FontWeight.w600,
         letterSpacing: -1.4,
+        height: 1.05,
+        fontVariations: const [
+          FontVariation('wght', 600),
+          // opsz is Fraunces' optical-size axis: it thickens the hairlines and
+          // opens the counters as the type gets larger, which is what stops a
+          // display cut from looking spindly.
+          FontVariation('opsz', 60),
+          // SOFT/WONK give the letterforms the slightly bookish, humanist
+          // character the Paper & Ink direction is built on.
+          FontVariation('SOFT', 20),
+          FontVariation('WONK', 1),
+        ],
       ),
       displayMedium: baseText.displayMedium?.copyWith(
         color: ink,
+        fontFamily: 'Fraunces',
         fontWeight: FontWeight.w600,
         letterSpacing: -1.0,
+        fontVariations: const [
+          FontVariation('wght', 600),
+          FontVariation('opsz', 40),
+          FontVariation('SOFT', 20),
+          FontVariation('WONK', 1),
+        ],
       ),
-      // A quiet serif display paired with the platform's native sans body type
-      // gives the dashboard an editorial voice without bundling font files.
       headlineLarge: baseText.headlineLarge?.copyWith(
         color: ink,
-        fontFamily: 'serif',
+        fontFamily: 'Fraunces',
         fontSize: 31,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.9,
-        height: 1.12,
+        height: 1.14,
+        fontVariations: const [
+          FontVariation('wght', 600),
+          FontVariation('opsz', 32),
+          FontVariation('SOFT', 14),
+          FontVariation('WONK', 1),
+        ],
       ),
       headlineMedium: baseText.headlineMedium?.copyWith(
         color: ink,
-        fontFamily: 'serif',
+        fontFamily: 'Fraunces',
         fontSize: 23,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.55,
-        height: 1.18,
+        height: 1.2,
+        fontVariations: const [
+          FontVariation('wght', 600),
+          FontVariation('opsz', 24),
+          FontVariation('SOFT', 10),
+          FontVariation('WONK', 1),
+        ],
       ),
       headlineSmall: baseText.headlineSmall?.copyWith(
         color: ink,
-        fontFamily: 'serif',
+        fontFamily: 'Fraunces',
         fontWeight: FontWeight.w600,
         letterSpacing: -0.35,
+        fontVariations: const [
+          FontVariation('wght', 600),
+          FontVariation('opsz', 20),
+          FontVariation('SOFT', 8),
+          FontVariation('WONK', 1),
+        ],
       ),
       titleLarge: baseText.titleLarge?.copyWith(
         color: ink,
         fontSize: 18,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.25,
+        fontVariations: const [FontVariation('wght', 600)],
       ),
       titleMedium: baseText.titleMedium?.copyWith(
         color: ink,
         fontSize: 15,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.1,
+        fontVariations: const [FontVariation('wght', 600)],
       ),
       titleSmall: baseText.titleSmall?.copyWith(
         color: ink,
         fontWeight: FontWeight.w600,
+        fontVariations: const [FontVariation('wght', 600)],
       ),
       bodyLarge: baseText.bodyLarge?.copyWith(
         color: ink,
@@ -194,16 +238,19 @@ class AppTheme {
         color: ink,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.1,
+        fontVariations: const [FontVariation('wght', 600)],
       ),
       labelMedium: baseText.labelMedium?.copyWith(
         color: mutedInk,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.25,
+        fontVariations: const [FontVariation('wght', 600)],
       ),
       labelSmall: baseText.labelSmall?.copyWith(
         color: mutedInk,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.4,
+        fontVariations: const [FontVariation('wght', 600)],
       ),
     );
 
@@ -214,6 +261,10 @@ class AppTheme {
       primaryColor: primary,
       colorScheme: colors,
       textTheme: textTheme,
+      // The body/UI face for every style that does not name a family. Set once
+      // here rather than repeated on each role: the display roles override it
+      // with Fraunces, and everything else inherits this.
+      fontFamily: 'PlexSans',
       // The accent applied to text — section labels, the active tab, link copy.
       // Exposed on the theme so widgets stop reaching for `AppColors` directly
       // and picking the fill variant, which is not always legal as body text.

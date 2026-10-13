@@ -87,6 +87,50 @@ flutter:
     - assets/sounds/
     - assets/branding/
 
+  # Paper & Ink type system. Previously the app set no fontFamily at all, so
+  # every platform fell back to its own UI font (Segoe UI on Windows, Roboto on
+  # Android, SF Pro on iOS) and the three headline roles used the generic
+  # 'serif' family, which resolves differently on every target. That is why the
+  # app looked like a different product on each platform.
+  #
+  # Fraunces and IBM Plex Sans are variable fonts carrying a `wght` axis. They
+  # are declared once per weight so family resolution picks the right face, and
+  # AppTheme sets the axis explicitly through `fontVariations`, because fontWeight
+  # alone does not move a variable font's axis.
+  #
+  # IBM Plex Mono is static and exists for numerals: its tabular figures stop
+  # the countdown ring and clocks shifting width every second.
+  #
+  # All three are SIL Open Font License 1.1; the licences are bundled beside the
+  # font files and reproduced in the README.
+  fonts:
+    - family: Fraunces
+      fonts:
+        - asset: assets/fonts/Fraunces-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/Fraunces-Variable.ttf
+          weight: 600
+        - asset: assets/fonts/Fraunces-Variable.ttf
+          weight: 700
+    - family: PlexSans
+      fonts:
+        - asset: assets/fonts/IBMPlexSans-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexSans-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSans-Variable.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexSans-Variable.ttf
+          weight: 700
+    - family: PlexMono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexMono-SemiBold.ttf
+          weight: 600
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

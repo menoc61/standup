@@ -238,7 +238,11 @@ jobs:
             "scripts\windows\standup.iss"
           )
           if ($env:WINDOWS_SIGNTOOL) { $args = "/DSignToolCommand=$env:WINDOWS_SIGNTOOL" + $args }
-          & "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe" @args
+          # `${env:ProgramFiles(x86)}` needs the braces. PowerShell parses a bare
+          # `$env:ProgramFiles(x86)` as `$env:ProgramFiles` followed by the literal
+          # text `(x86)`, which resolves to "C:\Program Files(x86)\..." and fails
+          # with a command-not-found error rather than a path error.
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" @args
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed with $LASTEXITCODE" }
           Get-ChildItem dist\*.exe | Format-List Name,Length
 

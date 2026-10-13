@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Reads the payload that the Flutter app publishes through the shared App Group.
 ///

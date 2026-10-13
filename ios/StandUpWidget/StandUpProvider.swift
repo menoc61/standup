@@ -12,7 +12,10 @@ struct StandUpEntry: TimelineEntry {
             return payload.t("Open the app to start", "Ouvrez l'application")
         }
         if payload.windowOpen {
-            return payload.date <= (payload.windowEndsAt ?? payload.date)
+            // `date` is this entry's own timestamp, not the payload's: a timeline
+            // carries one payload across several entries, and it is the entry date
+            // that says whether we are still inside the window it describes.
+            return date <= (payload.windowEndsAt ?? date)
                 ? payload.t("Window open - log your stand", "Fenêtre ouverte - enregistrez votre pause")
                 : payload.t("Window closed", "Fenêtre fermée")
         }

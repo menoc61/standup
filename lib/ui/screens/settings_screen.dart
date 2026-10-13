@@ -1336,12 +1336,25 @@ class SettingsScreen extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 Center(
-                  child: Text(
-                    appString(
-                      context,
-                      'StandUp v1.0.0 • Production Flutter + Supabase + Drift',
-                    ),
-                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+                  child: Column(
+                    children: [
+                      Text(
+                        appString(
+                          context,
+                          'StandUp v1.0.0 • Production Flutter + Supabase + Drift',
+                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+                      ),
+                      const SizedBox(height: 4),
+                      // Attribution lives here and in LICENSE/pubspec rather
+                      // than on the commits, which record changes rather than
+                      // authorship.
+                      Text(
+                        appString(context, 'Built by Mony Aye Tigana for CNPS'),
+                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 20),

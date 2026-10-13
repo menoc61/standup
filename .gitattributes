@@ -1,0 +1,15 @@
+# Windows checkout: scripts and resource files are authored with LF and must
+# not be rewritten to CRLF, or every commit reports the whole file as changed.
+* text=auto eol=lf
+
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary assets — never touched by a line-ending conversion.
+*.png binary
+*.wav binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.jar binary

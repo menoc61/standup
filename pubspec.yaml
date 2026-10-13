@@ -18,6 +18,11 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # of the product and file versions while build-number is used as the build suffix.
 version: 1.0.0+1
 license: MIT
+# No `author:` field: Flutter deprecated it and CI runs --fatal-infos. The
+# author is on the LICENSE and rendered in Settings → About instead, which is
+# more visible than a pubspec field nobody reads.
+homepage: https://github.com/menoc61/standup
+repository: https://github.com/menoc61/standup
 
 environment:
   sdk: ^3.13.3

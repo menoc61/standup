@@ -13,13 +13,45 @@ you. Written for someone setting this up for the first time.
 | Web | Any | `ubuntu-latest` | No native toolchain at all |
 | Linux | Linux only | `ubuntu-latest` | GTK, clang, ninja |
 | Windows | Windows only | `windows-latest` | Needs Visual Studio **with the C++ workload** |
-| macOS | macOS only | `macos-14` (opt-in) | Needs Xcode |
-| iOS | macOS only | `macos-14` (opt-in) | Needs Xcode + the WidgetKit target installed |
+| macOS | macOS only | `macos-14` | Needs Xcode. **Not built: see below** |
+| iOS | macOS only | `macos-14` | Needs Xcode + the WidgetKit target installed. **Not built: see below** |
 
 The platform restriction is not a limitation of the project. Flutter's Windows
 embedder links against Win32 and the macOS and Linux embedders link against
 Cocoa and GTK respectively, so there is no cross-compilation path for desktop
 targets. CI works around it by using a hosted runner of the matching OS.
+
+---
+
+## iOS and macOS are not currently in a release
+
+As of **v1.0.1** no published release contains an iOS or macOS build. The Apple
+CI job runs and fails; the other five targets build and publish.
+
+The WidgetKit extension now compiles — two genuine defects in
+`ios/StandUpWidget/` were fixed for v1.0.1 (`WidgetPayload.swift` declared
+SwiftUI `Color` properties while importing only Foundation, and
+`StandUpProvider` read a `payload.date` that does not exist). What remains is an
+Xcode build-graph failure, not a source failure:
+
+```
+Error (Xcode): Cycle inside Runner; building could produce unreliable results.
+→ Target 'Runner' has copy command from '.../StandUpWidget.appex'
+  to '.../Runner.app/PlugIns/StandUpWidget.appex'
+```
+
+The Embed App Extensions copy phase, Flutter's "Thin Binary" script phase and
+`ProcessInfoPlistFile` form a dependency cycle. Diagnosing it needs a macOS host
+with Xcode, because the pbxproj is rewritten at build time by
+`scripts/ios/add_widget_target.rb` and the result cannot be inspected from
+another OS.
+
+Until that is fixed, the Apple job is the **only** job that does not block
+`publish`, and the release body carries a warning banner naming the omission.
+That exception is deliberate and temporary: v1.0.0 shipped with no iOS or macOS
+artefact under the old `!cancelled()` rule and nothing said so. To restore
+strict behaviour, remove `apple` from the `needs` list and the `if` condition
+in `publish` in `.github/workflows/release.yml`.
 
 ---
 

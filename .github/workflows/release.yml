@@ -419,12 +419,27 @@ jobs:
           retention-days: 30
 
   # ---------------------------------------------------------------------------
-  # Publish one complete release. A failed or cancelled platform blocks it.
+  # Publish.
+  #
+  # Five platforms are required: verify, Android, Web, Windows and Linux. A
+  # failure in any of them blocks the release, because a missing artefact cannot
+  # be fixed by a release note.
+  #
+  # Apple is the one exception, and it is a temporary one. The iOS/macOS job has
+  # never produced a build -- it fails on an Xcode dependency cycle in the Embed
+  # App Extensions phase that only a macOS host can diagnose and verify. The
+  # WidgetKit extension itself compiles.
+  #
+  # This used to be `!cancelled()`, which let a release ship with no iOS or macOS
+  # artefact and nothing in the notes saying so: that is exactly what happened to
+  # v1.0.0. So the omission is now stated in the release body itself rather than
+  # being quietly tolerated. Deleting the apple entry below, and its `needs`
+  # reference, restores strict behaviour once the cycle is fixed.
   # ---------------------------------------------------------------------------
   publish:
     name: Publish release
     needs: [verify, android, web, windows, linux, apple]
-    if: ${{ always() && needs.verify.result == 'success' && needs.android.result == 'success' && needs.web.result == 'success' && needs.windows.result == 'success' && needs.linux.result == 'success' && needs.apple.result == 'success' }}
+    if: ${{ always() && needs.verify.result == 'success' && needs.android.result == 'success' && needs.web.result == 'success' && needs.windows.result == 'success' && needs.linux.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -444,16 +459,49 @@ jobs:
           # Nothing to release is a failed release, not an empty one.
           test -n "$(ls -A dist)" || (echo "::error::no artefacts were produced" && exit 1)
 
+      # Builds the note that says which platforms this release actually has.
+      # It runs whether or not Apple succeeded, because a release that is
+      # complete should not gain a "missing iOS" banner it does not need.
+      - name: Describe the platforms in this release
+        id: platforms
+        env:
+          APPLE_RESULT: ${{ needs.apple.result }}
+        run: |
+          {
+            echo "## Artefacts in this release"
+            echo
+            for f in dist/*; do echo "- \`$(basename "$f")\`"; done
+            echo
+            if [ "$APPLE_RESULT" = "success" ]; then
+              echo "All six targets were built: Android, Web, Windows, Linux, iOS and macOS."
+            else
+              echo "> [!WARNING]"
+              echo "> **This release has no iOS or macOS build.**"
+              echo "> The Apple job did not succeed (\`$APPLE_RESULT\`), so there is no"
+              echo "> \`.app\` artefact to download. iOS and macOS are unsigned here in any"
+              echo "> case and are not App Store submissions. Everything else — Android,"
+              echo "> Windows, Linux and Web — built and is attached below."
+              echo ">"
+              echo "> See [docs/PLATFORM_SETUP.md](https://github.com/menoc61/standup/blob/${RELEASE_TAG}/docs/PLATFORM_SETUP.md)."
+              echo "::warning::iOS and macOS are missing from ${RELEASE_TAG} (apple job: $APPLE_RESULT)"
+            fi
+          } > notes.md
+          cat notes.md
+
       - name: Create the GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists; replacing its assets."
+            echo "Release $RELEASE_TAG already exists; replacing its assets and notes."
             gh release upload "$RELEASE_TAG" dist/* --clobber
+            # Rewritten, not just the assets: a re-run that succeeds must be able
+            # to correct an earlier note that claimed a platform was missing.
+            gh release edit "$RELEASE_TAG" --notes-file notes.md
           else
             gh release create "$RELEASE_TAG" \
               --title "CNPS StandUp $RELEASE_TAG" \
+              --notes-file notes.md \
               --generate-notes \
               dist/*
           fi

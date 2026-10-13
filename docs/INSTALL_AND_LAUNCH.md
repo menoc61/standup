@@ -2,6 +2,11 @@
 
 This guide covers local development and test builds for Android, Windows, iOS, macOS, Linux, and web. It is a Flutter application with Drift/SQLite local storage. Supabase is optional: without project credentials, the app runs in local-only mode.
 
+> **Downloading a release?** As of v1.0.1, published releases contain **Android,
+> Windows, Linux and Web** builds. There is no iOS or macOS download: the Apple
+> build has never completed, for the reason in
+> [PLATFORM_SETUP.md](PLATFORM_SETUP.md#ios-and-macos-are-not-currently-in-a-release).
+
 The interface starts in French for CNPS Cameroon. Select **English** in Settings to switch languages; the selection is stored on the device. CNPS branding does not imply that cloud accounts are connected: the CNPS Supabase project URL and publishable key must be supplied separately.
 
 ## Requirements

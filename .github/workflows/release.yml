@@ -374,10 +374,12 @@ jobs:
               fail=1
             fi
           done
-          # The bare filename with no directory means the reference resolves
-          # against ios/ rather than ios/StandUpWidget/.
-          if grep -qE 'path = [A-Za-z]+\.swift;' ios/Runner.xcodeproj/project.pbxproj; then
-            echo "::error::a Swift reference has no directory prefix" >&2
+          # A widget source written as a bare filename resolves against ios/
+          # instead of ios/StandUpWidget/. The check is scoped to the widget's
+          # own filenames because the stock Runner sources (AppDelegate.swift,
+          # SceneDelegate.swift, RunnerTests.swift) legitimately use bare paths.
+          if grep -qE 'path = (CNPSStandUpWidget|StandUpIntents|StandUpProvider|StandUpWidgetView|WidgetPayload|WidgetStyle)\.swift;' ios/Runner.xcodeproj/project.pbxproj; then
+            echo "::error::a widget Swift reference has no directory prefix" >&2
             fail=1
           fi
           exit $fail

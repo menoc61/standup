@@ -483,10 +483,15 @@ jobs:
               echo "> Windows, Linux and Web — built and is attached below."
               echo ">"
               echo "> See [docs/PLATFORM_SETUP.md](https://github.com/menoc61/standup/blob/${RELEASE_TAG}/docs/PLATFORM_SETUP.md)."
-              echo "::warning::iOS and macOS are missing from ${RELEASE_TAG} (apple job: $APPLE_RESULT)"
             fi
           } > notes.md
           cat notes.md
+          # Outside the block above on purpose: an annotation is a workflow
+          # directive, not release text, and inside it the raw ::warning:: line
+          # would be rendered in the published body.
+          if [ "$APPLE_RESULT" != "success" ]; then
+            echo "::warning::iOS and macOS are missing from ${RELEASE_TAG} (apple job: $APPLE_RESULT)"
+          fi
 
       - name: Create the GitHub Release
         env:

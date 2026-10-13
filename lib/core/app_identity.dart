@@ -173,10 +173,10 @@ abstract final class AppIdentity {
   /// Dart-side copy and `test/identity_test.dart` fails if the two diverge. The
   /// installer script (`scripts/windows/standup.iss`) carries a third copy for
   /// the same reason; `stamp_identity.dart` propagates this value into it.
-  static const String version = '1.0.0';
+  static const String version = '1.0.1';
 
   /// The build number, mirroring the `+N` suffix in `pubspec.yaml`.
-  static const int buildNumber = 1;
+  static const int buildNumber = 2;
 
   /// The full `version+build` string, as Android reports it and as
   /// `DeviceProfile` records it.

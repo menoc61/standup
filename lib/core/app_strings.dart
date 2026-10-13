@@ -428,8 +428,8 @@ const Map<String, String> _french = {
   'A CSV summary of your daily stand-up history, generated on this device.': 'Un résumé CSV de votre historique quotidien de pauses, généré sur cet appareil.',
   'Copy CSV to clipboard': 'Copier le CSV dans le presse-papiers',
   'CSV copied to your clipboard': 'CSV copié dans le presse-papiers',
-  'StandUp v1.0.0 • Production Flutter + Supabase + Drift':
-      'CNPS StandUp v1.0.0 • Flutter + Supabase + Drift',
+  'StandUp v{version} • Production Flutter + Supabase + Drift':
+      'CNPS StandUp v{version} • Flutter + Supabase + Drift',
   'Built by Mony Aye Tigana for CNPS':
       'Réalisé par Mony Aye Tigana pour la CNPS',
   'Your progress': 'Votre progression',

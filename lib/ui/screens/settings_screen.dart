@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OAuthProvider;
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/core/app_identity.dart';
 import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/data/models/device_profile.dart';
@@ -1409,9 +1410,10 @@ class SettingsScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       Text(
-                        appString(
+                        appStringArgs(
                           context,
-                          'StandUp v1.0.0 • Production Flutter + Supabase + Drift',
+                          'StandUp v{version} • Production Flutter + Supabase + Drift',
+                          {'version': AppIdentity.version},
                         ),
                         style: theme.textTheme.bodySmall?.copyWith(
                           fontSize: AppFontSize.micro,

@@ -3,6 +3,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show Size;
 
+import 'package:standup_app/core/app_identity.dart';
+
 /// A transparent description of the device and app build.
 ///
 /// ## Why this is deliberately limited
@@ -182,14 +184,19 @@ class DeviceProfile {
     }
   }
 
-  /// App version and build are injected at build time by the Flutter tool.
+  /// App version and build can be injected at build time by the Flutter tool.
+  ///
+  /// The defaults come from [AppIdentity] rather than literals. `flutter build`
+  /// does not pass `--dart-define` for these, so in practice the default is what
+  /// actually ships and reaches the org analytics — a literal here reports the
+  /// wrong version forever, silently, with nothing failing.
   static const String _appVersion = String.fromEnvironment(
     'APP_VERSION',
-    defaultValue: '1.0.0',
+    defaultValue: AppIdentity.version,
   );
   static const String _appBuild = String.fromEnvironment(
     'APP_BUILD',
-    defaultValue: '1',
+    defaultValue: '${AppIdentity.buildNumber}',
   );
 
   Map<String, dynamic> toJson() => {
@@ -213,8 +220,8 @@ class DeviceProfile {
       platform: json['platform'] as String? ?? 'unknown',
       osVersion: json['os_version'] as String? ?? 'unknown',
       model: json['model'] as String? ?? '',
-      appVersion: json['app_version'] as String? ?? '1.0.0',
-      appBuild: json['app_build'] as String? ?? '1',
+      appVersion: json['app_version'] as String? ?? AppIdentity.version,
+      appBuild: json['app_build'] as String? ?? '${AppIdentity.buildNumber}',
       screenSize: json['screen_size'] as String? ?? '',
       pixelRatio: json['pixel_ratio'] as String? ?? '',
       locale: json['locale'] as String? ?? 'fr',

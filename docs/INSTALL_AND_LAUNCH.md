@@ -145,6 +145,16 @@ flutter build macos --release     # macOS + Xcode
 flutter build linux --release    # Linux desktop toolchain
 ```
 
+Each GitHub release now also ships `standup-<version>-web.zip`, a static bundle
+you can host anywhere.
+
+> **`flutter build web --release` alone produces a bundle that fails at
+> runtime.** The Flutter tool knows nothing about Drift, so `sqlite3.wasm` and
+> `drift_worker.js` are left out and the app throws on its first database query.
+> Use `./scripts/standup.sh build web release`, which copies both in from the
+> resolved `drift` package. The release workflow does exactly this and then
+> asserts both files are present.
+
 ## Release builds
 
 All release commands run from the project root after `flutter pub get`. The

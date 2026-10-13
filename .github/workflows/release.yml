@@ -1,18 +1,14 @@
 name: Release
 
-# Publishes tagged builds as a GitHub Release.
-#
-# CI already builds every target on every push. This workflow is separate on
-# purpose: a release must only ever be produced from a tag that has passed the
-# same checks, so it re-runs `verify` itself rather than trusting a previous run
-# on a different commit.
+# Builds every target from one version-matched tag and publishes only after all
+# six platform builds have succeeded.
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to publish (e.g. v1.0.0)'
+        description: 'Existing tag to publish (e.g. v1.0.1)'
         required: true
 
 permissions:
@@ -20,6 +16,7 @@ permissions:
 
 env:
   FLUTTER_VERSION: "3.47.4"
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -33,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -44,6 +41,17 @@ jobs:
 
       - name: Resolve dependencies
         run: flutter pub get
+
+      - name: Verify tag matches app version
+        shell: bash
+        run: |
+          version="$(awk '/^version:/ { sub(/^version:[[:space:]]*/, ""); sub(/\+.*/, ""); print; exit }' pubspec.yaml)"
+          expected_tag="v${version}"
+          if [ -z "$version" ] || [ "$RELEASE_TAG" != "$expected_tag" ]; then
+            echo "::error::Release tag '$RELEASE_TAG' must match pubspec version '$expected_tag'."
+            exit 1
+          fi
+          echo "Building app version $version from $RELEASE_TAG"
 
       - name: Analyze
         run: flutter analyze --fatal-infos --fatal-warnings
@@ -80,7 +88,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -112,14 +120,58 @@ jobs:
         run: |
           mkdir -p dist
           cp build/app/outputs/flutter-apk/app-release.apk \
-             dist/standup-${GITHUB_REF_NAME}-android.apk
+             dist/standup-${RELEASE_TAG}-android.apk
           cp build/app/outputs/bundle/release/app-release.aab \
-             dist/standup-${GITHUB_REF_NAME}-android.aab
+             dist/standup-${RELEASE_TAG}-android.aab
           ls -la dist
 
       - uses: actions/upload-artifact@v4
         with:
           name: dist-android
+          path: dist
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # Web. Include Drift's SQLite WASM files in the downloadable static bundle.
+  # ---------------------------------------------------------------------------
+  web:
+    name: Web release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Build web
+        run: flutter build web --release
+
+      - name: Copy and verify Drift web assets
+        run: |
+          bash ./scripts/standup.sh build web release --skip-build
+          test -f build/web/sqlite3.wasm
+          test -f build/web/drift_worker.js
+
+      - name: Package web bundle
+        run: |
+          mkdir -p dist
+          cd build/web
+          zip -qr "../../dist/standup-${RELEASE_TAG}-web.zip" .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-web
           path: dist
           retention-days: 30
 
@@ -137,7 +189,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -158,9 +210,9 @@ jobs:
           # first release failed here rather than at the upload step.
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Compress-Archive -Path build\windows\x64\runner\Release\* `
-            -DestinationPath "dist\standup-$env:GITHUB_REF_NAME-windows-x64.zip" `
+            -DestinationPath "dist\standup-$env:RELEASE_TAG-windows-x64.zip" `
             -Force
-          Get-Item "dist\standup-$env:GITHUB_REF_NAME-windows-x64.zip" |
+          Get-Item "dist\standup-$env:RELEASE_TAG-windows-x64.zip" |
             Format-List Name,Length
 
       # The zip is kept for parity and for users who unpack by hand, but the
@@ -172,7 +224,7 @@ jobs:
 
       - name: Build the installer
         run: |
-          $version = (Select-String -Path pubspec.yaml -Pattern '^version:\s*(\S+)' |
+          $version = (Select-String -Path pubspec.yaml -Pattern '^version:\s*([0-9]+\.[0-9]+\.[0-9]+)' |
             Select-Object -First 1).Matches.Groups[1].Value
           if (-not $version) { throw 'Could not read version from pubspec.yaml' }
 
@@ -208,7 +260,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -234,7 +286,7 @@ jobs:
       - name: Package as a tarball
         run: |
           mkdir -p dist
-          tar -czf "dist/standup-${GITHUB_REF_NAME}-linux-x64.tar.gz" \
+          tar -czf "dist/standup-${RELEASE_TAG}-linux-x64.tar.gz" \
             -C build/linux/x64/release bundle
           ls -la dist
 
@@ -285,7 +337,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -344,14 +396,14 @@ jobs:
           mkdir -p dist
           # A .app is a directory, so it has to be zipped rather than copied.
           ditto -c -k --sequesterRsrc --keepParent \
-            build/ios/iphoneos/Runner.app "dist/standup-${GITHUB_REF_NAME}-ios.app.zip"
+            build/ios/iphoneos/Runner.app "dist/standup-${RELEASE_TAG}-ios.app.zip"
           ls -la dist
 
       - name: Package macOS app
         run: |
           ditto -c -k --sequesterRsrc --keepParent \
             "build/macos/Build/Products/Release/standup_app.app" \
-            "dist/standup-${GITHUB_REF_NAME}-macos.zip"
+            "dist/standup-${RELEASE_TAG}-macos.zip"
           ls -la dist
 
       - uses: actions/upload-artifact@v4
@@ -361,23 +413,18 @@ jobs:
           retention-days: 30
 
   # ---------------------------------------------------------------------------
-  # Assemble one release containing every target. Downloads only from jobs that
-  # succeeded, so a platform that could not be built is simply absent rather
-  # than breaking the whole release.
+  # Publish one complete release. A failed or cancelled platform blocks it.
   # ---------------------------------------------------------------------------
   publish:
     name: Publish release
-    # apple is listed with `!cancelled()` so a platform that could not be built
-    # on this runner does not block the three that could. The release notes say
-    # which are missing.
-    needs: [android, windows, linux, apple]
-    if: ${{ !cancelled() }}
+    needs: [verify, android, web, windows, linux, apple]
+    if: ${{ always() && needs.verify.result == 'success' && needs.android.result == 'success' && needs.web.result == 'success' && needs.windows.result == 'success' && needs.linux.result == 'success' && needs.apple.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Download artefacts
         uses: actions/download-artifact@v4
@@ -395,11 +442,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
-            echo "Release $GITHUB_REF_NAME already exists; replacing its assets."
-            gh release delete "$GITHUB_REF_NAME" --yes --cleanup-tag
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; replacing its assets."
+            gh release upload "$RELEASE_TAG" dist/* --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              --title "CNPS StandUp $RELEASE_TAG" \
+              --generate-notes \
+              dist/*
           fi
-          gh release create "$GITHUB_REF_NAME" \
-            --title "CNPS StandUp $GITHUB_REF_NAME" \
-            --generate-notes \
-            dist/*

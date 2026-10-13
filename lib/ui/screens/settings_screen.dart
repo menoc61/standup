@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OAuthProvider;
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/data/models/device_profile.dart';
+import 'package:standup_app/data/models/work_schedule.dart';
 import 'package:standup_app/data/remote/supabase_service.dart';
 import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/services/audio_service.dart';
@@ -57,21 +59,21 @@ class SettingsScreen extends StatelessWidget {
                   controller: nameCtrl,
                   decoration: const InputDecoration(labelText: 'Full Name'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 TextField(
                   controller: desigCtrl,
                   decoration: const InputDecoration(labelText: 'Designation'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 TextField(
                   controller: emailCtrl,
                   decoration: const InputDecoration(labelText: 'Work Email'),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.xxl),
                 Text(
                   appString(context, 'Department'),
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: AppFontSize.footnote,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -260,7 +262,7 @@ class SettingsScreen extends StatelessWidget {
                           ? 'Your local reminder history will stay on this device and move with your account.'
                           : 'Sign in to enable private account sync for your daily totals.',
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpace.xxl),
                     TextField(
                       controller: emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -269,7 +271,7 @@ class SettingsScreen extends StatelessWidget {
                         labelText: 'Email address',
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpace.xl),
                     TextField(
                       controller: passwordController,
                       obscureText: true,
@@ -287,7 +289,7 @@ class SettingsScreen extends StatelessWidget {
                       onSubmitted: (_) => isWorking ? null : submit(),
                     ),
                     if (!createAccount) ...[
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpace.md),
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
@@ -297,7 +299,7 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpace.xs),
                       Row(
                         children: [
                           Expanded(
@@ -308,7 +310,9 @@ class SettingsScreen extends StatelessWidget {
                             ),
                           ),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpace.xl,
+                            ),
                             child: Text(
                               appString(context, 'OR'),
                               style: Theme.of(context).textTheme.labelSmall,
@@ -323,7 +327,7 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpace.md),
                       Wrap(
                         alignment: WrapAlignment.center,
                         spacing: 8,
@@ -334,7 +338,10 @@ class SettingsScreen extends StatelessWidget {
                                 ? null
                                 : () =>
                                       signInWithProvider(OAuthProvider.google),
-                            icon: const Icon(Icons.g_mobiledata, size: 20),
+                            icon: const Icon(
+                              Icons.g_mobiledata,
+                              size: AppSpace.huge,
+                            ),
                             label: Text(appString(context, 'Google')),
                           ),
                           OutlinedButton.icon(
@@ -348,7 +355,7 @@ class SettingsScreen extends StatelessWidget {
                       ),
                     ],
                     if (errorText != null) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpace.xl),
                       Text(
                         errorText!,
                         style: TextStyle(
@@ -381,7 +388,9 @@ class SettingsScreen extends StatelessWidget {
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: AppSpace.xxs,
+                        ),
                       )
                     : Text(
                         appString(
@@ -434,7 +443,7 @@ class SettingsScreen extends StatelessWidget {
                   'Enter the invite code provided by your organization.',
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.xl),
               TextField(
                 controller: codeController,
                 textCapitalization: TextCapitalization.characters,
@@ -443,7 +452,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
               if (errorText != null) ...[
-                const SizedBox(height: 10),
+                const SizedBox(height: AppSpace.lg),
                 Text(
                   errorText!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -495,7 +504,9 @@ class SettingsScreen extends StatelessWidget {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        strokeWidth: AppSpace.xxs,
+                      ),
                     )
                   : Text(appString(context, 'Join workspace')),
             ),
@@ -533,7 +544,12 @@ class SettingsScreen extends StatelessWidget {
           RefreshIndicator(
             onRefresh: () => appState.triggerCloudSync(),
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 120),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.huge,
+                AppSpace.xl,
+                AppSpace.huge,
+                120,
+              ),
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
               ),
@@ -570,7 +586,7 @@ class SettingsScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.xxl),
 
                 // ----------------------------------------------------------------
                 // Profile & Team
@@ -595,7 +611,7 @@ class SettingsScreen extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: AppSpace.xxl),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -607,12 +623,12 @@ class SettingsScreen extends StatelessWidget {
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: AppSpace.xxs),
                                 Text(
                                   '${user?.designation ?? appString(context, 'Member')} • ${user?.department ?? appString(context, 'General')}',
                                   style: theme.textTheme.bodySmall,
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: AppSpace.xxs),
                                 Text(
                                   user?.email ??
                                       appString(context, 'No email linked'),
@@ -638,11 +654,11 @@ class SettingsScreen extends StatelessWidget {
                           appString(context, 'Team'),
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
-                            fontSize: 13,
+                            fontSize: AppFontSize.small,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: AppSpace.lg),
                       DropdownButtonFormField<String>(
                         initialValue: departments.contains(user?.department)
                             ? user?.department
@@ -665,7 +681,7 @@ class SettingsScreen extends StatelessWidget {
                           }
                         },
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpace.xl),
                       TextFormField(
                         initialValue: user?.organizationName ?? '',
                         decoration: InputDecoration(
@@ -682,13 +698,13 @@ class SettingsScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 // ----------------------------------------------------------------
                 // Reminder cadence & notifications
                 // ----------------------------------------------------------------
                 _SectionTitle(appString(context, 'Reminder Cadence')),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 _GlassSection(
                   reduceMotion: reduceMotion,
                   child: Column(
@@ -698,30 +714,34 @@ class SettingsScreen extends StatelessWidget {
                         appString(context, 'Frequency Interval'),
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
-                          fontSize: 13,
+                          fontSize: AppFontSize.small,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: AppSpace.lg),
                       Row(
                         children: [30, 60, 90].map((mins) {
                           final isSel = prefs.notificationFrequency == mins;
                           return Expanded(
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 4.0,
+                                horizontal: AppSpace.xs,
                               ),
                               child: InkWell(
                                 onTap: () => appState.updatePreferences(
                                   notificationFrequency: mins,
                                 ),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.md,
+                                ),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
+                                    vertical: AppSpace.xl,
                                   ),
                                   decoration: BoxDecoration(
                                     color: isSel ? accent : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(
+                                      AppRadius.md,
+                                    ),
                                     border: Border.all(
                                       color: isSel
                                           ? accent
@@ -736,7 +756,7 @@ class SettingsScreen extends StatelessWidget {
                                           ? Colors.white
                                           : theme.textTheme.bodyLarge?.color,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 13,
+                                      fontSize: AppFontSize.small,
                                     ),
                                   ),
                                 ),
@@ -744,6 +764,12 @@ class SettingsScreen extends StatelessWidget {
                             ),
                           );
                         }).toList(),
+                      ),
+                      const Divider(height: 28),
+                      _WorkScheduleSection(
+                        appState: appState,
+                        accent: accent,
+                        schedule: prefs.workSchedule,
                       ),
                       const Divider(height: 28),
                       Row(
@@ -757,7 +783,7 @@ class SettingsScreen extends StatelessWidget {
                                   appString(context, 'Daily stand goal'),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 13,
+                                    fontSize: AppFontSize.small,
                                   ),
                                 ),
                                 Text(
@@ -794,7 +820,7 @@ class SettingsScreen extends StatelessWidget {
                         accent: accent,
                         appState: appState,
                       ),
-                      const Divider(height: 20),
+                      const Divider(height: AppSpace.huge),
                       _QuietHoursRow(
                         accent: accent,
                         quietHours: prefs.quietHours,
@@ -803,18 +829,18 @@ class SettingsScreen extends StatelessWidget {
                           clearQuietHours: value == null,
                         ),
                       ),
-                      const Divider(height: 24),
+                      const Divider(height: AppSpace.section),
                       _ActionWindowSection(appState: appState, accent: accent),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 // ----------------------------------------------------------------
                 // Appearance
                 // ----------------------------------------------------------------
                 _SectionTitle(appString(context, 'Appearance & Styling')),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 _GlassSection(
                   reduceMotion: reduceMotion,
                   child: Column(
@@ -824,10 +850,10 @@ class SettingsScreen extends StatelessWidget {
                         appString(context, 'App Theme Mode'),
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
-                          fontSize: 13,
+                          fontSize: AppFontSize.small,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpace.sm),
                       Text(
                         appString(
                           context,
@@ -835,7 +861,7 @@ class SettingsScreen extends StatelessWidget {
                         ),
                         style: theme.textTheme.bodySmall,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpace.xl),
                       // One accessible control replaces the previous row of
                       // unlabelled InkWells. Each option carries an icon so the
                       // three choices are distinguishable without reading them.
@@ -863,15 +889,15 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: AppSpace.huge),
                       Text(
                         appString(context, 'Color Accent System'),
                         style: const TextStyle(
                           fontWeight: FontWeight.w700,
-                          fontSize: 13,
+                          fontSize: AppFontSize.small,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpace.sm),
                       Text(
                         appString(
                           context,
@@ -879,7 +905,7 @@ class SettingsScreen extends StatelessWidget {
                         ),
                         style: theme.textTheme.bodySmall,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpace.xl),
                       // Options come from the palette, so this can never offer a
                       // colour the theme cannot render.
                       SegmentedChoice<String>(
@@ -902,13 +928,13 @@ class SettingsScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 // ----------------------------------------------------------------
                 // Sounds & haptics
                 // ----------------------------------------------------------------
                 _SectionTitle(appString(context, 'Sounds & Haptics')),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 _GlassSection(
                   reduceMotion: reduceMotion,
                   child: Column(
@@ -924,7 +950,7 @@ class SettingsScreen extends StatelessWidget {
                                   appString(context, 'Acoustic Chimes'),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 14,
+                                    fontSize: AppFontSize.body,
                                   ),
                                 ),
                                 Text(
@@ -945,7 +971,7 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const Divider(height: 20),
+                      const Divider(height: AppSpace.huge),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -957,7 +983,7 @@ class SettingsScreen extends StatelessWidget {
                                   appString(context, 'Vibration & Haptics'),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 14,
+                                    fontSize: AppFontSize.body,
                                   ),
                                 ),
                                 Text(
@@ -981,18 +1007,18 @@ class SettingsScreen extends StatelessWidget {
                         ],
                       ),
                       if (prefs.soundEnabled) ...[
-                        const Divider(height: 24),
+                        const Divider(height: AppSpace.section),
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
                             appString(context, 'Reminder tone'),
                             style: const TextStyle(
                               fontWeight: FontWeight.w700,
-                              fontSize: 13,
+                              fontSize: AppFontSize.small,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: AppSpace.lg),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
@@ -1013,29 +1039,29 @@ class SettingsScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 // ----------------------------------------------------------------
                 // Background run
                 // ----------------------------------------------------------------
                 _SectionTitle(appString(context, 'Background Run')),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 const _BackgroundRunSection(),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 // ----------------------------------------------------------------
                 // Device & privacy transparency
                 // ----------------------------------------------------------------
                 _SectionTitle(appString(context, 'Device & app')),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 _DeviceSection(appState: appState, accent: accent),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 // ----------------------------------------------------------------
                 // Account
                 // ----------------------------------------------------------------
                 _SectionTitle(appString(context, 'Account')),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 _GlassSection(
                   reduceMotion: reduceMotion,
                   child: Row(
@@ -1046,7 +1072,7 @@ class SettingsScreen extends StatelessWidget {
                             : Icons.cloud_done_outlined,
                         color: accent,
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpace.xl),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1061,7 +1087,7 @@ class SettingsScreen extends StatelessWidget {
                               ),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w700,
-                                fontSize: 13,
+                                fontSize: AppFontSize.small,
                               ),
                             ),
                             Text(
@@ -1099,17 +1125,17 @@ class SettingsScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 if (appState.supabaseService.signedInUserId != null) ...[
                   _SectionTitle(appString(context, 'Workspace')),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpace.xl),
                   _GlassSection(
                     reduceMotion: reduceMotion,
                     child: Row(
                       children: [
                         Icon(Icons.groups_2_outlined, color: accent),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpace.xl),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1124,7 +1150,7 @@ class SettingsScreen extends StatelessWidget {
                                     ),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w700,
-                                  fontSize: 13,
+                                  fontSize: AppFontSize.small,
                                 ),
                               ),
                               Text(
@@ -1144,13 +1170,13 @@ class SettingsScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpace.section),
 
                   // ----------------------------------------------------------------
                   // Organization admin
                   // ----------------------------------------------------------------
                   _SectionTitle(appString(context, 'Organization')),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpace.xl),
                   _GlassSection(
                     reduceMotion: reduceMotion,
                     child: Row(
@@ -1159,7 +1185,7 @@ class SettingsScreen extends StatelessWidget {
                           Icons.admin_panel_settings_outlined,
                           color: accent,
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpace.xl),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1168,13 +1194,13 @@ class SettingsScreen extends StatelessWidget {
                                 appString(context, 'Organization dashboard'),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w700,
-                                  fontSize: 13,
+                                  fontSize: AppFontSize.small,
                                 ),
                               ),
                               Text(
                                 appString(
                                   context,
-                                  'Anonymised adherence and team trends. No individual is ever named.',
+                                  'Anonymised completion trends among recorded actions. No individual is named.',
                                 ),
                                 style: theme.textTheme.bodySmall,
                               ),
@@ -1198,14 +1224,14 @@ class SettingsScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpace.section),
                 ],
 
                 // ----------------------------------------------------------------
                 // Cloud sync & privacy
                 // ----------------------------------------------------------------
                 _SectionTitle(appString(context, 'Cloud Sync & Privacy')),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 _GlassSection(
                   reduceMotion: reduceMotion,
                   child: Column(
@@ -1222,7 +1248,7 @@ class SettingsScreen extends StatelessWidget {
                                   appString(context, 'Contribute Statistics'),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 14,
+                                    fontSize: AppFontSize.body,
                                   ),
                                 ),
                                 Text(
@@ -1244,7 +1270,48 @@ class SettingsScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const Divider(height: 24),
+                      const Divider(height: AppSpace.section),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  appString(context, 'Company AI guidance'),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: AppFontSize.body,
+                                  ),
+                                ),
+                                Text(
+                                  appString(
+                                    context,
+                                    'When you ask, send daily counts, goal, cadence and feedback to the company AI. No names or event times.',
+                                  ),
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: prefs.aiGuidanceOptIn,
+                            activeThumbColor: accent,
+                            onChanged: (val) => appState.updatePreferences(
+                              aiGuidanceOptIn: val,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        appString(
+                          context,
+                          'AI guidance is requested manually and requires a signed-in company account. Local guidance remains available when AI is off or unavailable.',
+                        ),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      const Divider(height: AppSpace.section),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -1256,7 +1323,7 @@ class SettingsScreen extends StatelessWidget {
                                   appString(context, 'Supabase Cloud Sync'),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    fontSize: 13,
+                                    fontSize: AppFontSize.small,
                                   ),
                                 ),
                                 Text(
@@ -1267,7 +1334,8 @@ class SettingsScreen extends StatelessWidget {
                                     SyncStatus.success => 'Daily totals synced',
                                     SyncStatus.error =>
                                       'Sync failed; your local data is safe',
-                                    _ => 'Local-only until Supabase Auth is configured',
+                                    SyncStatus.idle => 'Sharing off',
+                                    SyncStatus.offline => 'Local-only',
                                   }),
                                   style: theme.textTheme.bodySmall,
                                 ),
@@ -1278,12 +1346,14 @@ class SettingsScreen extends StatelessWidget {
                             onTap: () => appState.triggerCloudSync(),
                             backgroundColor: accent,
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
+                              horizontal: AppSpace.xxl,
+                              vertical: AppSpace.md,
                             ),
                             child: Text(
                               appString(context, 'Sync Now'),
-                              style: const TextStyle(fontSize: 12),
+                              style: const TextStyle(
+                                fontSize: AppFontSize.footnote,
+                              ),
                             ),
                           ),
                         ],
@@ -1291,7 +1361,7 @@ class SettingsScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 // ----------------------------------------------------------------
                 // Data & onboarding
@@ -1307,13 +1377,13 @@ class SettingsScreen extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.download_outlined, size: 16),
-                      const SizedBox(width: 8),
+                      const Icon(Icons.download_outlined, size: AppSpace.xxl),
+                      const SizedBox(width: AppSpace.md),
                       Text(appString(context, 'Export my data')),
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 SpringButton(
                   onTap: onRerunOnboarding,
                   backgroundColor: isDark
@@ -1325,15 +1395,15 @@ class SettingsScreen extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.replay, size: 16),
-                      const SizedBox(width: 8),
+                      const Icon(Icons.replay, size: AppSpace.xxl),
+                      const SizedBox(width: AppSpace.md),
                       Text(
                         appString(context, 'Replay 10-Slide Onboarding Tour'),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 Center(
                   child: Column(
@@ -1344,24 +1414,24 @@ class SettingsScreen extends StatelessWidget {
                           'StandUp v1.0.0 • Production Flutter + Supabase + Drift',
                         ),
                         style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
+                          fontSize: AppFontSize.micro,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpace.xs),
                       // Attribution lives here and in LICENSE/pubspec rather
                       // than on the commits, which record changes rather than
                       // authorship.
                       Text(
                         appString(context, 'Built by Mony Aye Tigana for CNPS'),
                         style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
+                          fontSize: AppFontSize.micro,
                         ),
                         textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpace.huge),
               ],
             ),
           ),
@@ -1398,16 +1468,18 @@ class SettingsScreen extends StatelessWidget {
       // use more than the default 9/16 of the screen and must scroll internally.
       isScrollControlled: true,
       builder: (sheetContext) => ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadius.xxl),
+        ),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpace.section),
             decoration: BoxDecoration(
               color: Theme.of(sheetContext).colorScheme.surface
                   .withValues(alpha: 0.9),
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
+                top: Radius.circular(AppRadius.xxl),
               ),
             ),
             child: Column(
@@ -1418,7 +1490,7 @@ class SettingsScreen extends StatelessWidget {
                   appString(sheetContext, 'Export my data'),
                   style: Theme.of(sheetContext).textTheme.titleMedium,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.md),
                 Text(
                   appString(
                     sheetContext,
@@ -1426,19 +1498,19 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   style: Theme.of(sheetContext).textTheme.bodySmall,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.xxl),
                 Flexible(
                   child: SingleChildScrollView(
                     child: SelectableText(
                       csv,
                       style: const TextStyle(
-                        fontSize: 10,
+                        fontSize: AppFontSize.micro,
                         fontFamily: 'monospace',
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.xxl),
                 SpringButton(
                   onTap: () {
                     Navigator.pop(sheetContext);
@@ -1510,7 +1582,7 @@ class _ActionWindowSection extends StatelessWidget {
                     appString(context, 'Enforce the action window'),
                     style: const TextStyle(
                       fontWeight: FontWeight.w700,
-                      fontSize: 13,
+                      fontSize: AppFontSize.small,
                     ),
                   ),
                   Text(
@@ -1534,7 +1606,7 @@ class _ActionWindowSection extends StatelessWidget {
           ],
         ),
         if (prefs.enforceActionWindow) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.xl),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1546,7 +1618,7 @@ class _ActionWindowSection extends StatelessWidget {
                       appString(context, 'Window length'),
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 13,
+                        fontSize: AppFontSize.small,
                       ),
                     ),
                     Text(
@@ -1594,14 +1666,14 @@ class _DeviceSection extends StatelessWidget {
     final profile = appState.deviceProfile;
 
     return GlassCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Icon(Icons.devices_other_outlined, color: accent),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpace.xl),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1610,7 +1682,7 @@ class _DeviceSection extends StatelessWidget {
                       appString(context, 'This device'),
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 13,
+                        fontSize: AppFontSize.small,
                       ),
                     ),
                     Text(
@@ -1632,7 +1704,7 @@ class _DeviceSection extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.lg),
           Text(
             appString(
               context,
@@ -1640,7 +1712,7 @@ class _DeviceSection extends StatelessWidget {
             ),
             style: theme.textTheme.bodySmall,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.lg),
           if (appState.isClockUnreliable)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1650,7 +1722,7 @@ class _DeviceSection extends StatelessWidget {
                   size: 18,
                   color: AppColors.skipped,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.md),
                 Expanded(
                   child: Text(
                     appString(
@@ -1672,7 +1744,7 @@ class _DeviceSection extends StatelessWidget {
                   size: 18,
                   color: AppColors.completed,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.md),
                 Text(
                   appString(context, 'Clock looks normal'),
                   style: theme.textTheme.bodySmall,
@@ -1689,16 +1761,18 @@ class _DeviceSection extends StatelessWidget {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadius.xxl),
+        ),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpace.section),
             decoration: BoxDecoration(
               color: Theme.of(sheetContext).colorScheme.surface
                   .withValues(alpha: 0.92),
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
+                top: Radius.circular(AppRadius.xxl),
               ),
             ),
             child: Column(
@@ -1709,19 +1783,19 @@ class _DeviceSection extends StatelessWidget {
                   appString(sheetContext, 'What this device reports'),
                   style: Theme.of(sheetContext).textTheme.titleMedium,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 Flexible(
                   child: SingleChildScrollView(
                     child: SelectableText(
                       profile.describeForUser(),
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: AppFontSize.caption,
                         fontFamily: 'monospace',
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.xxl),
                 SpringButton(
                   onTap: () {
                     Clipboard.setData(
@@ -1756,7 +1830,7 @@ class _GlassSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.xxl),
       reduceMotion: reduceMotion,
       child: child,
     );
@@ -1784,7 +1858,7 @@ class _SoundChip extends StatelessWidget {
       label: label,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -1792,7 +1866,7 @@ class _SoundChip extends StatelessWidget {
             color: selected
                 ? accent.withValues(alpha: 0.18)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(AppRadius.xl),
             border: Border.all(
               color: selected
                   ? accent
@@ -1804,14 +1878,14 @@ class _SoundChip extends StatelessWidget {
             children: [
               Icon(
                 Icons.play_arrow_rounded,
-                size: 16,
+                size: AppSpace.xxl,
                 color: selected ? accent : null,
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: AppSpace.xs),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: AppFontSize.footnote,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   color: selected
                       ? accent
@@ -1850,7 +1924,7 @@ class _NotificationPermissionTileState
     return Row(
       children: [
         Icon(Icons.notifications_active_outlined, color: widget.accent),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpace.xl),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1859,7 +1933,7 @@ class _NotificationPermissionTileState
                 appString(context, 'Notifications'),
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
-                  fontSize: 13,
+                  fontSize: AppFontSize.small,
                 ),
               ),
               Text(
@@ -1876,9 +1950,9 @@ class _NotificationPermissionTileState
           onPressed: _busy ? null : _request,
           child: _busy
               ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  width: AppSpace.xxl,
+                  height: AppSpace.xxl,
+                  child: CircularProgressIndicator(strokeWidth: AppSpace.xxs),
                 )
               : Text(appString(context, 'Enable')),
         ),
@@ -1907,6 +1981,129 @@ class _NotificationPermissionTileState
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+}
+
+class _WorkScheduleSection extends StatelessWidget {
+  final AppState appState;
+  final Color accent;
+  final WorkSchedule schedule;
+
+  const _WorkScheduleSection({
+    required this.appState,
+    required this.accent,
+    required this.schedule,
+  });
+
+  static const _days = <int, String>{
+    1: 'Monday',
+    2: 'Tuesday',
+    3: 'Wednesday',
+    4: 'Thursday',
+    5: 'Friday',
+    6: 'Saturday',
+    7: 'Sunday',
+  };
+
+  String _time(int minute) =>
+      '${(minute ~/ 60).toString().padLeft(2, '0')}:'
+      '${(minute % 60).toString().padLeft(2, '0')}';
+
+  Future<void> _pickTime(BuildContext context, bool start) async {
+    final current = start ? schedule.startMinute : schedule.endMinute;
+    final value = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: current ~/ 60, minute: current % 60),
+    );
+    if (value == null || !context.mounted) return;
+    final minute = value.hour * 60 + value.minute;
+    if ((start && minute >= schedule.endMinute) ||
+        (!start && minute <= schedule.startMinute)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            appString(context, 'End time must be after start time.'),
+          ),
+        ),
+      );
+      return;
+    }
+    await appState.updatePreferences(
+      workStartMinute: start ? minute : null,
+      workEndMinute: start ? null : minute,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          appString(context, 'Work schedule'),
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: AppFontSize.small,
+          ),
+        ),
+        const SizedBox(height: AppSpace.xs),
+        Text(
+          appString(context, 'Choose the days and hours for reminders.'),
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: AppSpace.md),
+        Wrap(
+          spacing: AppSpace.xs,
+          runSpacing: AppSpace.xs,
+          children: _days.entries.map((entry) {
+            final selected = schedule.days.contains(entry.key);
+            return FilterChip(
+              label: Text(appString(context, entry.value)),
+              selected: selected,
+              selectedColor: accent.withValues(alpha: 0.16),
+              onSelected: schedule.days.length == 1 && selected
+                  ? null
+                  : (value) {
+                      final days = {...schedule.days};
+                      if (value) {
+                        days.add(entry.key);
+                      } else {
+                        days.remove(entry.key);
+                      }
+                      appState.updatePreferences(
+                        workDays: (days.toList()..sort()).join(','),
+                      );
+                    },
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: AppSpace.sm),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.login_rounded),
+                label: Text(
+                  '${appString(context, 'Starts')}  ${_time(schedule.startMinute)}',
+                ),
+                onPressed: () => _pickTime(context, true),
+              ),
+            ),
+            const SizedBox(width: AppSpace.md),
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.logout_rounded),
+                label: Text(
+                  '${appString(context, 'Ends')}  ${_time(schedule.endMinute)}',
+                ),
+                onPressed: () => _pickTime(context, false),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }
 
@@ -1943,7 +2140,7 @@ class _QuietHoursRow extends StatelessWidget {
                 appString(context, 'Quiet hours'),
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
-                  fontSize: 13,
+                  fontSize: AppFontSize.small,
                 ),
               ),
               Text(
@@ -2032,11 +2229,11 @@ class _BackgroundRunSectionState extends State<_BackgroundRunSection> {
     };
 
     return GlassCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.xxl),
       child: Row(
         children: [
           Icon(Icons.battery_saver_outlined, color: accent),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.xl),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2045,10 +2242,10 @@ class _BackgroundRunSectionState extends State<_BackgroundRunSection> {
                   title,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: 13,
+                    fontSize: AppFontSize.small,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpace.xxs),
                 Text(subtitle, style: theme.textTheme.bodySmall),
               ],
             ),
@@ -2058,9 +2255,11 @@ class _BackgroundRunSectionState extends State<_BackgroundRunSection> {
               onPressed: _busy ? null : _request,
               child: _busy
                   ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      width: AppSpace.xxl,
+                      height: AppSpace.xxl,
+                      child: CircularProgressIndicator(
+                        strokeWidth: AppSpace.xxs,
+                      ),
                     )
                   : Text(appString(context, 'Allow')),
             ),

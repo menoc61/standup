@@ -68,7 +68,7 @@ workload, so the job is not gated.
 
 ---
 
-## Apple: WidgetKit and the Dynamic Island
+## Apple: WidgetKit and interactive widgets
 
 Apple targets need two extra steps that no amount of CI will do for you.
 
@@ -86,7 +86,7 @@ The script is idempotent — it refuses to add the target twice — so it is saf
 re-run after a `flutter create`. It creates the target with:
 
 - bundle id `<app bundle id>.StandUpWidget`
-- deployment target 17.0 (ActivityKit and the interactive widget APIs)
+- deployment target 17.0 for interactive WidgetKit actions
 - the `group.<app bundle id>` App Group on **both** targets
 - an embed-extension build phase in `Runner`
 

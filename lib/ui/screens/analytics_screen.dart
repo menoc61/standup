@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/data/remote/supabase_service.dart';
 import 'package:standup_app/data/models/workday_metrics.dart';
@@ -31,7 +32,7 @@ class AnalyticsScreen extends StatelessWidget {
       totalMinutes += day.totalStandTime;
     }
     final totalReminders = totalCompleted + totalSnoozed + totalSkipped;
-    final adherence = totalReminders > 0
+    final completionRate = totalReminders > 0
         ? (totalCompleted / totalReminders) * 100
         : 0.0;
     final averageMinutes = WorkdayMetrics.averageStandMinutesPerActiveDay(
@@ -59,7 +60,10 @@ class AnalyticsScreen extends StatelessWidget {
           onRefresh: () async => await appState.triggerCloudSync(),
           color: accent,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.huge,
+              vertical: AppSpace.xl,
+            ),
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
             ),
@@ -76,13 +80,13 @@ class AnalyticsScreen extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        appString(context, 'Consistency & Adherence'),
+                        appString(context, 'Consistency & Completion'),
                         style: theme.textTheme.titleMedium,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpace.md),
                     Flexible(
                       child: _buildSyncStatusBadge(
                         context,
@@ -92,20 +96,20 @@ class AnalyticsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: AppSpace.xl),
 
                 // Top Key Metric Cards Row
                 Row(
                   children: [
                     _buildMetricCard(
                       context,
-                      title: appString(context, 'Adherence'),
-                      value: '${adherence.toStringAsFixed(0)}%',
-                      subtitle: appString(context, 'Completed breaks'),
+                      title: appString(context, 'Completion rate'),
+                      value: '${completionRate.toStringAsFixed(0)}%',
+                      subtitle: appString(context, 'Of recorded actions'),
                       icon: Icons.check_circle_outline,
                       color: AppColors.completed,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpace.xl),
                     _buildMetricCard(
                       context,
                       title: appString(context, 'Average Stand / Day'),
@@ -115,7 +119,7 @@ class AnalyticsScreen extends StatelessWidget {
                       icon: Icons.timer_outlined,
                       color: accent,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpace.xl),
                     _buildMetricCard(
                       context,
                       title: appString(context, 'Current Streak'),
@@ -127,7 +131,7 @@ class AnalyticsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 // Section 1: GitHub-Style Contribution Heatmap
                 GlassCard(
@@ -147,7 +151,7 @@ class AnalyticsScreen extends StatelessWidget {
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: AppSpace.xxs),
                                 Text(
                                   appString(
                                     context,
@@ -160,22 +164,22 @@ class AnalyticsScreen extends StatelessWidget {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpace.md),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                              horizontal: AppSpace.md,
+                              vertical: AppSpace.xs,
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.completed.withValues(
                                 alpha: 0.15,
                               ),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
                             ),
                             child: Text(
                               '$totalCompleted ${appString(context, 'stands')}',
                               style: const TextStyle(
-                                fontSize: 11,
+                                fontSize: AppFontSize.caption,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.completed,
                               ),
@@ -183,27 +187,27 @@ class AnalyticsScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpace.xxl),
                       ContributionHeatmapWidget(
                         dailyData: history,
                         weeksToShow: 20,
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: AppSpace.lg),
                       Text(
                         appString(
                           context,
                           'Tap any square to inspect details. Green: completed • Amber: snoozed • Red: skipped',
                         ),
                         style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10,
+                          fontSize: AppFontSize.micro,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
-                // Section 2: Weekly Adherence Bar Chart
+                // Section 2: Weekly completion-rate chart
                 GlassCard(
                   padding: const EdgeInsets.all(18),
                   child: Column(
@@ -213,7 +217,7 @@ class AnalyticsScreen extends StatelessWidget {
                         appString(context, 'Weekly Cadence Breakdown'),
                         style: theme.textTheme.titleMedium,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpace.xs),
                       Text(
                         appString(
                           context,
@@ -221,19 +225,19 @@ class AnalyticsScreen extends StatelessWidget {
                         ),
                         style: theme.textTheme.bodySmall,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpace.xxl),
                       WeeklyAdherenceBarChart(
                         dailyData: history,
                         accentColor: accent,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: AppSpace.xl),
                       // Wrap rather than Row: three legend entries do not fit
                       // side by side on a 320px phone, and the French labels are
                       // longer than the English ones. A Row would overflow; a
                       // Wrap reflows onto a second line instead.
                       Wrap(
-                        spacing: 16,
-                        runSpacing: 8,
+                        spacing: AppSpace.xxl,
+                        runSpacing: AppSpace.md,
                         alignment: WrapAlignment.center,
                         children: [
                           _buildLegendDot(
@@ -242,7 +246,7 @@ class AnalyticsScreen extends StatelessWidget {
                           ),
                           _buildLegendDot(
                             AppColors.snoozed,
-                            appString(context, 'Snoozed (10m)'),
+                            appString(context, 'Snoozed'),
                           ),
                           _buildLegendDot(
                             AppColors.skipped,
@@ -253,7 +257,7 @@ class AnalyticsScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 // Section 3: 30-Day Trend Line Chart
                 GlassCard(
@@ -265,7 +269,7 @@ class AnalyticsScreen extends StatelessWidget {
                         appString(context, 'Stand Duration Trend'),
                         style: theme.textTheme.titleMedium,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpace.xs),
                       Text(
                         appString(
                           context,
@@ -273,7 +277,7 @@ class AnalyticsScreen extends StatelessWidget {
                         ),
                         style: theme.textTheme.bodySmall,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpace.xxl),
                       TrendStandDurationLineChart(
                         dailyData: history,
                         accentColor: accent,
@@ -281,7 +285,7 @@ class AnalyticsScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 // Action Distribution Card
                 GlassCard(
@@ -293,11 +297,11 @@ class AnalyticsScreen extends StatelessWidget {
                         appString(context, 'Action Distribution'),
                         style: theme.textTheme.titleMedium,
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: AppSpace.xl),
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                         child: SizedBox(
-                          height: 12,
+                          height: AppSpace.xl,
                           child: Row(
                             children: [
                               if (totalCompleted > 0)
@@ -319,14 +323,14 @@ class AnalyticsScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: AppSpace.xl),
                       // Wrap, like the legend above it: the French labels are
                       // longer than the English ones and three non-flex children
                       // in a spaceBetween Row overflow once the total exceeds the
                       // card width.
                       Wrap(
-                        spacing: 16,
-                        runSpacing: 8,
+                        spacing: AppSpace.xxl,
+                        runSpacing: AppSpace.md,
                         alignment: WrapAlignment.spaceBetween,
                         children: [
                           _buildDistItem(
@@ -349,7 +353,7 @@ class AnalyticsScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
               ],
             ),
           ),
@@ -379,7 +383,7 @@ class AnalyticsScreen extends StatelessWidget {
         icon = Icons.cloud_done;
         break;
       case SyncStatus.offline:
-        text = appString(context, 'Offline Queue');
+        text = appString(context, 'Local-only');
         col = Colors.grey;
         icon = Icons.cloud_off;
         break;
@@ -389,14 +393,17 @@ class AnalyticsScreen extends StatelessWidget {
         icon = Icons.sync_problem;
         break;
       case SyncStatus.idle:
-        text = appString(context, 'Cloud Connected');
+        text = appString(context, 'Sharing off');
         col = accent;
         icon = Icons.cloud;
         break;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.md,
+        vertical: AppSpace.xs,
+      ),
       decoration: BoxDecoration(
         color: col.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
@@ -404,12 +411,12 @@ class AnalyticsScreen extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: col),
-          const SizedBox(width: 4),
+          Icon(icon, size: AppSpace.xl, color: col),
+          const SizedBox(width: AppSpace.xs),
           Text(
             text,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: AppFontSize.micro,
               fontWeight: FontWeight.bold,
               color: col,
             ),
@@ -429,22 +436,25 @@ class AnalyticsScreen extends StatelessWidget {
   }) {
     return Expanded(
       child: GlassCard(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AppSpace.xxl),
         borderRadius: BorderRadius.circular(18),
         blur: 8,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(icon, size: 18, color: color),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpace.lg),
             Text(
               value,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: AppSpace.xxs),
             Text(
               title,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: AppFontSize.caption,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             Text(
               subtitle,
@@ -463,12 +473,18 @@ class AnalyticsScreen extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: AppSpace.md,
+          height: AppSpace.md,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        const SizedBox(width: AppSpace.xs),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: AppFontSize.caption,
+            color: Colors.grey,
+          ),
+        ),
       ],
     );
   }
@@ -480,18 +496,21 @@ class AnalyticsScreen extends StatelessWidget {
         Row(
           children: [
             Container(
-              width: 6,
-              height: 6,
+              width: AppSpace.sm,
+              height: AppSpace.sm,
               decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpace.xs),
             Text(
               label,
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
+              style: const TextStyle(
+                fontSize: AppFontSize.caption,
+                color: Colors.grey,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: AppSpace.xxs),
         Text(
           '$count',
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),

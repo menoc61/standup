@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/core/platform_motion.dart';
 import 'package:standup_app/providers/app_state.dart';
@@ -227,12 +228,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 )
               : null,
           title: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(AppRadius.xs),
             child: LinearProgressIndicator(
               value: (_currentPage + 1) / _totalPages,
               backgroundColor: Colors.grey.withValues(alpha: 0.2),
               valueColor: AlwaysStoppedAnimation<Color>(accent),
-              minHeight: 4,
+              minHeight: AppSpace.xs,
             ),
           ),
           actions: [
@@ -250,7 +251,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.section,
+                  AppSpace.xs,
+                  AppSpace.section,
+                  AppSpace.md,
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -386,7 +392,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                           physics:
                                               const BouncingScrollPhysics(),
                                           padding: const EdgeInsets.symmetric(
-                                            vertical: 12,
+                                            vertical: AppSpace.xl,
                                           ),
                                           // This view supplies the scrolling, so
                                           // slides must not nest a second scroll
@@ -440,8 +446,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               // Bottom Controls
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
+                  horizontal: AppSpace.huge,
+                  vertical: AppSpace.xxl,
                 ),
                 // The LayoutBuilder wraps the whole Row rather than sitting
                 // inside it. A Row hands non-flex children unbounded main-axis
@@ -489,7 +495,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   onTap: () => _goToPage(i),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
+                                      horizontal: AppSpace.xs,
                                       vertical: 14,
                                     ),
                                     child: Center(
@@ -523,7 +529,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ),
                         ),
 
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpace.xl),
 
                         // Next / Continue button
                         if (_currentPage < _totalPages - 1)
@@ -532,8 +538,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               onTap: _isCompleting ? null : _goToNextPage,
                               backgroundColor: accent,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
+                                horizontal: AppSpace.huge,
+                                vertical: AppSpace.xl,
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -549,8 +555,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                       textAlign: TextAlign.end,
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
-                                  const Icon(Icons.arrow_forward, size: 16),
+                                  const SizedBox(width: AppSpace.sm),
+                                  const Icon(
+                                    Icons.arrow_forward,
+                                    size: AppSpace.xxl,
+                                  ),
                                 ],
                               ),
                             ),

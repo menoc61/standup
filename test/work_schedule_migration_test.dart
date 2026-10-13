@@ -1,0 +1,117 @@
+import 'package:drift/native.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:standup_app/data/local/app_database.dart';
+import 'package:standup_app/data/local/local_repository.dart';
+
+void main() {
+  test(
+    'schema v4 data migrates without loss and receives indexes and AI opt-in',
+    () async {
+      final database = AppDatabase.forTesting(
+        NativeDatabase.memory(
+          setup: (db) {
+            db.execute('''
+            CREATE TABLE user_preferences_table (
+              id TEXT NOT NULL PRIMARY KEY,
+              user_id TEXT NOT NULL,
+              theme_mode TEXT NOT NULL,
+              color_system TEXT NOT NULL,
+              notification_frequency INTEGER NOT NULL,
+              sound_enabled INTEGER NOT NULL,
+              haptics_enabled INTEGER NOT NULL,
+              statistics_opt_in INTEGER NOT NULL,
+              onboarding_completed INTEGER NOT NULL,
+              selected_sound TEXT NOT NULL,
+              quiet_hours TEXT,
+              streak_goal INTEGER NOT NULL,
+              action_window_minutes INTEGER NOT NULL,
+              enforce_action_window INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            )
+          ''');
+            db.execute('''
+            INSERT INTO user_preferences_table (
+              id, user_id, theme_mode, color_system,
+              notification_frequency, sound_enabled, haptics_enabled,
+              statistics_opt_in, onboarding_completed, selected_sound,
+              quiet_hours, streak_goal, action_window_minutes,
+              enforce_action_window, updated_at
+            ) VALUES (
+              'pref_local_legacy', 'local_legacy', 'dark', 'crimson',
+              90, 0, 1, 0, 1, 'chime', '22:00-06:00', 6, 10, 1, 1791849600000
+            )
+          ''');
+            db.execute('''
+            CREATE TABLE reminder_logs_table (
+              id TEXT NOT NULL PRIMARY KEY,
+              user_id TEXT NOT NULL,
+              scheduled_time INTEGER NOT NULL,
+              action_taken TEXT NOT NULL,
+              snooze_duration INTEGER NOT NULL DEFAULT 0,
+              timestamp INTEGER NOT NULL,
+              synced_to_cloud INTEGER NOT NULL DEFAULT 0
+            )
+          ''');
+            db.execute('''
+            CREATE TABLE analytics_daily_table (
+              id TEXT NOT NULL PRIMARY KEY,
+              user_id TEXT NOT NULL,
+              date TEXT NOT NULL,
+              reminders_sent INTEGER NOT NULL DEFAULT 0,
+              reminders_completed INTEGER NOT NULL DEFAULT 0,
+              reminders_snoozed INTEGER NOT NULL DEFAULT 0,
+              reminders_skipped INTEGER NOT NULL DEFAULT 0,
+              total_stand_time INTEGER NOT NULL DEFAULT 0,
+              organization_id TEXT,
+              synced_to_cloud INTEGER NOT NULL DEFAULT 0
+            )
+          ''');
+            db.execute('PRAGMA user_version = 4');
+          },
+        ),
+      );
+      final repository = LocalDatabaseRepository(database);
+
+      final migrated = await repository.getUserPreferences('local_legacy');
+      expect(migrated, isNotNull);
+      expect(migrated!.id, 'pref_local_legacy');
+      expect(migrated.themeMode, 'dark');
+      expect(migrated.notificationFrequency, 90);
+      expect(migrated.streakGoal, 6);
+      expect(migrated.actionWindowMinutes, 10);
+      expect(migrated.quietHours, '22:00-06:00');
+      expect(migrated.workDays, '1,2,3,4,5');
+      expect(migrated.workStartMinute, 540);
+      expect(migrated.workEndMinute, 1020);
+      expect(migrated.aiGuidanceOptIn, isFalse);
+
+      final edited = migrated.copyWith(
+        aiGuidanceOptIn: true,
+        workDays: '1,3,5',
+        workStartMinute: 8 * 60 + 30,
+        workEndMinute: 16 * 60 + 30,
+      );
+      await repository.saveUserPreferences(edited);
+      final reloaded = await repository.getUserPreferences('local_legacy');
+      expect(reloaded?.workSchedule, edited.workSchedule);
+      expect(reloaded?.aiGuidanceOptIn, isTrue);
+
+      final indexes = await database
+          .customSelect("SELECT name FROM sqlite_master WHERE type = 'index'")
+          .get();
+      final indexNames = indexes.map((row) => row.read<String>('name')).toSet();
+      expect(
+        indexNames,
+        containsAll({
+          'user_preferences_user_id_idx',
+          'reminder_logs_user_timestamp_idx',
+          'reminder_logs_user_action_timestamp_idx',
+          'analytics_daily_user_date_idx',
+          'analytics_daily_user_synced_idx',
+        }),
+      );
+
+      await database.close();
+    },
+  );
+}

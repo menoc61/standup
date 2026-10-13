@@ -142,27 +142,56 @@ void main() {
       expect(payload['window_open'], isTrue);
     });
 
-    test('decode recovers booleans rather than leaving them as text', () {
+    test('serialized payload restores booleans and one-digit integers', () {
       final snapshot = WidgetSnapshot.fromState(
         streak: 1,
-        totalXp: 10,
-        todayCompleted: 1,
+        totalXp: 1,
+        todayCompleted: 8,
         dailyGoal: 8,
         windowOpen: true,
         windowMinutes: 5,
         cadenceMinutes: 60,
-        clockSuspect: false,
+        clockSuspect: true,
         now: _open,
       );
 
-      final roundTripped = WidgetSnapshot.fromMap(snapshot.toMap());
+      final encoded = WidgetPayloadCodec.encode(snapshot.toMap());
+      final decoded = WidgetPayloadCodec.decode(encoded);
+      expect(decoded, isNotNull);
+      final roundTripped = WidgetSnapshot.fromMap(decoded!);
 
       expect(roundTripped.windowOpen, isTrue);
-      expect(roundTripped.clockSuspect, isFalse);
+      expect(roundTripped.goalMet, isTrue);
+      expect(roundTripped.clockSuspect, isTrue);
       expect(roundTripped.streak, 1);
-      expect(roundTripped.totalXp, 10);
+      expect(roundTripped.totalXp, 1);
       expect(roundTripped.level, snapshot.level);
       expect(roundTripped.dailyGoal, 8);
+    });
+
+    test('serialized false flags remain booleans', () {
+      final payload = WidgetSnapshot.fromState(
+        streak: 0,
+        totalXp: 0,
+        todayCompleted: 0,
+        dailyGoal: 8,
+        windowOpen: false,
+        windowMinutes: 5,
+        cadenceMinutes: 60,
+        clockSuspect: false,
+        now: _closed,
+      ).toMap();
+
+      final decoded = WidgetPayloadCodec.decode(
+        WidgetPayloadCodec.encode(payload),
+      );
+      expect(decoded, isNotNull);
+      final roundTripped = WidgetSnapshot.fromMap(decoded!);
+
+      expect(roundTripped.windowOpen, isFalse);
+      expect(roundTripped.goalMet, isFalse);
+      expect(roundTripped.clockSuspect, isFalse);
+      expect(roundTripped.streak, 0);
     });
   });
 

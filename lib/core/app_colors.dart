@@ -104,6 +104,29 @@ class AppColors {
   static const Color empty = Color(0xFFD8D9D4);
   static const Color emptyOnDark = Color(0xFF2A2A2E);
 
+  // ── Paper ──────────────────────────────────────────────────────────────────
+  //
+  // The page is warm, not white. A pure #FFFFFF page next to a warm ink ramp
+  // reads as clinical and slightly blue, which is the opposite of the intent.
+  //
+  // These four were previously hard-coded inside the home screen's custom
+  // painter, so they were the only part of the app that knew what colour the
+  // page actually was — and every other screen, painting nothing at all,
+  // rendered against whatever was behind it.
+
+  /// The top-left of the page in light mode.
+  static const Color paperLight = Color(0xFFF3F0E7);
+
+  /// The bottom-right of the page in light mode. A shade deeper, so the wash
+  /// runs top-left to bottom-right.
+  static const Color paperLightDeep = Color(0xFFEDECE3);
+
+  /// The top-left of the page in dark mode.
+  static const Color paperDark = Color(0xFF141A17);
+
+  /// The bottom-right of the page in dark mode.
+  static const Color paperDarkDeep = Color(0xFF171F1B);
+
   // ── Accents ────────────────────────────────────────────────────────────────
   //
   // `brand` is the default and the only one new installs see. The rest exist

@@ -1,3 +1,5 @@
+import 'package:standup_app/core/app_spacing.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -101,7 +103,7 @@ class _ParticleBurstState extends State<ParticleBurst>
           position: Offset.zero,
           velocity: Offset(math.cos(angle) * speed, math.sin(angle) * speed),
           color: _kColors[_rng.nextInt(_kColors.length)],
-          size: 4 + _rng.nextDouble() * 8,
+          size: AppSpace.xs + _rng.nextDouble() * 8,
           opacity: 1.0,
           rotation: _rng.nextDouble() * 2 * math.pi,
           rotationSpeed: (_rng.nextDouble() - 0.5) * 8,

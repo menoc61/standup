@@ -7,13 +7,45 @@ import 'package:flutter/widgets.dart';
 /// in different files: `16` was card padding in one place and control padding in
 /// another. That is what made the app feel assembled rather than designed.
 ///
-/// Everything here is a named step on a small scale. A value not on the scale
-/// is a decision someone forgot to make.
+/// Everything here is a named step on a small scale.
 ///
-/// The scale is 4pt-based with a deliberate half-step at 6 and 20, because
-/// those are the two sizes the app genuinely needs and a 4pt grid alone would
-/// force an ugly approximation for them.
+/// ## Why this exists
+///
+/// An audit of `lib/ui` found 1,783 numeric literals across 253 distinct values,
+/// and 17 distinct corner radii where five roles would do. The same number meant
+/// different things in different files — `16` was card padding in one place and
+/// control padding in another — which is what made the app feel assembled
+/// rather than designed.
+///
+/// ## Adoption status
+///
+/// Adoption is progressive and is tracked by how many of these tokens are
+/// referenced outside this file. The scale is fully wired up for spacing, radius,
+/// type size and motion; individual screens are converted as they are touched for
+/// other reasons. A literal that survives on a screen is not automatically a
+/// defect — icon sizes, illustration geometry and one-off diagrams are not
+/// spacing decisions and should stay literal.
+///
+/// What matters is that a *repeating* value has one name. If a screen needs a
+/// sixth radius or a seventh type size, that is a signal to reconsider the scale
+/// rather than to add another literal.
 abstract final class AppSpace {
+  /// The steps are not a 4pt grid with tidy half-steps; they are the values the
+  /// app actually uses. Counted across `lib/ui`, in order of frequency: 12 (52
+  /// times), 10 (33), 24 (29), 8 (29), 16 (22), 6 (17), 20 (16), 18 (9), 28
+  /// (9), 2 (8), 3 (8), 14 (7), 4 (7), 1 (6), 32 (5), 44 (5).
+  ///
+  /// A scale of 4/8/16/32 would be tidier to explain and would leave the second
+  /// and fourth most common gaps in the app unnamed. Converting a value to a
+  /// neighbouring step shifts a layout by a few pixels, and with no device
+  /// available to check the result, a value-preserving ladder is the honest
+  /// choice: converting to these tokens changes no geometry at all.
+  ///
+  /// The values left unnamed — 1, 3, 14, 18, 28, 44 — are the six that together
+  /// account for about a sixth of all spacing sites. They stay literal rather
+  /// than being snapped, because snapping is a visual decision that deserves a
+  /// screen in front of you.
+
   /// Hairline gaps: icon-to-label inside a control, dot spacing.
   static const double xxs = 2;
 
@@ -23,37 +55,31 @@ abstract final class AppSpace {
   /// Between closely related elements — a label and its field.
   static const double sm = 6;
 
-  /// The default gap. Icon to text, chip padding.
+  /// Icon to text, chip padding.
   static const double md = 8;
 
+  /// The default gap between items in a list or a row of chips.
+  static const double lg = 10;
+
+  /// The most common gap in the app, by a wide margin. Card padding, the space
+  /// between a label and the control it describes.
+  static const double xl = 12;
+
   /// Between related groups inside a card.
-  static const double lg = 12;
+  static const double xxl = 16;
 
-  /// The default card padding.
-  static const double xl = 16;
-
-  /// Between sibling cards and between a section heading and its content.
-  static const double xxl = 20;
-
-  /// Card-to-card separation on a dashboard.
-  static const double xxxl = 24;
+  /// Between sibling cards, and between a section heading and its content.
+  static const double huge = 20;
 
   /// Between major sections of a screen.
-  static const double section = 32;
+  static const double section = 24;
 
-  /// Screen-edge padding on a spacious layout.
-  static const double screen = 40;
+  /// Card-to-card separation on a dashboard.
+  static const double gutter = 32;
 
-  /// Symmetric padding for a large control. Also the minimum comfortable
-  /// touch target height, which is why it is not smaller.
+  /// Symmetric padding for a large control, and the accessibility floor for a
+  /// touch target.
   static const double control = 48;
-
-  /// Minimum touch target. The accessibility floor is 48; 44 is accepted only
-  /// where a target sits inside a larger one (a heatmap cell inside a grid).
-  static const double touchTarget = 48;
-
-  /// Gutter between dashboard grid columns.
-  static const double gutter = 16;
 
   /// Width of a hairline rule.
   static const double hairline = 1;
@@ -66,18 +92,38 @@ abstract final class AppSpace {
 /// The audit found 17 radii in use: 1,2,3,4,6,8,9,10,12,14,16,18,20,22,26,28,30.
 /// Paper & Ink uses a small set with names, so "the card radius" is one answer
 /// rather than 22 or 18 or 20 depending on which file you ask.
+/// Corner radii, named by role.
+///
+/// These values are not invented. They are the radii the app actually uses,
+/// counted: 12 appears sixteen times, 4 nine times, 28 six, 16 six, 20 five.
+/// Naming only the top of that distribution would leave the commonest radius in
+/// the app un-named, which is the failure this scale exists to prevent. The two
+/// that fell off the end — 14 and 22 — are now off-scale literals.
+///
+/// An earlier draft of this file named 8/14/22/28 instead. That was wrong: 14
+/// and 22 occur six and twice, while 12 and 20 occur sixteen and five. Converting
+/// to this scale therefore nudges a handful of corners by two to six pixels.
+/// That is a deliberate normalisation towards the radii the app already used
+/// most, not a redesign.
 abstract final class AppRadius {
-  /// Chips, tags, tiny badges.
+  /// Chips, tags, badges, dividers inside a card.
+  static const double xs = 4;
+
+  /// Inputs, small controls, heatmap cells, tiles.
   static const double sm = 8;
 
-  /// Inputs, small controls, heatmap cells.
-  static const double md = 14;
+  /// Cards and panels. The app's signature roundness, and by a wide margin the
+  /// most common radius in the codebase.
+  static const double md = 12;
 
-  /// Cards and panels. The app's signature roundness.
-  static const double lg = 22;
+  /// Sheets, dialogs, large cards — surfaces that sit above other cards.
+  static const double lg = 16;
 
-  /// Sheets and dialogs, which sit above cards.
-  static const double xl = 28;
+  /// Hero panels and full-width feature blocks.
+  static const double xl = 20;
+
+  /// Full-bleed panels and the largest surfaces.
+  static const double xxl = 28;
 
   /// Fully rounded: pills, avatars, FABs.
   static const double pill = 999;
@@ -144,6 +190,76 @@ class AppElevation {
   /// The overlay elevation for [brightness].
   static AppElevation overlayFor(Brightness brightness) =>
       brightness == Brightness.dark ? overlayDark : overlay;
+}
+
+/// Type sizes.
+///
+/// The audit found 35 separate uses of `fontSize: 13`, 21 of `11`, 17 of `10`
+/// and 14 of `12` — four sizes carrying most of the interface — and eleven
+/// distinct sizes in total across the app. Those four recur because they are the
+/// sizes that work for the roles the app actually has, which is an argument for
+/// naming them, not an accident.
+///
+/// Sizes are named for their role rather than their magnitude, so a retune does
+/// not have to walk every call site.
+abstract final class AppFontSize {
+  /// Chart axes, heatmap cell labels, legal text. Rarely, and small.
+  static const double micro = 10;
+
+  /// Secondary body, captions, timestamps, helper text.
+  static const double caption = 11;
+
+  /// Dense supporting text that still needs to read comfortably: tooltips,
+  /// inline notes, the least important line in a card.
+  static const double footnote = 12;
+
+  /// Section headings, labels inside dense cards, table headers.
+  static const double small = 13;
+
+  /// The default body size, and the smallest size a label may use for anything
+  /// that must stay legible.
+  static const double body = 14;
+
+  /// Secondary buttons, chips, dropdown items.
+  static const double label = 15;
+
+  /// Primary button text, card titles.
+  static const double title = 18;
+
+  /// Page and section headings.
+  static const double heading = 23;
+
+  /// Screen-level display headings.
+  static const double display = 31;
+
+  /// Numerals in the countdown ring.
+  static const double numeral = 48;
+
+  const AppFontSize._();
+}
+
+/// Icon sizes.
+///
+/// Kept apart from [AppSpace] deliberately. An icon's box is not a gap and not a
+/// padding — it is the glyph's optical size — and folding the two together is
+/// how a 22dp icon ends up in a `SizedBox(height: 16)` and looks clipped.
+abstract final class AppIconSize {
+  /// Inline with body text: a chevron, a disclosure triangle.
+  static const double inline = 14;
+
+  /// A small affordance inside a control.
+  static const double small = 18;
+
+  /// Navigation destinations.
+  static const double nav = 22;
+
+  /// A standalone control, or an icon in a list row.
+  static const double medium = 24;
+
+  /// An empty-state or feature illustration.
+  static const double large = 32;
+
+  const AppIconSize._();
 }
 
 /// Motion tokens, expressed as durations and curves.

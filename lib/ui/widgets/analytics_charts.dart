@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/data/models/workday_metrics.dart';
 import 'package:standup_app/data/models/daily_analytics.dart';
 
@@ -46,25 +47,25 @@ class WeeklyAdherenceBarChart extends StatelessWidget {
             BarChartRodData(
               toY: completed,
               color: AppColors.completed,
-              width: 10,
+              width: AppSpace.lg,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(4),
+                top: Radius.circular(AppRadius.xs),
               ),
             ),
             BarChartRodData(
               toY: snoozed,
               color: AppColors.snoozed,
-              width: 10,
+              width: AppSpace.lg,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(4),
+                top: Radius.circular(AppRadius.xs),
               ),
             ),
             BarChartRodData(
               toY: skipped,
               color: AppColors.skipped,
-              width: 10,
+              width: AppSpace.lg,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(4),
+                top: Radius.circular(AppRadius.xs),
               ),
             ),
           ],
@@ -91,7 +92,7 @@ class WeeklyAdherenceBarChart extends StatelessWidget {
                   TextStyle(
                     color: rod.color,
                     fontWeight: FontWeight.bold,
-                    fontSize: 12,
+                    fontSize: AppFontSize.footnote,
                   ),
                 );
               },
@@ -112,7 +113,10 @@ class WeeklyAdherenceBarChart extends StatelessWidget {
                 interval: 2,
                 getTitlesWidget: (val, meta) => Text(
                   val.toInt().toString(),
-                  style: const TextStyle(color: Colors.grey, fontSize: 10),
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: AppFontSize.micro,
+                  ),
                 ),
               ),
             ),
@@ -123,12 +127,12 @@ class WeeklyAdherenceBarChart extends StatelessWidget {
                   final index = val.toInt();
                   if (index >= 0 && index < dayLabels.length) {
                     return Padding(
-                      padding: const EdgeInsets.only(top: 6.0),
+                      padding: const EdgeInsets.only(top: AppSpace.sm),
                       child: Text(
                         dayLabels[index],
                         style: const TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: 11,
+                          fontSize: AppFontSize.caption,
                         ),
                       ),
                     );
@@ -233,7 +237,10 @@ class TrendStandDurationLineChart extends StatelessWidget {
                 interval: 15,
                 getTitlesWidget: (val, meta) => Text(
                   '${val.toInt()}m',
-                  style: const TextStyle(color: Colors.grey, fontSize: 10),
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: AppFontSize.micro,
+                  ),
                 ),
               ),
             ),
@@ -247,11 +254,11 @@ class TrendStandDurationLineChart extends StatelessWidget {
                   if (idx >= 0 && idx < recent14.length) {
                     final dt = DateTime.parse(recent14[idx].date);
                     return Padding(
-                      padding: const EdgeInsets.only(top: 6.0),
+                      padding: const EdgeInsets.only(top: AppSpace.sm),
                       child: Text(
                         DateFormat('d MMM', locale).format(dt),
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: AppFontSize.micro,
                           color: Colors.grey,
                         ),
                       ),
@@ -277,7 +284,7 @@ class TrendStandDurationLineChart extends StatelessWidget {
                   return FlDotCirclePainter(
                     radius: 3,
                     color: Colors.white,
-                    strokeWidth: 2,
+                    strokeWidth: AppSpace.xxs,
                     strokeColor: accentColor,
                   );
                 },

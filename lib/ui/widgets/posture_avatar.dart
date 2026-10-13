@@ -1,3 +1,5 @@
+import 'package:standup_app/core/app_spacing.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -360,7 +362,7 @@ class _PostureCharacterPainter extends CustomPainter {
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         const Rect.fromLTWH(47, 130, 123, 8),
-        const Radius.circular(4),
+        const Radius.circular(AppRadius.xs),
       ),
       Paint()..color = wood,
     );
@@ -442,7 +444,7 @@ class _PostureCharacterPainter extends CustomPainter {
   void _drawHead(Canvas canvas, Offset center, Color skin, Color hair) {
     final head = RRect.fromRectAndRadius(
       Rect.fromCenter(center: center, width: 25, height: 31),
-      const Radius.circular(12),
+      const Radius.circular(AppRadius.md),
     );
     canvas.drawRRect(head, Paint()..color = skin);
     final hairline = Path()

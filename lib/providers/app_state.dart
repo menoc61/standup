@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OAuthProvider;
 import 'package:uuid/uuid.dart';
+import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/core/app_colors.dart';
 import 'package:standup_app/data/local/local_repository.dart';
 import 'package:standup_app/data/local/widget_snapshot.dart';
@@ -17,9 +18,12 @@ import 'package:standup_app/data/models/stand_window.dart';
 import 'package:standup_app/data/models/user_preferences.dart';
 import 'package:standup_app/data/models/user_profile.dart';
 import 'package:standup_app/data/models/workday_metrics.dart';
+import 'package:standup_app/data/models/work_schedule.dart';
 import 'package:standup_app/data/remote/supabase_service.dart';
 import 'package:standup_app/services/audio_service.dart';
 import 'package:standup_app/services/haptics_service.dart';
+import 'package:standup_app/services/guidance_provider.dart';
+import 'package:standup_app/services/supabase_guidance_provider.dart';
 import 'package:standup_app/services/live_countdown_service.dart';
 import 'package:standup_app/services/notification_service.dart';
 
@@ -37,6 +41,7 @@ class AppState extends ChangeNotifier {
   final SupabaseService supabaseService;
   final NotificationService notificationService;
   final AudioService audioService;
+  final GuidanceProvider _aiGuidanceProvider;
 
   /// Persistent notification that counts down to the next break.
   ///
@@ -64,7 +69,7 @@ class AppState extends ChangeNotifier {
   bool _isBreakActive = false;
   bool _reminderAlertPlayed = false;
   int _activeBreakStep = 0;
-  int _breakSecondsRemaining = 300; // 5 minutes
+  int _breakSecondsRemaining = AppCadence.guidedStretchSeconds;
   Timer? _breakTimer;
 
   /// The window key a guided stretch was started under, so its completion is
@@ -72,8 +77,20 @@ class AppState extends ChangeNotifier {
   int? _breakWindowKey;
 
   SyncStatus _syncStatus = SyncStatus.idle;
+  Future<void>? _syncInFlight;
+  String? _syncInFlightUserId;
   String _languageCode = 'fr';
   DeviceProfile? _deviceProfile;
+  final LocalGuidanceProvider _localGuidanceProvider =
+      const LocalGuidanceProvider();
+  GuidanceFeedback _guidanceFeedback = GuidanceFeedback.none;
+  GuidanceResult? _aiGuidanceResult;
+  GuidanceInput? _aiGuidanceInput;
+  String? _aiGuidanceUserId;
+  bool _isAiGuidanceLoading = false;
+  bool _aiGuidanceUnavailable = false;
+  GuidanceInput? _aiGuidanceUnavailableInput;
+  String? _aiGuidanceUnavailableUserId;
 
   // Anti-bypass bookkeeping. The monotonic stopwatch is the reference that lets
   // ordinary OS suspend/resume be told apart from deliberate clock tampering.
@@ -91,7 +108,9 @@ class AppState extends ChangeNotifier {
     required this.supabaseService,
     required this.notificationService,
     required this.audioService,
-  });
+    GuidanceProvider? aiGuidanceProvider,
+  }) : _aiGuidanceProvider =
+           aiGuidanceProvider ?? SupabaseGuidanceProvider(supabaseService);
 
   // Getters
   UserProfile? get userProfile => _userProfile;
@@ -108,6 +127,82 @@ class AppState extends ChangeNotifier {
   int get breakSecondsRemaining => _breakSecondsRemaining;
   SyncStatus get syncStatus => _syncStatus;
   String get languageCode => _languageCode;
+  GuidanceInput get _guidanceInput => GuidanceInput(
+    completedToday: _todayAnalytics.remindersCompleted,
+    snoozedToday: _todayAnalytics.remindersSnoozed,
+    skippedToday: _todayAnalytics.remindersSkipped,
+    dailyGoal: preferences.streakGoal,
+    cadenceMinutes: _cadenceMinutes,
+    feedback: _guidanceFeedback,
+  );
+  GuidanceResult? get personalGuidance =>
+      _aiGuidanceInput == _guidanceInput &&
+          _aiGuidanceUserId == supabaseService.signedInUserId
+      ? _aiGuidanceResult ?? _localGuidanceProvider.evaluate(_guidanceInput)
+      : _localGuidanceProvider.evaluate(_guidanceInput);
+  bool get isAiGuidanceLoading => _isAiGuidanceLoading;
+  bool get aiGuidanceUnavailable =>
+      _aiGuidanceUnavailable &&
+      _aiGuidanceUnavailableInput == _guidanceInput &&
+      _aiGuidanceUnavailableUserId == supabaseService.signedInUserId;
+  bool get hasAiGuidanceResult =>
+      _aiGuidanceResult != null &&
+      _aiGuidanceInput == _guidanceInput &&
+      _aiGuidanceUserId == supabaseService.signedInUserId;
+  bool get canRequestAiGuidance =>
+      preferences.aiGuidanceOptIn &&
+      supabaseService.isInitialized &&
+      supabaseService.signedInUserId != null;
+  bool get isAiGuidanceOptedIn => preferences.aiGuidanceOptIn;
+
+  /// Explicitly requests one company-hosted insight. The local result is
+  /// already available and remains the fallback for network/model failures.
+  Future<void> requestAiGuidance() async {
+    if (!canRequestAiGuidance || _isAiGuidanceLoading) return;
+    final requestInput = _guidanceInput;
+    final requestUserId = supabaseService.signedInUserId;
+    _isAiGuidanceLoading = true;
+    _aiGuidanceUnavailable = false;
+    _aiGuidanceUnavailableInput = null;
+    _aiGuidanceUnavailableUserId = null;
+    notifyListeners();
+    try {
+      final result = await _aiGuidanceProvider.suggest(requestInput);
+      final requestStillCurrent =
+          preferences.aiGuidanceOptIn &&
+          _guidanceInput == requestInput &&
+          supabaseService.signedInUserId == requestUserId;
+      if (requestStillCurrent && result != null) {
+        _aiGuidanceResult = result;
+        _aiGuidanceInput = requestInput;
+        _aiGuidanceUserId = requestUserId;
+      } else if (requestStillCurrent) {
+        _aiGuidanceUnavailable = true;
+        _aiGuidanceUnavailableInput = requestInput;
+        _aiGuidanceUnavailableUserId = requestUserId;
+      }
+    } catch (_) {
+      if (preferences.aiGuidanceOptIn &&
+          _guidanceInput == requestInput &&
+          supabaseService.signedInUserId == requestUserId) {
+        _aiGuidanceUnavailable = true;
+        _aiGuidanceUnavailableInput = requestInput;
+        _aiGuidanceUnavailableUserId = requestUserId;
+      }
+    } finally {
+      _isAiGuidanceLoading = false;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  void recordGuidanceFeedback(GuidanceFeedback feedback) {
+    if (_guidanceFeedback == feedback) return;
+    _guidanceFeedback = feedback;
+    _aiGuidanceUnavailable = false;
+    _aiGuidanceUnavailableInput = null;
+    _aiGuidanceUnavailableUserId = null;
+    notifyListeners();
+  }
 
   /// The captured device profile, or null before [captureDeviceProfile] runs.
   DeviceProfile? get deviceProfile => _deviceProfile;
@@ -155,47 +250,72 @@ class AppState extends ChangeNotifier {
 
   /// Whether a stand action is currently permitted. A break counts only inside
   /// the final [_actionWindowMinutes] minutes of each cadence hour.
-  bool get isActionWindowOpen => StandWindow.isActionable(
-    now: DateTime.now(),
-    actionWindowMinutes: _actionWindowMinutes,
-    cadenceMinutes: _cadenceMinutes,
-  );
+  bool get isActionWindowOpen => activeWindow != null;
 
   /// Time left before the current window shuts, or zero when closed.
-  Duration get windowTimeRemaining => StandWindow.remainingInWindow(
-    now: DateTime.now(),
-    actionWindowMinutes: _actionWindowMinutes,
-    cadenceMinutes: _cadenceMinutes,
-  );
+  Duration get windowTimeRemaining {
+    final now = DateTime.now();
+    final active = activeWindow;
+    return active == null ? Duration.zero : active.end.difference(now);
+  }
 
   /// Time until the next window opens, or zero while one is open.
-  Duration get timeUntilNextWindow => StandWindow.untilNextWindow(
-    now: DateTime.now(),
-    actionWindowMinutes: _actionWindowMinutes,
-    cadenceMinutes: _cadenceMinutes,
-  );
+  Duration get timeUntilNextWindow {
+    final now = DateTime.now();
+    if (activeWindow != null) return Duration.zero;
+    return (_nextEligibleWindow(now)?.start ?? now).difference(now);
+  }
 
   /// The actionable window currently open, for the UI to render.
-  WindowSpan? get activeWindow => StandWindow.activeWindow(
-    now: DateTime.now(),
-    actionWindowMinutes: _actionWindowMinutes,
-    cadenceMinutes: _cadenceMinutes,
-  );
+  WindowSpan? get activeWindow {
+    final now = DateTime.now();
+    final candidate = StandWindow.activeWindow(
+      now: now,
+      actionWindowMinutes: _actionWindowMinutes,
+      cadenceMinutes: _cadenceMinutes,
+    );
+    if (candidate == null ||
+        !preferences.workSchedule.allowsWindow(
+          candidate.start,
+          candidate.end,
+        )) {
+      return null;
+    }
+    return candidate;
+  }
+
+  WindowSpan? _nextEligibleWindow(DateTime now) {
+    var cursor = now;
+    final lookAheadWindows = 7 * 24 * 60 ~/ _cadenceMinutes + 4;
+    for (var i = 0; i < lookAheadWindows; i++) {
+      final candidate = StandWindow.nextWindow(
+        now: cursor,
+        actionWindowMinutes: _actionWindowMinutes,
+        cadenceMinutes: _cadenceMinutes,
+      );
+      if (candidate == null) return null;
+      if (preferences.workSchedule.allowsWindow(
+        candidate.start,
+        candidate.end,
+      )) {
+        return candidate;
+      }
+      cursor = candidate.start.add(const Duration(seconds: 1));
+    }
+    return null;
+  }
 
   /// The window length, clamped so a corrupt or hand-edited preference row can
   /// never make `StandWindow` throw `ArgumentError` from inside the 1 Hz
   /// ticker. Without this clamp a single bad value would produce an unhandled
   /// async error every second and freeze the visible timer at zero.
-  int get _actionWindowMinutes {
-    final requested = preferences.actionWindowMinutes;
-    final cadence = _cadenceMinutes;
-    if (requested <= 0) return cadence < 1 ? 1 : (cadence < 5 ? cadence : 5);
-    if (requested > cadence) return cadence;
-    return requested;
-  }
+  int get _actionWindowMinutes => AppCadence.resolveActionWindow(
+    preferences.actionWindowMinutes,
+    _cadenceMinutes,
+  );
 
   int get _cadenceMinutes =>
-      preferences.notificationFrequency.clamp(1, 24 * 60);
+      AppCadence.clampCadence(preferences.notificationFrequency);
 
   /// Whether the device's clock has moved suspiciously often, which makes the
   /// reported totals unreliable for the leaderboard.
@@ -333,6 +453,7 @@ class AppState extends ChangeNotifier {
 
   void _tick() {
     final now = DateTime.now();
+    final clockWasUnreliable = isClockUnreliable;
 
     // Watch for wall-clock manipulation by comparing it against a monotonic
     // stopwatch. Ordinary suspend/resume is classified separately, so a user
@@ -344,6 +465,9 @@ class AppState extends ChangeNotifier {
       ..reset()
       ..start();
     _clockTracker.observe(wallNow: now, monotonicDelta: monotonic);
+    if (clockWasUnreliable != isClockUnreliable) {
+      unawaited(syncWidget());
+    }
 
     if (_nextReminderTime != null) {
       _remainingDuration = ReminderClock.remaining(now, _nextReminderTime!);
@@ -416,12 +540,12 @@ class AppState extends ChangeNotifier {
   Future<void> _scheduleNextInterval({required int minutes}) async {
     _reminderAlertPlayed = false;
     final now = DateTime.now();
-    final safeMinutes = minutes.clamp(1, 24 * 60);
-    final next = StandWindow.nextWindow(
-      now: now,
-      actionWindowMinutes: _actionWindowMinutes,
-      cadenceMinutes: safeMinutes,
-    );
+    final safeMinutes = AppCadence.clampCadence(minutes);
+    final active = activeWindow;
+    final lookupFrom = active == null
+        ? now
+        : active.end.add(const Duration(microseconds: 1));
+    final next = _nextEligibleWindow(lookupFrom);
 
     if (next == null) {
       // Defensive: a malformed preference must never leave the app without a
@@ -459,12 +583,8 @@ class AppState extends ChangeNotifier {
   /// launch without needing any recovery logic.
   Future<void> _restoreReminderInterval({required int minutes}) async {
     final now = DateTime.now();
-    final safeMinutes = minutes.clamp(1, 24 * 60);
-    final next = StandWindow.nextWindow(
-      now: now,
-      actionWindowMinutes: _actionWindowMinutes,
-      cadenceMinutes: safeMinutes,
-    );
+    final safeMinutes = AppCadence.clampCadence(minutes);
+    final next = _nextEligibleWindow(now);
 
     if (next == null) {
       _timerStartTime = now;
@@ -475,11 +595,7 @@ class AppState extends ChangeNotifier {
     }
     _remainingDuration = _nextReminderTime!.difference(now);
 
-    final active = StandWindow.activeWindow(
-      now: now,
-      actionWindowMinutes: _actionWindowMinutes,
-      cadenceMinutes: safeMinutes,
-    );
+    final active = activeWindow;
     // Suppress the chime if we are already inside a window that opened while
     // the app was closed, otherwise reopening mid-window would nag.
     _reminderAlertPlayed = active != null;
@@ -515,15 +631,16 @@ class AppState extends ChangeNotifier {
           : 'Take a 5-minute break to stretch, breathe, and move.',
       quietHours: preferences.quietHours,
       actionWindowMinutes: _actionWindowMinutes,
+      workDays: preferences.workDays,
+      workStartMinute: preferences.workStartMinute,
+      workEndMinute: preferences.workEndMinute,
     );
   }
 
   Future<void> refreshReminderQueue() {
     final firstReminder =
         _nextReminderTime ??
-        DateTime.now().add(
-          Duration(minutes: preferences.notificationFrequency),
-        );
+        DateTime.now().add(Duration(minutes: _cadenceMinutes));
     return _scheduleReminderQueue(firstReminder);
   }
 
@@ -568,36 +685,6 @@ class AppState extends ChangeNotifier {
     ).millisecondsSinceEpoch;
   }
 
-  /// Asks the database whether the window identified by [key] was already used.
-  ///
-  /// [key] is always the closing instant of a window, so the window is
-  /// recovered from it directly instead of by looking up whichever window is
-  /// active now. That distinction is the fix: an in-flight guided stretch is
-  /// checked after its window has closed, and looking up the active window
-  /// there returned null, which sent the lookup down a bucket-index path that
-  /// multiplied an epoch value by a cadence in milliseconds and threw a
-  /// RangeError. The catch below turned that into "not already recorded", so
-  /// the guard reported false for exactly the case it exists to prevent and a
-  /// second break was logged.
-  ///
-  /// Any failure still resolves to `false` so a database problem cannot block a
-  /// legitimate break; the analytics transaction is what actually guarantees
-  /// the totals stay correct.
-  Future<bool> _alreadyCompletedInWindow(DateTime now, int key) async {
-    try {
-      final end = DateTime.fromMillisecondsSinceEpoch(key);
-      final start = end.subtract(Duration(minutes: _actionWindowMinutes));
-      return await localRepo.hasCompletedReminderInWindow(
-        _userProfile!.id,
-        start,
-        end,
-      );
-    } catch (e) {
-      debugPrint('Completion dedupe check failed: $e');
-      return false;
-    }
-  }
-
   /// Records a completed stand-up break.
   ///
   /// Returns false when the action is refused. Refusals are explicit and
@@ -613,15 +700,25 @@ class AppState extends ChangeNotifier {
     // Gate 1: the hourly action window. A stretch that already started is
     // exempt because it was validated when it began.
     final inProgressStretch = _isBreakActive && _breakWindowKey != null;
+    if (!inProgressStretch && !preferences.workSchedule.isWorkingAt(now)) {
+      _lastActionRejection = _languageCode == 'fr'
+          ? 'Cette pause peut être enregistrée pendant vos horaires de travail.'
+          : 'Breaks can be logged during your scheduled work hours.';
+      unawaited(audioService.playClick());
+      notifyListeners();
+      return false;
+    }
     if (preferences.enforceActionWindow &&
         windowKey == null &&
         !inProgressStretch &&
         !isActionWindowOpen) {
+      final windowMinutes = _actionWindowMinutes;
+      final cadenceMinutes = _cadenceMinutes;
       _lastActionRejection = _languageCode == 'fr'
-          ? 'La fenêtre de pause ouvre à la minute 55 de chaque heure. '
-                'Revenez ensuite pour enregistrer votre pause.'
-          : 'The movement window opens in the last 5 minutes of each hour. '
-                'Come back then to log your break.';
+          ? 'La pause peut être enregistrée pendant les $windowMinutes '
+                'dernières minutes de chaque intervalle de $cadenceMinutes minutes.'
+          : 'You can log a break during the last $windowMinutes minutes of '
+                'each $cadenceMinutes-minute interval.';
       unawaited(audioService.playClick());
       notifyListeners();
       return false;
@@ -638,13 +735,27 @@ class AppState extends ChangeNotifier {
       return false;
     }
 
-    // Gate 3: the same rule, asked of the database rather than of memory.
-    //
-    // [_actedWindows] only knows about taps in this isolate. A home-screen
-    // widget tap arrives in a headless isolate, and a cold launch or a crash
-    // starts a fresh one, so an in-memory-only guard would let a second break
-    // through and inflate both the streak and the leaderboard totals.
-    if (await _alreadyCompletedInWindow(now, key)) {
+    // The database transaction is the durable gate. It claims the window,
+    // writes the event and updates the daily aggregate atomically, including
+    // races from a notification or widget action in another isolate.
+    final log = ReminderLog(
+      id: const Uuid().v4(),
+      userId: _userProfile!.id,
+      scheduledTime: now,
+      actionTaken: 'completed',
+      timestamp: now,
+    );
+    final windowEnd = DateTime.fromMillisecondsSinceEpoch(key);
+    final updatedAnalytics = await localRepo.recordReminderAction(
+      log,
+      completionWindowStart: windowEnd.subtract(
+        Duration(minutes: _actionWindowMinutes),
+      ),
+      completionWindowEnd: windowEnd,
+      orgId: _userProfile!.organizationId,
+      standMinutes: _actionWindowMinutes,
+    );
+    if (updatedAnalytics == null) {
       _actedWindows.add(key);
       _lastActionRejection = _languageCode == 'fr'
           ? 'Cette pause a déjà été enregistrée.'
@@ -652,6 +763,7 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    _todayAnalytics = updatedAnalytics;
 
     _lastActionRejection = null;
     _consecutiveSkips = 0;
@@ -663,21 +775,6 @@ class AppState extends ChangeNotifier {
     unawaited(audioService.playSuccess());
     unawaited(HapticsService.celebration());
 
-    // 1. Log action
-    final log = ReminderLog(
-      id: const Uuid().v4(),
-      userId: _userProfile!.id,
-      scheduledTime: now,
-      actionTaken: 'completed',
-    );
-    await localRepo.logReminder(log);
-
-    // 2. Update local analytics
-    _todayAnalytics = await localRepo.updateAnalytics(
-      _userProfile!.id,
-      'completed',
-      orgId: _userProfile!.organizationId,
-    );
     _dailyHistory = await localRepo.getAllDailyAnalytics(_userProfile!.id);
 
     // 3. Claim the window only once the write succeeded, so a failed write does
@@ -694,37 +791,47 @@ class AppState extends ChangeNotifier {
     return true;
   }
 
-  /// Defers a break.
+  /// Defers a break to the next normal action window.
   ///
-  /// Under the action-window rule a snooze always advances to the next hourly
-  /// window rather than granting an immediate extra break, so repeated snoozes
-  /// cannot be used to accumulate extra counted pauses. The `minutes` argument
-  /// is retained for compatibility and only influences the label recorded.
-  Future<void> snoozeReminder({int minutes = 10}) async {
+  /// Keeping snooze on the normal cadence preserves the one-window completion
+  /// rule. Record the actual time until that window so analytics never claim a
+  /// fixed ten-minute delay that the scheduler did not provide.
+  Future<void> snoozeReminder() async {
+    final now = DateTime.now();
+    final active = activeWindow;
+    final nextWindow = _nextEligibleWindow(
+      active == null ? now : active.end.add(const Duration(microseconds: 1)),
+    );
+    final delayMinutes = nextWindow == null
+        ? _cadenceMinutes
+        : ((nextWindow.start.difference(now).inSeconds + 59) ~/ 60)
+              .clamp(0, 7 * 24 * 60)
+              .toInt();
+    final log = ReminderLog(
+      id: const Uuid().v4(),
+      userId: _userProfile!.id,
+      scheduledTime: now,
+      actionTaken: 'snoozed',
+      snoozeDuration: delayMinutes,
+    );
+    final updatedAnalytics = await localRepo.recordReminderAction(
+      log,
+      orgId: _userProfile!.organizationId,
+    );
+    if (updatedAnalytics == null) {
+      throw StateError('A non-completion action was not recorded.');
+    }
+    _todayAnalytics = updatedAnalytics;
+    _dailyHistory = await localRepo.getAllDailyAnalytics(_userProfile!.id);
+
     unawaited(audioService.playChime());
     unawaited(HapticsService.medium());
     _isBreakActive = false;
     _consecutiveSkips = 0;
     _breakTimer?.cancel();
+    _breakTimer = null;
+    _breakWindowKey = null;
 
-    final log = ReminderLog(
-      id: const Uuid().v4(),
-      userId: _userProfile!.id,
-      scheduledTime: DateTime.now(),
-      actionTaken: 'snoozed',
-      snoozeDuration: minutes,
-    );
-    await localRepo.logReminder(log);
-
-    _todayAnalytics = await localRepo.updateAnalytics(
-      _userProfile!.id,
-      'snoozed',
-      orgId: _userProfile!.organizationId,
-    );
-    _dailyHistory = await localRepo.getAllDailyAnalytics(_userProfile!.id);
-
-    // Advance to the next window. `_cadenceMinutes` rather than `minutes` is
-    // deliberate: a snooze must not shorten the cadence.
     await _scheduleNextInterval(minutes: _cadenceMinutes);
 
     _triggerBackgroundSync();
@@ -732,26 +839,30 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> skipReminder() async {
+    final now = DateTime.now();
+    final log = ReminderLog(
+      id: const Uuid().v4(),
+      userId: _userProfile!.id,
+      scheduledTime: now,
+      actionTaken: 'skipped',
+    );
+    final updatedAnalytics = await localRepo.recordReminderAction(
+      log,
+      orgId: _userProfile!.organizationId,
+    );
+    if (updatedAnalytics == null) {
+      throw StateError('A non-completion action was not recorded.');
+    }
+    _todayAnalytics = updatedAnalytics;
+    _dailyHistory = await localRepo.getAllDailyAnalytics(_userProfile!.id);
+
     unawaited(audioService.playClick());
     HapticsService.light();
     _consecutiveSkips++;
     _isBreakActive = false;
     _breakTimer?.cancel();
-
-    final log = ReminderLog(
-      id: const Uuid().v4(),
-      userId: _userProfile!.id,
-      scheduledTime: DateTime.now(),
-      actionTaken: 'skipped',
-    );
-    await localRepo.logReminder(log);
-
-    _todayAnalytics = await localRepo.updateAnalytics(
-      _userProfile!.id,
-      'skipped',
-      orgId: _userProfile!.organizationId,
-    );
-    _dailyHistory = await localRepo.getAllDailyAnalytics(_userProfile!.id);
+    _breakTimer = null;
+    _breakWindowKey = null;
 
     // Check consecutive skips. `>= 3` rather than `== 3`: the streak is
     // restored from history at launch and can already sit above three, in
@@ -767,7 +878,7 @@ class AppState extends ChangeNotifier {
       );
     }
 
-    await _scheduleNextInterval(minutes: preferences.notificationFrequency);
+    await _scheduleNextInterval(minutes: _cadenceMinutes);
     _triggerBackgroundSync();
     notifyListeners();
   }
@@ -788,7 +899,7 @@ class AppState extends ChangeNotifier {
     unawaited(audioService.playClick());
     _isBreakActive = true;
     _activeBreakStep = 0;
-    _breakSecondsRemaining = 300; // 5 minutes
+    _breakSecondsRemaining = AppCadence.guidedStretchSeconds;
     _breakWindowKey = _currentWindowKey();
 
     // The break has started, so the countdown to it has nothing left to say.
@@ -824,6 +935,15 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Completes the guided stretch against the action window it started in.
+  /// A five-minute stretch can outlast that window, so using the current window
+  /// here would move the credit to a later interval or incorrectly reject it.
+  Future<bool> finishGuidedStretch() {
+    final windowKey = _breakWindowKey;
+    if (!_isBreakActive || windowKey == null) return Future.value(false);
+    return completeReminder(windowKey: windowKey);
+  }
+
   void cancelGuidedStretch() {
     _breakTimer?.cancel();
     _breakTimer = null;
@@ -842,6 +962,7 @@ class AppState extends ChangeNotifier {
     bool? soundEnabled,
     bool? hapticsEnabled,
     bool? statisticsOptIn,
+    bool? aiGuidanceOptIn,
     bool? onboardingCompleted,
     String? selectedSound,
     String? quietHours,
@@ -849,7 +970,21 @@ class AppState extends ChangeNotifier {
     int? streakGoal,
     int? actionWindowMinutes,
     bool? enforceActionWindow,
+    String? workDays,
+    int? workStartMinute,
+    int? workEndMinute,
   }) async {
+    if (workDays != null || workStartMinute != null || workEndMinute != null) {
+      final days = (workDays ?? preferences.workDays)
+          .split(',')
+          .map(int.tryParse)
+          .whereType<int>();
+      WorkSchedule(
+        days: days,
+        startMinute: workStartMinute ?? preferences.workStartMinute,
+        endMinute: workEndMinute ?? preferences.workEndMinute,
+      );
+    }
     _preferences = preferences.copyWith(
       themeMode: themeMode,
       colorSystem: colorSystem,
@@ -857,6 +992,7 @@ class AppState extends ChangeNotifier {
       soundEnabled: soundEnabled,
       hapticsEnabled: hapticsEnabled,
       statisticsOptIn: statisticsOptIn,
+      aiGuidanceOptIn: aiGuidanceOptIn,
       onboardingCompleted: onboardingCompleted,
       selectedSound: selectedSound,
       quietHours: quietHours,
@@ -864,7 +1000,21 @@ class AppState extends ChangeNotifier {
       streakGoal: streakGoal,
       actionWindowMinutes: actionWindowMinutes,
       enforceActionWindow: enforceActionWindow,
+      workDays: workDays,
+      workStartMinute: workStartMinute,
+      workEndMinute: workEndMinute,
     );
+
+    if (aiGuidanceOptIn == false ||
+        streakGoal != null ||
+        notificationFrequency != null) {
+      _aiGuidanceResult = null;
+      _aiGuidanceInput = null;
+      _aiGuidanceUserId = null;
+      _aiGuidanceUnavailable = false;
+      _aiGuidanceUnavailableInput = null;
+      _aiGuidanceUnavailableUserId = null;
+    }
 
     if (soundEnabled != null) {
       audioService.soundEnabled = soundEnabled;
@@ -885,10 +1035,15 @@ class AppState extends ChangeNotifier {
 
     // The widget payload carries the resolved palette, so an accent change has to
     // reach the launcher rather than waiting for the next break.
-    if (colorSystem != null) unawaited(syncWidget());
+    if (colorSystem != null ||
+        streakGoal != null ||
+        workDays != null ||
+        workStartMinute != null ||
+        workEndMinute != null) {
+      unawaited(syncWidget());
+    }
 
     await localRepo.saveUserPreferences(_preferences!);
-
     if (statisticsOptIn != null) {
       if (statisticsOptIn) {
         await localRepo.markAllAnalyticsAsUnsynced(_userProfile!.id);
@@ -899,7 +1054,10 @@ class AppState extends ChangeNotifier {
       _triggerBackgroundSync();
     }
 
-    if (notificationFrequency != null) {
+    if (notificationFrequency != null ||
+        workDays != null ||
+        workStartMinute != null ||
+        workEndMinute != null) {
       await _scheduleNextInterval(minutes: _cadenceMinutes);
     }
 
@@ -1092,6 +1250,8 @@ class AppState extends ChangeNotifier {
     audioService.selectedSound = preferences.selectedSound;
     HapticsService.enabled = preferences.hapticsEnabled;
 
+    await _restoreReminderInterval(minutes: preferences.notificationFrequency);
+
     _todayAnalytics = await localRepo.getAnalyticsForDate(
       accountId,
       localRepo.getTodayDateString(),
@@ -1175,13 +1335,51 @@ class AppState extends ChangeNotifier {
   // ---------------------------------------------------------------------------
   Future<void> triggerCloudSync() async {
     if (_disposed) return;
+    final userId = _userProfile?.id;
+    if (userId == null) {
+      _syncStatus = SyncStatus.offline;
+      notifyListeners();
+      return;
+    }
+
+    // Several lifecycle/auth callbacks can request a sync at once. Reuse the
+    // active operation so pending rows are never raced by parallel uploads.
+    final activeSync = _syncInFlight;
+    if (activeSync != null) {
+      final activeUserId = _syncInFlightUserId;
+      await activeSync;
+      // An account switch during an upload must not cause the new account's
+      // sync request to disappear behind the previous account's operation.
+      if (!_disposed && _userProfile?.id != activeUserId) {
+        await triggerCloudSync();
+      }
+      return;
+    }
+
+    // Defer the body one microtask so `_syncInFlight` is assigned before its
+    // initial notifyListeners() can re-enter triggerCloudSync.
+    final operation = Future<void>.microtask(() => _performCloudSync(userId));
+    _syncInFlight = operation;
+    _syncInFlightUserId = userId;
+    try {
+      await operation;
+    } finally {
+      if (identical(_syncInFlight, operation)) {
+        _syncInFlight = null;
+        _syncInFlightUserId = null;
+      }
+    }
+  }
+
+  Future<void> _performCloudSync(String userId) async {
+    if (_disposed) return;
     _syncStatus = SyncStatus.syncing;
     notifyListeners();
 
     SyncStatus status;
     try {
       status = await supabaseService.syncLocalToCloud(
-        userId: _userProfile!.id,
+        userId: userId,
         localRepo: localRepo,
         optIn: preferences.statisticsOptIn,
         clockUnreliable: isClockUnreliable,
@@ -1194,6 +1392,7 @@ class AppState extends ChangeNotifier {
     // An in-flight sync can outlive disposal; notifying afterwards would trip
     // the ChangeNotifier "used after dispose" assertion.
     if (_disposed) return;
+    if (_userProfile?.id != userId) status = SyncStatus.offline;
     _syncStatus = status;
     notifyListeners();
   }

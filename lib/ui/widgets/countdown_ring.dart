@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:standup_app/core/app_strings.dart';
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:flutter/material.dart';
 
 class CountdownRing extends StatelessWidget {
@@ -49,33 +50,33 @@ class CountdownRing extends StatelessWidget {
                 // Status Pill
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                    horizontal: AppSpace.lg,
+                    vertical: AppSpace.xs,
                   ),
                   decoration: BoxDecoration(
                     color: isBreakActive
                         ? accentColor.withValues(alpha: 0.14)
                         : theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(AppRadius.xl),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 6,
-                        height: 6,
+                        width: AppSpace.sm,
+                        height: AppSpace.sm,
                         decoration: BoxDecoration(
                           color: accentColor,
                           shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpace.sm),
                       Text(
                         isBreakActive
                             ? appString(context, 'BREAK IN PROGRESS')
                             : appString(context, 'FOCUS CADENCE'),
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: AppFontSize.micro,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.8,
                           color: isBreakActive
@@ -86,18 +87,18 @@ class CountdownRing extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.md),
                 // Timer
                 Text(
                   formatClock(remainingTime),
                   style: theme.textTheme.headlineLarge?.copyWith(
-                    fontSize: 48,
+                    fontSize: AppFontSize.numeral,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -1.5,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xs),
                 Text(
                   isBreakActive
                       ? appString(context, 'Movement Time')

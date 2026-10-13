@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/data/local/app_database.dart';
 import 'package:standup_app/data/models/daily_analytics.dart';
 import 'package:standup_app/data/models/reminder_log.dart';
@@ -121,12 +122,16 @@ class LocalDatabaseRepository {
       soundEnabled: row.soundEnabled,
       hapticsEnabled: row.hapticsEnabled,
       statisticsOptIn: row.statisticsOptIn,
+      aiGuidanceOptIn: row.aiGuidanceOptIn,
       onboardingCompleted: row.onboardingCompleted,
       selectedSound: row.selectedSound,
       quietHours: row.quietHours,
       streakGoal: row.streakGoal,
       actionWindowMinutes: row.actionWindowMinutes,
       enforceActionWindow: row.enforceActionWindow,
+      workDays: row.workDays,
+      workStartMinute: row.workStartMinute,
+      workEndMinute: row.workEndMinute,
       updatedAt: row.updatedAt,
     );
   }
@@ -144,12 +149,16 @@ class LocalDatabaseRepository {
             soundEnabled: Value(prefs.soundEnabled),
             hapticsEnabled: Value(prefs.hapticsEnabled),
             statisticsOptIn: Value(prefs.statisticsOptIn),
+            aiGuidanceOptIn: Value(prefs.aiGuidanceOptIn),
             onboardingCompleted: Value(prefs.onboardingCompleted),
             selectedSound: Value(prefs.selectedSound),
             quietHours: Value(prefs.quietHours),
             streakGoal: Value(prefs.streakGoal),
             actionWindowMinutes: Value(prefs.actionWindowMinutes),
             enforceActionWindow: Value(prefs.enforceActionWindow),
+            workDays: Value(prefs.workDays),
+            workStartMinute: Value(prefs.workStartMinute),
+            workEndMinute: Value(prefs.workEndMinute),
             updatedAt: Value(DateTime.now()),
           ),
         );
@@ -172,6 +181,73 @@ class LocalDatabaseRepository {
             syncedToCloud: Value(log.syncedToCloud),
           ),
         );
+  }
+
+  /// Persists an action and its daily counters as one local transaction.
+  ///
+  /// A completed action also claims its action window in the same transaction.
+  /// Returning `null` means another isolate or tap already claimed that window.
+  Future<DailyAnalytics?> recordReminderAction(
+    ReminderLog log, {
+    DateTime? completionWindowStart,
+    DateTime? completionWindowEnd,
+    String? orgId,
+    int standMinutes = AppCadence.defaultStandBreakMinutes,
+  }) {
+    return _db.transaction(() async {
+      if (log.actionTaken == 'completed' &&
+          completionWindowStart != null &&
+          completionWindowEnd != null) {
+        final existing =
+            await (_db.select(_db.reminderLogsTable)
+                  ..where(
+                    (row) =>
+                        row.userId.equals(log.userId) &
+                        row.actionTaken.equals('completed') &
+                        row.timestamp.isBiggerOrEqualValue(
+                          completionWindowStart,
+                        ) &
+                        row.timestamp.isSmallerThanValue(completionWindowEnd),
+                  )
+                  ..limit(1))
+                .getSingleOrNull();
+        if (existing != null) return null;
+      }
+
+      await _db
+          .into(_db.reminderLogsTable)
+          .insert(
+            ReminderLogsTableCompanion(
+              id: Value(log.id),
+              userId: Value(log.userId),
+              scheduledTime: Value(log.scheduledTime),
+              actionTaken: Value(log.actionTaken),
+              snoozeDuration: Value(log.snoozeDuration),
+              timestamp: Value(log.timestamp),
+              syncedToCloud: Value(log.syncedToCloud),
+            ),
+          );
+
+      final date = WorkdayMetrics.dateKey(log.timestamp);
+      final current = await getAnalyticsForDate(log.userId, date);
+      final completed =
+          current.remindersCompleted + (log.actionTaken == 'completed' ? 1 : 0);
+      final updated = current.copyWith(
+        remindersSent: current.remindersSent + 1,
+        remindersCompleted: completed,
+        remindersSnoozed:
+            current.remindersSnoozed + (log.actionTaken == 'snoozed' ? 1 : 0),
+        remindersSkipped:
+            current.remindersSkipped + (log.actionTaken == 'skipped' ? 1 : 0),
+        totalStandTime:
+            current.totalStandTime +
+            (log.actionTaken == 'completed' ? standMinutes : 0),
+        organizationId: orgId ?? current.organizationId,
+        syncedToCloud: false,
+      );
+      await saveAnalyticsRecord(updated);
+      return updated;
+    });
   }
 
   /// Whether the user already completed a break inside the given window.
@@ -291,6 +367,7 @@ class LocalDatabaseRepository {
     String userId,
     String action, {
     String? orgId,
+    int standMinutes = AppCadence.defaultStandBreakMinutes,
   }) {
     return _db.transaction(() async {
       final today = getTodayDateString();
@@ -314,7 +391,8 @@ class LocalDatabaseRepository {
         remindersCompleted: completed,
         remindersSnoozed: snoozed,
         remindersSkipped: skipped,
-        totalStandTime: completed * 5,
+        totalStandTime:
+            current.totalStandTime + (action == 'completed' ? standMinutes : 0),
         organizationId: orgId ?? current.organizationId,
         syncedToCloud: false,
       );

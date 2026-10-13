@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/data/models/workday_metrics.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/data/models/daily_analytics.dart';
@@ -92,7 +93,7 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
       ),
       builder: (ctx) {
         return Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(AppSpace.section),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,22 +104,22 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
                   Text(dateStr, style: theme.textTheme.titleLarge),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                      horizontal: AppSpace.lg,
+                      vertical: AppSpace.xs,
                     ),
                     decoration: BoxDecoration(
                       color: _getCellColor(
                         data,
                         theme.brightness == Brightness.dark,
                       ).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: Text(
                       data != null && data.remindersCompleted > 0
-                          ? '${data.adherenceRate.toStringAsFixed(0)}% Adherence'
+                          ? '${data.adherenceRate.toStringAsFixed(0)}% ${appString(context, 'Completion rate')}'
                           : 'No Activity',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: AppFontSize.footnote,
                         fontWeight: FontWeight.w700,
                         color: _getCellColor(
                           data,
@@ -129,7 +130,7 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpace.huge),
               Row(
                 children: [
                   _buildStatTile(
@@ -138,14 +139,14 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
                     subtitle: '${data?.totalStandTime ?? 0} mins standing',
                     color: AppColors.completed,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.xl),
                   _buildStatTile(
                     title: 'Snoozed',
                     value: '${data?.remindersSnoozed ?? 0}',
                     subtitle: '10 min delays',
                     color: AppColors.snoozed,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.xl),
                   _buildStatTile(
                     title: 'Skipped',
                     value: '${data?.remindersSkipped ?? 0}',
@@ -154,7 +155,7 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpace.xxl),
             ],
           ),
         );
@@ -170,7 +171,7 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
   }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(AppSpace.xl),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(14),
@@ -182,20 +183,23 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
             Text(
               title,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: AppFontSize.caption,
                 fontWeight: FontWeight.w600,
                 color: color,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpace.xs),
             Text(
               value,
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: AppSpace.xxs),
             Text(
               subtitle,
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              style: const TextStyle(
+                fontSize: AppFontSize.micro,
+                color: Colors.grey,
+              ),
             ),
           ],
         ),
@@ -289,7 +293,7 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
             children: [
               // Day of week labels (Mon, Wed, Fri)
               Padding(
-                padding: const EdgeInsets.only(right: 6.0),
+                padding: const EdgeInsets.only(right: AppSpace.sm),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,16 +313,18 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.xl),
         // Legend
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Text(
               appString(context, 'Less'),
-              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: AppFontSize.micro,
+              ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: AppSpace.sm),
             _buildLegendBox(isDark ? AppColors.emptyOnDark : AppColors.empty),
             const SizedBox(width: 3),
             _buildLegendBox(AppColors.skipped),
@@ -330,10 +336,12 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
             _buildLegendBox(const Color(0xFF10B981)),
             const SizedBox(width: 3),
             _buildLegendBox(const Color(0xFF047857)),
-            const SizedBox(width: 6),
+            const SizedBox(width: AppSpace.sm),
             Text(
               appString(context, 'More'),
-              style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: AppFontSize.micro,
+              ),
             ),
           ],
         ),
@@ -343,7 +351,7 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
 
   Widget _buildDayLabel(String label, double size, double spacing) {
     return Container(
-      width: 12,
+      width: AppSpace.xl,
       height: size + spacing,
       alignment: Alignment.center,
       child: Text(
@@ -359,8 +367,8 @@ class _ContributionHeatmapWidgetState extends State<ContributionHeatmapWidget> {
 
   Widget _buildLegendBox(Color color) {
     return Container(
-      width: 10,
-      height: 10,
+      width: AppSpace.lg,
+      height: AppSpace.lg,
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(2),

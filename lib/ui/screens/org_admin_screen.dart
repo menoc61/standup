@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/ui/layout/adaptive.dart';
 import 'package:standup_app/providers/app_state.dart';
@@ -23,18 +24,18 @@ class OrgAdminScreen extends StatelessWidget {
         ),
         body: Center(
           child: Padding(
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.all(AppSpace.gutter),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.lock_outline, size: 42),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpace.xxl),
                 Text(
                   appString(context, 'Organization insights are unavailable'),
                   style: Theme.of(context).textTheme.titleLarge,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.md),
                 Text(
                   appString(
                     context,
@@ -67,14 +68,17 @@ class OrgAdminScreen extends StatelessWidget {
         // the full width of a desktop window.
         child: constrainContent(
           SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.huge,
+              vertical: AppSpace.xl,
+            ),
             physics: const BouncingScrollPhysics(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Organization Header Card
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(AppSpace.huge),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -84,7 +88,7 @@ class OrgAdminScreen extends StatelessWidget {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
                     border: Border.all(color: accent.withValues(alpha: 0.3)),
                   ),
                   child: Column(
@@ -106,20 +110,20 @@ class OrgAdminScreen extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpace.md),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                              horizontal: AppSpace.md,
+                              vertical: AppSpace.xs,
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.completed.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
                             ),
                             child: Text(
                               appString(context, 'ADMIN VIEW'),
                               style: TextStyle(
-                                fontSize: 10,
+                                fontSize: AppFontSize.micro,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.completed,
                               ),
@@ -127,7 +131,7 @@ class OrgAdminScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpace.sm),
                       Text(
                         appString(
                           context,
@@ -135,12 +139,12 @@ class OrgAdminScreen extends StatelessWidget {
                         ),
                         style: theme.textTheme.bodySmall,
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpace.xxl),
                       // Privacy Guarantee Shield Badge
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                          horizontal: AppSpace.lg,
+                          vertical: AppSpace.sm,
                         ),
                         decoration: BoxDecoration(
                           color: isDark ? Colors.black38 : Colors.white60,
@@ -153,7 +157,7 @@ class OrgAdminScreen extends StatelessWidget {
                               color: AppColors.completed,
                               size: 14,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpace.md),
                             Expanded(
                               child: Text(
                                 appString(
@@ -161,7 +165,7 @@ class OrgAdminScreen extends StatelessWidget {
                                   'Privacy-Enforced: RLS hides individual timestamps & employee names.',
                                 ),
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: AppFontSize.micro,
                                   fontWeight: FontWeight.w600,
                                   color: theme.textTheme.bodySmall?.color,
                                 ),
@@ -173,7 +177,7 @@ class OrgAdminScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpace.huge),
 
                 // Key Benchmark Figures
                 Row(
@@ -186,18 +190,18 @@ class OrgAdminScreen extends StatelessWidget {
                       icon: Icons.people_outline,
                       color: accent,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpace.xl),
                     _buildStatCard(
                       context,
-                      title: appString(context, 'Org Adherence'),
+                      title: appString(context, 'Org Completion Rate'),
                       value: '${org.adherenceRate.toStringAsFixed(1)}%',
-                      subtitle: appString(context, 'Completion benchmark'),
+                      subtitle: appString(context, 'Of recorded actions'),
                       icon: Icons.trending_up,
                       color: AppColors.completed,
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 Row(
                   children: [
                     _buildStatCard(
@@ -209,7 +213,7 @@ class OrgAdminScreen extends StatelessWidget {
                       icon: Icons.accessibility_new,
                       color: accent,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpace.xl),
                     _buildStatCard(
                       context,
                       title: appString(context, 'Skipped Breaks'),
@@ -221,19 +225,19 @@ class OrgAdminScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 // Department Leaderboard
                 Text(
-                  appString(context, 'Department Adherence Leaderboard'),
+                  appString(context, 'Department Completion Leaderboard'),
                   style: theme.textTheme.titleMedium,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 ...org.departmentMetrics.map((dept) {
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.only(bottom: AppSpace.lg),
                     child: GlassCard(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(AppSpace.xxl),
                       borderRadius: BorderRadius.circular(18),
                       blur: 8,
                       child: Column(
@@ -245,8 +249,8 @@ class OrgAdminScreen extends StatelessWidget {
                                 child: Row(
                                   children: [
                                     Container(
-                                      width: 10,
-                                      height: 10,
+                                      width: AppSpace.lg,
+                                      height: AppSpace.lg,
                                       decoration: BoxDecoration(
                                         color: dept.adherenceRate >= 85
                                             ? AppColors.completed
@@ -256,7 +260,7 @@ class OrgAdminScreen extends StatelessWidget {
                                         shape: BoxShape.circle,
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
+                                    const SizedBox(width: AppSpace.lg),
                                     // Department names come from the database, so
                                     // their length is not ours to bound.
                                     Expanded(
@@ -264,7 +268,7 @@ class OrgAdminScreen extends StatelessWidget {
                                         dept.department,
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w700,
-                                          fontSize: 14,
+                                          fontSize: AppFontSize.body,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -273,7 +277,7 @@ class OrgAdminScreen extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: AppSpace.md),
                               Text(
                                 '${dept.adherenceRate.toStringAsFixed(1)}%',
                                 style: const TextStyle(
@@ -283,9 +287,9 @@ class OrgAdminScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: AppSpace.lg),
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(AppRadius.xs),
                             child: LinearProgressIndicator(
                               value: (dept.adherenceRate / 100).clamp(0.0, 1.0),
                               backgroundColor: Colors.grey.withValues(
@@ -298,23 +302,23 @@ class OrgAdminScreen extends StatelessWidget {
                                           ? accent
                                           : AppColors.snoozed),
                               ),
-                              minHeight: 6,
+                              minHeight: AppSpace.sm,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpace.md),
                           Row(
                             children: [
                               Expanded(
                                 child: Text(
                                   '${dept.activeUsers} ${appString(context, 'active members')}',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 11,
+                                    fontSize: AppFontSize.caption,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: AppSpace.md),
                               Flexible(
                                 child: Text(
                                   // Reaches three or four digits on a busy
@@ -322,7 +326,7 @@ class OrgAdminScreen extends StatelessWidget {
                                   // past the card width.
                                   '${dept.totalCompleted} ${appString(context, 'stands completed')}',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 11,
+                                    fontSize: AppFontSize.caption,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -336,52 +340,9 @@ class OrgAdminScreen extends StatelessWidget {
                     ),
                   );
                 }),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpace.huge),
 
-                Text(
-                  appString(context, 'Peak Skip Hours Analysis'),
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  org.peakSkipHours.isEmpty
-                      ? appString(
-                          context,
-                          'Time-level activity stays private on employee devices.',
-                        )
-                      : appString(
-                          context,
-                          'Hours with the most skipped reminders.',
-                        ),
-                  style: theme.textTheme.bodySmall,
-                ),
-                if (org.peakSkipHours.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  ...org.peakSkipHours.map(
-                    (hour) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(
-                        Icons.access_time,
-                        color: AppColors.skipped,
-                      ),
-                      title: Text(
-                        // The hour and the reason are both optional: a row
-                        // without them is still a real skip count, so the
-                        // em dash stands in rather than hiding the row.
-                        '${hour.hour ?? '—'} · ${hour.skipCount} ${appString(context, 'skips')}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        hour.primaryReason ??
-                            appString(context, 'No reason given'),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
               ],
             ),
           ),
@@ -400,8 +361,8 @@ class OrgAdminScreen extends StatelessWidget {
   }) {
     return Expanded(
       child: GlassCard(
-        padding: const EdgeInsets.all(16),
-        borderRadius: BorderRadius.circular(20),
+        padding: const EdgeInsets.all(AppSpace.xxl),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
         blur: 8,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,7 +377,7 @@ class OrgAdminScreen extends StatelessWidget {
                   child: Text(
                     title,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: AppFontSize.footnote,
                       fontWeight: FontWeight.w600,
                       color: Colors.black54,
                     ),
@@ -424,19 +385,22 @@ class OrgAdminScreen extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpace.xs),
                 Icon(icon, size: 18, color: color),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.md),
             Text(
               value,
               style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: AppSpace.xxs),
             Text(
               subtitle,
-              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              style: const TextStyle(
+                fontSize: AppFontSize.micro,
+                color: Colors.grey,
+              ),
             ),
           ],
         ),

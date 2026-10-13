@@ -1,3 +1,5 @@
+import 'package:standup_app/core/app_cadence.dart';
+
 import 'daily_analytics.dart';
 
 /// Shared calculations for a standard eight-hour workday.
@@ -6,8 +8,8 @@ import 'daily_analytics.dart';
 /// scales with the selected reminder cadence and is capped by the workday
 /// length, so a slower cadence does not claim more breaks than fit in a day.
 class WorkdayMetrics {
-  static const int workdayMinutes = 8 * 60;
-  static const int standBreakMinutes = 5;
+  static const int workdayMinutes = AppCadence.workdayMinutes;
+  static const int standBreakMinutes = AppCadence.defaultStandBreakMinutes;
 
   const WorkdayMetrics._();
 
@@ -39,13 +41,13 @@ class WorkdayMetrics {
         .toSet();
     var cursor = DateTime(now.year, now.month, now.day);
     if (!completedDates.contains(dateKey(cursor))) {
-      cursor = cursor.subtract(const Duration(days: 1));
+      cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
     }
 
     var streak = 0;
     while (completedDates.contains(dateKey(cursor))) {
       streak++;
-      cursor = cursor.subtract(const Duration(days: 1));
+      cursor = DateTime(cursor.year, cursor.month, cursor.day - 1);
     }
     return streak;
   }

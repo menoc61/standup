@@ -1,59 +1,85 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/services/haptics_service.dart';
 
-/// A completely round, glassmorphic reminder control floated bottom-left,
-/// separate from the main bottom navigation. Tapping it opens the quick
-/// reminder actions (stand up / snooze / skip / guided stretch).
-class ReminderFab extends StatelessWidget {
-  final AppState appState;
+/// A round quick-action control, kept separate from destination navigation.
+class ReminderBellButton extends StatelessWidget {
+  const ReminderBellButton({super.key, required this.appState});
 
-  const ReminderFab({super.key, required this.appState});
+  final AppState appState;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final windowOpen = appState.isActionWindowOpen;
     final accent = theme.colorScheme.primary;
+
     return Semantics(
       button: true,
       label: appString(context, 'Reminder'),
-      // Icon-only control with no text child: without an explicit label a screen
-      // reader announces an unnamed double-tap target.
+      // Icon-only control: without an explicit label a screen reader announces
+      // an unnamed double-tap target.
       excludeSemantics: true,
       child: Tooltip(
         message: appString(context, 'Reminder'),
-        child: GestureDetector(
-          onTap: () {
-            unawaited(HapticsService.medium());
-            _openActions(context);
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: accent.withValues(alpha: 0.9),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.6),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: accent.withValues(alpha: 0.4),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () {
+              unawaited(HapticsService.medium());
+              _openActions(context);
+            },
+            child: AnimatedContainer(
+              duration: AppMotion.fast,
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: windowOpen ? accent : theme.colorScheme.surface,
+                border: Border.all(
+                  color: windowOpen ? accent : theme.colorScheme.outlineVariant,
                 ),
-              ],
-            ),
-            child: const Icon(
-              Icons.notifications_active_rounded,
-              color: Colors.white,
-              size: 26,
+                boxShadow: [
+                  BoxShadow(
+                    color: accent.withValues(alpha: windowOpen ? 0.28 : 0.14),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(
+                    windowOpen
+                        ? Icons.notifications_active_rounded
+                        : Icons.notifications_none_rounded,
+                    size: 25,
+                    color: windowOpen
+                        ? theme.colorScheme.onPrimary
+                        : theme.colorScheme.onSurface,
+                  ),
+                  if (windowOpen)
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: theme.colorScheme.onPrimary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -69,20 +95,18 @@ class ReminderFab extends StatelessWidget {
         final theme = Theme.of(sheetContext);
         final accent = theme.colorScheme.primary;
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.xxl,
+            0,
+            AppSpace.xxl,
+            AppSpace.section,
+          ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface.withValues(alpha: 0.85),
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.5),
-                  ),
-                ),
+            borderRadius: BorderRadius.circular(AppRadius.xxl),
+            child: ColoredBox(
+              color: theme.colorScheme.surface,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpace.huge),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -90,16 +114,16 @@ class ReminderFab extends StatelessWidget {
                     Text(
                       appString(sheetContext, 'Reminder'),
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: AppFontSize.title,
                         fontWeight: FontWeight.w800,
                         color: theme.colorScheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: AppSpace.xl),
                     _ActionTile(
                       icon: Icons.check_circle_rounded,
                       label: appString(sheetContext, 'I stood up!'),
-                      color: accent,
+                      color: AppColors.completed,
                       enabled:
                           appState.isActionWindowOpen ||
                           !appState.preferences.enforceActionWindow,
@@ -130,31 +154,31 @@ class ReminderFab extends StatelessWidget {
                         }
                       },
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.md),
                     _ActionTile(
                       icon: Icons.snooze_rounded,
-                      label: appString(sheetContext, 'Snooze 10m'),
-                      color: Colors.amber.shade700,
+                      label: appString(sheetContext, 'Next reminder'),
+                      color: AppColors.snoozed,
                       onTap: () {
                         Navigator.pop(sheetContext);
-                        appState.snoozeReminder(minutes: 10);
+                        appState.snoozeReminder();
                       },
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.md),
                     _ActionTile(
                       icon: Icons.skip_next_rounded,
                       label: appString(sheetContext, 'Skip'),
-                      color: Colors.redAccent,
+                      color: AppColors.skipped,
                       onTap: () {
                         Navigator.pop(sheetContext);
                         appState.skipReminder();
                       },
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpace.md),
                     _ActionTile(
                       icon: Icons.self_improvement_rounded,
                       label: appString(sheetContext, 'Start stretch'),
-                      color: Colors.teal,
+                      color: accent,
                       onTap: () {
                         Navigator.pop(sheetContext);
                         appState.startGuidedStretch();
@@ -172,12 +196,6 @@ class ReminderFab extends StatelessWidget {
 }
 
 class _ActionTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-  final bool enabled;
-
   const _ActionTile({
     required this.icon,
     required this.label,
@@ -185,6 +203,12 @@ class _ActionTile extends StatelessWidget {
     required this.onTap,
     this.enabled = true,
   });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -194,29 +218,36 @@ class _ActionTile extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.xxl,
+              vertical: AppSpace.xxl,
+            ),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
             child: Row(
               children: [
-                Icon(icon, color: color, size: 22),
-                const SizedBox(width: 12),
+                Icon(icon, color: color, size: AppIconSize.nav),
+                const SizedBox(width: AppSpace.xl),
                 Expanded(
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                      fontSize: AppFontSize.label,
+                      fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded, color: color, size: 20),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: color,
+                  size: AppIconSize.medium,
+                ),
               ],
             ),
           ),

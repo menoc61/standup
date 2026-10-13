@@ -1,3 +1,4 @@
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:standup_app/services/haptics_service.dart';
@@ -23,7 +24,10 @@ class SpringButton extends StatefulWidget {
     required this.onTap,
     this.backgroundColor,
     this.foregroundColor,
-    this.padding = const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+    this.padding = const EdgeInsets.symmetric(
+      horizontal: AppSpace.huge,
+      vertical: 14,
+    ),
     this.borderRadius,
     this.border,
     this.scaleFactor = 0.94,
@@ -90,7 +94,7 @@ class _SpringButtonState extends State<SpringButton>
     final theme = Theme.of(context);
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final bg = widget.backgroundColor ?? theme.colorScheme.secondary;
-    final r = widget.borderRadius ?? BorderRadius.circular(16);
+    final r = widget.borderRadius ?? BorderRadius.circular(AppRadius.lg);
 
     Widget content = AnimatedBuilder(
       animation: _scaleAnimation,
@@ -138,7 +142,7 @@ class _SpringButtonState extends State<SpringButton>
                 style: TextStyle(
                   color: widget.foregroundColor ?? Colors.white,
                   fontWeight: FontWeight.w700,
-                  fontSize: 15,
+                  fontSize: AppFontSize.label,
                   letterSpacing: -0.2,
                 ),
                 child: widget.child,

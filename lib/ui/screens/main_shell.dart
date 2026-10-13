@@ -4,8 +4,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:glass_bottom_navigation/glass_bottom_navigation.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/core/app_theme.dart';
 import 'package:standup_app/providers/app_state.dart';
@@ -16,7 +16,9 @@ import 'package:standup_app/ui/screens/home_screen.dart';
 import 'package:standup_app/ui/screens/leaderboard_screen.dart';
 import 'package:standup_app/ui/screens/settings_screen.dart';
 import 'package:standup_app/ui/widgets/account_button.dart';
-import 'package:standup_app/ui/widgets/reminder_fab.dart';
+import 'package:standup_app/ui/widgets/app_bottom_nav_bar.dart';
+import 'package:standup_app/ui/widgets/app_canvas.dart';
+import 'package:standup_app/ui/widgets/reminder_bell_button.dart';
 
 class MainShell extends StatefulWidget {
   final AppState appState;
@@ -161,7 +163,7 @@ class _MainShellState extends State<MainShell> {
             case _kComplete:
               await widget.appState.completeReminder();
             case _kSnooze:
-              widget.appState.snoozeReminder(minutes: 10);
+              widget.appState.snoozeReminder();
             case _kSkip:
               widget.appState.skipReminder();
             case _kNav1:
@@ -187,10 +189,13 @@ class _MainShellState extends State<MainShell> {
           // a phone in split-screen, and a picture-in-picture window all get the
           // compact layout, which `MediaQuery.sizeOf` would get wrong in each
           // case because it reports the window rather than the allocation.
-          child: LayoutBuilder(
-            builder: (context, constraints) => useSidebarNavigation(constraints)
-                ? _buildDesktop(context, theme, isDark, accent, screens)
-                : _buildMobile(context, accent, screens),
+          child: AppCanvas(
+            child: LayoutBuilder(
+              builder: (context, constraints) =>
+                  useSidebarNavigation(constraints)
+                  ? _buildDesktop(context, theme, isDark, accent, screens)
+                  : _buildMobile(context, accent, screens),
+            ),
           ),
         ),
       ),
@@ -211,8 +216,6 @@ class _MainShellState extends State<MainShell> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
-      floatingActionButton: ReminderFab(appState: widget.appState),
       body: Row(
         children: [
           // Glass sidebar
@@ -264,56 +267,46 @@ class _MainShellState extends State<MainShell> {
     Color accent,
     List<Widget> screens,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
-      floatingActionButton: ReminderFab(appState: widget.appState),
       body: _buildAnimatedScreenStack(context, screens),
-      bottomNavigationBar: GlassBottomBar(
-        // Not const: the labels resolve through appString, and a const list
-        // cannot call it. The bar is the primary navigation, so leaving these
-        // as English literals meant a French user got an English nav bar.
-        items: [
-          GlassBarItem(
+      bottomNavigationBar: AppBottomNavBar(
+        // Not const: the labels resolve through `appString`, and a const list
+        // cannot call it. An earlier revision made these const and silently
+        // shipped an English navigation bar inside an otherwise French app.
+        destinations: [
+          AppNavDestination(
             icon: Icons.timer_outlined,
+            activeIcon: Icons.timer,
             label: appString(context, 'Timer'),
-            nativeSymbolName: 'timer',
           ),
-          GlassBarItem(
+          AppNavDestination(
             icon: Icons.emoji_events_outlined,
+            activeIcon: Icons.emoji_events,
             label: appString(context, 'Leaderboard'),
-            nativeSymbolName: 'trophy.fill',
           ),
-          GlassBarItem(
+          AppNavDestination(
             icon: Icons.grid_view_outlined,
+            activeIcon: Icons.grid_view,
             label: appString(context, 'Analytics'),
-            nativeSymbolName: 'chart.bar.fill',
           ),
         ],
         currentIndex: _currentIndex,
         onTap: _navigate,
-        // Settings is a pushed route, not a fourth destination: the bar is
-        // capped at four and the screens a user reaches daily deserve that
-        // budget more than a gear. It sits at the trailing edge of the bar,
-        // alongside the other items, so it reads as part of the navigation
-        // rather than as a control floating over the dashboard.
-        trailingActions: [
-          GlassActionButtonItem(
-            type: GlassActionIcon.custom,
-            icon: Icons.person_outline,
-            onTap: _openSettings,
-            semanticLabel: appString(context, 'Settings'),
-          ),
-        ],
-        style: GlassBottomNavStyle(
-          accent: accent,
-          actionButtonMode: isDark
-              ? GlassActionButtonMode.flutter
-              : GlassActionButtonMode.nativeLiquidGlassOnIOS26,
+        accent: accent,
+        // Settings is a route, separate from daily navigation. The reminder
+        // action is a round floating control above the bar.
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _SettingsButton(
+              onTap: _openSettings,
+              semanticLabel: appString(context, 'Settings'),
+            ),
+          ],
         ),
       ),
+      floatingActionButton: ReminderBellButton(appState: widget.appState),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
@@ -427,9 +420,14 @@ class _MainShellState extends State<MainShell> {
     final navigator = Navigator.of(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.xxl,
+        AppSpace.xl,
+        AppSpace.xxl,
+        0,
+      ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.max,
         children: [
           Tooltip(
             message: appString(context, 'Back'),
@@ -448,7 +446,7 @@ class _MainShellState extends State<MainShell> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.md),
           Tooltip(
             message: appString(context, 'Forward'),
             child: Semantics(
@@ -466,6 +464,8 @@ class _MainShellState extends State<MainShell> {
               ),
             ),
           ),
+          const Spacer(),
+          ReminderBellButton(appState: widget.appState),
         ],
       ),
     );
@@ -482,6 +482,43 @@ class _MainShellState extends State<MainShell> {
 }
 
 /// The circular glass button used by the detail nav.
+/// The Settings control at the trailing edge of the bottom bar.
+///
+/// Settings is a pushed route rather than a fourth tab: the bar has room for
+/// three destinations plus this control, and the screens a user reaches daily
+/// deserve the tab budget more than a gear icon does. Sitting it inline as a
+/// peer keeps the bar reading as one row of controls.
+class _SettingsButton extends StatelessWidget {
+  const _SettingsButton({required this.onTap, required this.semanticLabel});
+
+  final VoidCallback onTap;
+  final String semanticLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox.square(
+          dimension: AppSpace.control,
+          child: Icon(
+            Icons.person_outline,
+            size: AppIconSize.nav,
+            color: isDark ? AppColors.inkMutedOnDark : AppColors.inkMuted,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _GlassCircleButton extends StatelessWidget {
   final IconData icon;
   final Color accent;
@@ -521,7 +558,11 @@ class _GlassCircleButton extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(icon, size: 20, color: theme.colorScheme.onSurface),
+          child: Icon(
+            icon,
+            size: AppSpace.huge,
+            color: theme.colorScheme.onSurface,
+          ),
         ),
       ),
     );
@@ -588,12 +629,17 @@ class _GlassSidebar extends StatelessWidget {
               children: [
                 // Logo lockup
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpace.huge,
+                    AppSpace.section,
+                    AppSpace.huge,
+                    28,
+                  ),
                   child: Row(
                     children: [
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: AppSpace.gutter,
+                        height: AppSpace.gutter,
                         decoration: BoxDecoration(
                           color: theme.colorScheme.primary,
                           borderRadius: BorderRadius.circular(9),
@@ -604,7 +650,7 @@ class _GlassSidebar extends StatelessWidget {
                           size: 18,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: AppSpace.lg),
                       Text(
                         appString(context, 'StandUp'),
                         style: TextStyle(
@@ -638,7 +684,12 @@ class _GlassSidebar extends StatelessWidget {
 
                 // Keyboard hints
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpace.huge,
+                    0,
+                    AppSpace.huge,
+                    AppSpace.huge,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -651,7 +702,7 @@ class _GlassSidebar extends StatelessWidget {
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpace.md),
                       _ShortcutHint(
                         shortcutKey: 'Space',
                         label: appString(context, 'Stand Up'),
@@ -673,7 +724,12 @@ class _GlassSidebar extends StatelessWidget {
                 // point is in the same place on every platform.
                 const Spacer(),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpace.xxl,
+                    AppSpace.xl,
+                    AppSpace.xxl,
+                    AppSpace.huge,
+                  ),
                   child: Align(
                     alignment: Alignment.centerRight,
                     child: AccountButton(
@@ -719,36 +775,42 @@ class _SidebarNavItem extends StatelessWidget {
       label: label,
       excludeSemantics: true,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpace.xl,
+          vertical: AppSpace.xxs,
+        ),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.md),
           child: AnimatedContainer(
             duration: MediaQuery.disableAnimationsOf(context)
                 ? Duration.zero
                 : const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.xl,
+              vertical: 12,
+            ),
             decoration: BoxDecoration(
               color: isSelected
                   ? accent.withValues(alpha: 0.11)
                   : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(AppRadius.md),
             ),
             child: Row(
               children: [
                 Icon(
                   icon,
-                  size: 20,
+                  size: AppSpace.huge,
                   color: isSelected
                       ? accent
                       : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpace.xl),
                 Expanded(
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: AppFontSize.body,
                       fontWeight: isSelected
                           ? FontWeight.w700
                           : FontWeight.w500,
@@ -764,13 +826,13 @@ class _SidebarNavItem extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 5,
-                      vertical: 2,
+                      vertical: AppSpace.xxs,
                     ),
                     decoration: BoxDecoration(
                       color: Theme.of(context)
                           .colorScheme
                           .surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppRadius.xs),
                     ),
                     child: Text(
                       shortcutLabel,
@@ -800,14 +862,17 @@ class _ShortcutHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: AppSpace.xs),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 5,
+              vertical: AppSpace.xxs,
+            ),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(AppRadius.xs),
               border: Border.all(
                 color: Theme.of(context).colorScheme.outlineVariant,
               ),
@@ -821,11 +886,11 @@ class _ShortcutHint extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpace.sm),
           Text(
             label,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: AppFontSize.micro,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),

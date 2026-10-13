@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:standup_app/core/app_theme.dart';
+import 'package:standup_app/core/app_spacing.dart';
 
 /// A single option in a [SegmentedChoice].
 class SegmentedOption<T> {
@@ -191,14 +192,14 @@ class _Segment extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.md),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
               curve: Curves.easeOut,
               padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
               decoration: BoxDecoration(
                 color: selected ? accent : theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadius.md),
                 border: Border.all(
                   // The ring is drawn in the surface colour rather than white so
                   // it stays visible against a light accent.
@@ -213,12 +214,12 @@ class _Segment extends StatelessWidget {
                   if (icon != null) ...[
                     Icon(
                       icon,
-                      size: 16,
+                      size: AppSpace.xxl,
                       color: selected
                           ? Colors.white
                           : theme.colorScheme.onSurfaceVariant,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: AppSpace.sm),
                   ],
                   Flexible(
                     child: Text(
@@ -235,7 +236,7 @@ class _Segment extends StatelessWidget {
                         fontWeight: selected
                             ? FontWeight.w700
                             : FontWeight.w500,
-                        fontSize: 13,
+                        fontSize: AppFontSize.small,
                       ),
                     ),
                   ),

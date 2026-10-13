@@ -582,7 +582,7 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(60),
+    defaultValue: const Constant(AppCadence.defaultCadenceMinutes),
   );
   static const VerificationMeta _soundEnabledMeta = const VerificationMeta(
     'soundEnabled',
@@ -626,6 +626,21 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     requiredDuringInsert: false,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'CHECK ("statistics_opt_in" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _aiGuidanceOptInMeta = const VerificationMeta(
+    'aiGuidanceOptIn',
+  );
+  @override
+  late final GeneratedColumn<bool> aiGuidanceOptIn = GeneratedColumn<bool>(
+    'ai_guidance_opt_in',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("ai_guidance_opt_in" IN (0, 1))',
     ),
     defaultValue: const Constant(false),
   );
@@ -676,7 +691,7 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(8),
+    defaultValue: const Constant(AppCadence.defaultDailyGoal),
   );
   static const VerificationMeta _actionWindowMinutesMeta =
       const VerificationMeta('actionWindowMinutes');
@@ -687,7 +702,7 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultValue: const Constant(5),
+    defaultValue: const Constant(AppCadence.defaultActionWindowMinutes),
   );
   static const VerificationMeta _enforceActionWindowMeta =
       const VerificationMeta('enforceActionWindow');
@@ -702,6 +717,42 @@ class $UserPreferencesTableTable extends UserPreferencesTable
       'CHECK ("enforce_action_window" IN (0, 1))',
     ),
     defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _workDaysMeta = const VerificationMeta(
+    'workDays',
+  );
+  @override
+  late final GeneratedColumn<String> workDays = GeneratedColumn<String>(
+    'work_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('1,2,3,4,5'),
+  );
+  static const VerificationMeta _workStartMinuteMeta = const VerificationMeta(
+    'workStartMinute',
+  );
+  @override
+  late final GeneratedColumn<int> workStartMinute = GeneratedColumn<int>(
+    'work_start_minute',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(WorkSchedule.defaultStartMinute),
+  );
+  static const VerificationMeta _workEndMinuteMeta = const VerificationMeta(
+    'workEndMinute',
+  );
+  @override
+  late final GeneratedColumn<int> workEndMinute = GeneratedColumn<int>(
+    'work_end_minute',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(WorkSchedule.defaultEndMinute),
   );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
@@ -725,12 +776,16 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     soundEnabled,
     hapticsEnabled,
     statisticsOptIn,
+    aiGuidanceOptIn,
     onboardingCompleted,
     selectedSound,
     quietHours,
     streakGoal,
     actionWindowMinutes,
     enforceActionWindow,
+    workDays,
+    workStartMinute,
+    workEndMinute,
     updatedAt,
   ];
   @override
@@ -809,6 +864,15 @@ class $UserPreferencesTableTable extends UserPreferencesTable
         ),
       );
     }
+    if (data.containsKey('ai_guidance_opt_in')) {
+      context.handle(
+        _aiGuidanceOptInMeta,
+        aiGuidanceOptIn.isAcceptableOrUnknown(
+          data['ai_guidance_opt_in']!,
+          _aiGuidanceOptInMeta,
+        ),
+      );
+    }
     if (data.containsKey('onboarding_completed')) {
       context.handle(
         _onboardingCompletedMeta,
@@ -854,6 +918,30 @@ class $UserPreferencesTableTable extends UserPreferencesTable
         enforceActionWindow.isAcceptableOrUnknown(
           data['enforce_action_window']!,
           _enforceActionWindowMeta,
+        ),
+      );
+    }
+    if (data.containsKey('work_days')) {
+      context.handle(
+        _workDaysMeta,
+        workDays.isAcceptableOrUnknown(data['work_days']!, _workDaysMeta),
+      );
+    }
+    if (data.containsKey('work_start_minute')) {
+      context.handle(
+        _workStartMinuteMeta,
+        workStartMinute.isAcceptableOrUnknown(
+          data['work_start_minute']!,
+          _workStartMinuteMeta,
+        ),
+      );
+    }
+    if (data.containsKey('work_end_minute')) {
+      context.handle(
+        _workEndMinuteMeta,
+        workEndMinute.isAcceptableOrUnknown(
+          data['work_end_minute']!,
+          _workEndMinuteMeta,
         ),
       );
     }
@@ -907,6 +995,10 @@ class $UserPreferencesTableTable extends UserPreferencesTable
         DriftSqlType.bool,
         data['${effectivePrefix}statistics_opt_in'],
       )!,
+      aiGuidanceOptIn: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}ai_guidance_opt_in'],
+      )!,
       onboardingCompleted: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}onboarding_completed'],
@@ -931,6 +1023,18 @@ class $UserPreferencesTableTable extends UserPreferencesTable
         DriftSqlType.bool,
         data['${effectivePrefix}enforce_action_window'],
       )!,
+      workDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}work_days'],
+      )!,
+      workStartMinute: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}work_start_minute'],
+      )!,
+      workEndMinute: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}work_end_minute'],
+      )!,
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -954,12 +1058,16 @@ class UserPreferencesTableData extends DataClass
   final bool soundEnabled;
   final bool hapticsEnabled;
   final bool statisticsOptIn;
+  final bool aiGuidanceOptIn;
   final bool onboardingCompleted;
   final String selectedSound;
   final String? quietHours;
   final int streakGoal;
   final int actionWindowMinutes;
   final bool enforceActionWindow;
+  final String workDays;
+  final int workStartMinute;
+  final int workEndMinute;
   final DateTime updatedAt;
   const UserPreferencesTableData({
     required this.id,
@@ -970,12 +1078,16 @@ class UserPreferencesTableData extends DataClass
     required this.soundEnabled,
     required this.hapticsEnabled,
     required this.statisticsOptIn,
+    required this.aiGuidanceOptIn,
     required this.onboardingCompleted,
     required this.selectedSound,
     this.quietHours,
     required this.streakGoal,
     required this.actionWindowMinutes,
     required this.enforceActionWindow,
+    required this.workDays,
+    required this.workStartMinute,
+    required this.workEndMinute,
     required this.updatedAt,
   });
   @override
@@ -989,6 +1101,7 @@ class UserPreferencesTableData extends DataClass
     map['sound_enabled'] = Variable<bool>(soundEnabled);
     map['haptics_enabled'] = Variable<bool>(hapticsEnabled);
     map['statistics_opt_in'] = Variable<bool>(statisticsOptIn);
+    map['ai_guidance_opt_in'] = Variable<bool>(aiGuidanceOptIn);
     map['onboarding_completed'] = Variable<bool>(onboardingCompleted);
     map['selected_sound'] = Variable<String>(selectedSound);
     if (!nullToAbsent || quietHours != null) {
@@ -997,6 +1110,9 @@ class UserPreferencesTableData extends DataClass
     map['streak_goal'] = Variable<int>(streakGoal);
     map['action_window_minutes'] = Variable<int>(actionWindowMinutes);
     map['enforce_action_window'] = Variable<bool>(enforceActionWindow);
+    map['work_days'] = Variable<String>(workDays);
+    map['work_start_minute'] = Variable<int>(workStartMinute);
+    map['work_end_minute'] = Variable<int>(workEndMinute);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -1011,6 +1127,7 @@ class UserPreferencesTableData extends DataClass
       soundEnabled: Value(soundEnabled),
       hapticsEnabled: Value(hapticsEnabled),
       statisticsOptIn: Value(statisticsOptIn),
+      aiGuidanceOptIn: Value(aiGuidanceOptIn),
       onboardingCompleted: Value(onboardingCompleted),
       selectedSound: Value(selectedSound),
       quietHours: quietHours == null && nullToAbsent
@@ -1019,6 +1136,9 @@ class UserPreferencesTableData extends DataClass
       streakGoal: Value(streakGoal),
       actionWindowMinutes: Value(actionWindowMinutes),
       enforceActionWindow: Value(enforceActionWindow),
+      workDays: Value(workDays),
+      workStartMinute: Value(workStartMinute),
+      workEndMinute: Value(workEndMinute),
       updatedAt: Value(updatedAt),
     );
   }
@@ -1039,6 +1159,7 @@ class UserPreferencesTableData extends DataClass
       soundEnabled: serializer.fromJson<bool>(json['soundEnabled']),
       hapticsEnabled: serializer.fromJson<bool>(json['hapticsEnabled']),
       statisticsOptIn: serializer.fromJson<bool>(json['statisticsOptIn']),
+      aiGuidanceOptIn: serializer.fromJson<bool>(json['aiGuidanceOptIn']),
       onboardingCompleted: serializer.fromJson<bool>(
         json['onboardingCompleted'],
       ),
@@ -1051,6 +1172,9 @@ class UserPreferencesTableData extends DataClass
       enforceActionWindow: serializer.fromJson<bool>(
         json['enforceActionWindow'],
       ),
+      workDays: serializer.fromJson<String>(json['workDays']),
+      workStartMinute: serializer.fromJson<int>(json['workStartMinute']),
+      workEndMinute: serializer.fromJson<int>(json['workEndMinute']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -1066,12 +1190,16 @@ class UserPreferencesTableData extends DataClass
       'soundEnabled': serializer.toJson<bool>(soundEnabled),
       'hapticsEnabled': serializer.toJson<bool>(hapticsEnabled),
       'statisticsOptIn': serializer.toJson<bool>(statisticsOptIn),
+      'aiGuidanceOptIn': serializer.toJson<bool>(aiGuidanceOptIn),
       'onboardingCompleted': serializer.toJson<bool>(onboardingCompleted),
       'selectedSound': serializer.toJson<String>(selectedSound),
       'quietHours': serializer.toJson<String?>(quietHours),
       'streakGoal': serializer.toJson<int>(streakGoal),
       'actionWindowMinutes': serializer.toJson<int>(actionWindowMinutes),
       'enforceActionWindow': serializer.toJson<bool>(enforceActionWindow),
+      'workDays': serializer.toJson<String>(workDays),
+      'workStartMinute': serializer.toJson<int>(workStartMinute),
+      'workEndMinute': serializer.toJson<int>(workEndMinute),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -1085,12 +1213,16 @@ class UserPreferencesTableData extends DataClass
     bool? soundEnabled,
     bool? hapticsEnabled,
     bool? statisticsOptIn,
+    bool? aiGuidanceOptIn,
     bool? onboardingCompleted,
     String? selectedSound,
     Value<String?> quietHours = const Value.absent(),
     int? streakGoal,
     int? actionWindowMinutes,
     bool? enforceActionWindow,
+    String? workDays,
+    int? workStartMinute,
+    int? workEndMinute,
     DateTime? updatedAt,
   }) => UserPreferencesTableData(
     id: id ?? this.id,
@@ -1101,12 +1233,16 @@ class UserPreferencesTableData extends DataClass
     soundEnabled: soundEnabled ?? this.soundEnabled,
     hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
     statisticsOptIn: statisticsOptIn ?? this.statisticsOptIn,
+    aiGuidanceOptIn: aiGuidanceOptIn ?? this.aiGuidanceOptIn,
     onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
     selectedSound: selectedSound ?? this.selectedSound,
     quietHours: quietHours.present ? quietHours.value : this.quietHours,
     streakGoal: streakGoal ?? this.streakGoal,
     actionWindowMinutes: actionWindowMinutes ?? this.actionWindowMinutes,
     enforceActionWindow: enforceActionWindow ?? this.enforceActionWindow,
+    workDays: workDays ?? this.workDays,
+    workStartMinute: workStartMinute ?? this.workStartMinute,
+    workEndMinute: workEndMinute ?? this.workEndMinute,
     updatedAt: updatedAt ?? this.updatedAt,
   );
   UserPreferencesTableData copyWithCompanion(
@@ -1131,6 +1267,9 @@ class UserPreferencesTableData extends DataClass
       statisticsOptIn: data.statisticsOptIn.present
           ? data.statisticsOptIn.value
           : this.statisticsOptIn,
+      aiGuidanceOptIn: data.aiGuidanceOptIn.present
+          ? data.aiGuidanceOptIn.value
+          : this.aiGuidanceOptIn,
       onboardingCompleted: data.onboardingCompleted.present
           ? data.onboardingCompleted.value
           : this.onboardingCompleted,
@@ -1149,6 +1288,13 @@ class UserPreferencesTableData extends DataClass
       enforceActionWindow: data.enforceActionWindow.present
           ? data.enforceActionWindow.value
           : this.enforceActionWindow,
+      workDays: data.workDays.present ? data.workDays.value : this.workDays,
+      workStartMinute: data.workStartMinute.present
+          ? data.workStartMinute.value
+          : this.workStartMinute,
+      workEndMinute: data.workEndMinute.present
+          ? data.workEndMinute.value
+          : this.workEndMinute,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -1164,12 +1310,16 @@ class UserPreferencesTableData extends DataClass
           ..write('soundEnabled: $soundEnabled, ')
           ..write('hapticsEnabled: $hapticsEnabled, ')
           ..write('statisticsOptIn: $statisticsOptIn, ')
+          ..write('aiGuidanceOptIn: $aiGuidanceOptIn, ')
           ..write('onboardingCompleted: $onboardingCompleted, ')
           ..write('selectedSound: $selectedSound, ')
           ..write('quietHours: $quietHours, ')
           ..write('streakGoal: $streakGoal, ')
           ..write('actionWindowMinutes: $actionWindowMinutes, ')
           ..write('enforceActionWindow: $enforceActionWindow, ')
+          ..write('workDays: $workDays, ')
+          ..write('workStartMinute: $workStartMinute, ')
+          ..write('workEndMinute: $workEndMinute, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
@@ -1185,12 +1335,16 @@ class UserPreferencesTableData extends DataClass
     soundEnabled,
     hapticsEnabled,
     statisticsOptIn,
+    aiGuidanceOptIn,
     onboardingCompleted,
     selectedSound,
     quietHours,
     streakGoal,
     actionWindowMinutes,
     enforceActionWindow,
+    workDays,
+    workStartMinute,
+    workEndMinute,
     updatedAt,
   );
   @override
@@ -1205,12 +1359,16 @@ class UserPreferencesTableData extends DataClass
           other.soundEnabled == this.soundEnabled &&
           other.hapticsEnabled == this.hapticsEnabled &&
           other.statisticsOptIn == this.statisticsOptIn &&
+          other.aiGuidanceOptIn == this.aiGuidanceOptIn &&
           other.onboardingCompleted == this.onboardingCompleted &&
           other.selectedSound == this.selectedSound &&
           other.quietHours == this.quietHours &&
           other.streakGoal == this.streakGoal &&
           other.actionWindowMinutes == this.actionWindowMinutes &&
           other.enforceActionWindow == this.enforceActionWindow &&
+          other.workDays == this.workDays &&
+          other.workStartMinute == this.workStartMinute &&
+          other.workEndMinute == this.workEndMinute &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -1224,12 +1382,16 @@ class UserPreferencesTableCompanion
   final Value<bool> soundEnabled;
   final Value<bool> hapticsEnabled;
   final Value<bool> statisticsOptIn;
+  final Value<bool> aiGuidanceOptIn;
   final Value<bool> onboardingCompleted;
   final Value<String> selectedSound;
   final Value<String?> quietHours;
   final Value<int> streakGoal;
   final Value<int> actionWindowMinutes;
   final Value<bool> enforceActionWindow;
+  final Value<String> workDays;
+  final Value<int> workStartMinute;
+  final Value<int> workEndMinute;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const UserPreferencesTableCompanion({
@@ -1241,12 +1403,16 @@ class UserPreferencesTableCompanion
     this.soundEnabled = const Value.absent(),
     this.hapticsEnabled = const Value.absent(),
     this.statisticsOptIn = const Value.absent(),
+    this.aiGuidanceOptIn = const Value.absent(),
     this.onboardingCompleted = const Value.absent(),
     this.selectedSound = const Value.absent(),
     this.quietHours = const Value.absent(),
     this.streakGoal = const Value.absent(),
     this.actionWindowMinutes = const Value.absent(),
     this.enforceActionWindow = const Value.absent(),
+    this.workDays = const Value.absent(),
+    this.workStartMinute = const Value.absent(),
+    this.workEndMinute = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -1259,12 +1425,16 @@ class UserPreferencesTableCompanion
     this.soundEnabled = const Value.absent(),
     this.hapticsEnabled = const Value.absent(),
     this.statisticsOptIn = const Value.absent(),
+    this.aiGuidanceOptIn = const Value.absent(),
     this.onboardingCompleted = const Value.absent(),
     this.selectedSound = const Value.absent(),
     this.quietHours = const Value.absent(),
     this.streakGoal = const Value.absent(),
     this.actionWindowMinutes = const Value.absent(),
     this.enforceActionWindow = const Value.absent(),
+    this.workDays = const Value.absent(),
+    this.workStartMinute = const Value.absent(),
+    this.workEndMinute = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -1278,12 +1448,16 @@ class UserPreferencesTableCompanion
     Expression<bool>? soundEnabled,
     Expression<bool>? hapticsEnabled,
     Expression<bool>? statisticsOptIn,
+    Expression<bool>? aiGuidanceOptIn,
     Expression<bool>? onboardingCompleted,
     Expression<String>? selectedSound,
     Expression<String>? quietHours,
     Expression<int>? streakGoal,
     Expression<int>? actionWindowMinutes,
     Expression<bool>? enforceActionWindow,
+    Expression<String>? workDays,
+    Expression<int>? workStartMinute,
+    Expression<int>? workEndMinute,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -1297,6 +1471,7 @@ class UserPreferencesTableCompanion
       if (soundEnabled != null) 'sound_enabled': soundEnabled,
       if (hapticsEnabled != null) 'haptics_enabled': hapticsEnabled,
       if (statisticsOptIn != null) 'statistics_opt_in': statisticsOptIn,
+      if (aiGuidanceOptIn != null) 'ai_guidance_opt_in': aiGuidanceOptIn,
       if (onboardingCompleted != null)
         'onboarding_completed': onboardingCompleted,
       if (selectedSound != null) 'selected_sound': selectedSound,
@@ -1306,6 +1481,9 @@ class UserPreferencesTableCompanion
         'action_window_minutes': actionWindowMinutes,
       if (enforceActionWindow != null)
         'enforce_action_window': enforceActionWindow,
+      if (workDays != null) 'work_days': workDays,
+      if (workStartMinute != null) 'work_start_minute': workStartMinute,
+      if (workEndMinute != null) 'work_end_minute': workEndMinute,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1320,12 +1498,16 @@ class UserPreferencesTableCompanion
     Value<bool>? soundEnabled,
     Value<bool>? hapticsEnabled,
     Value<bool>? statisticsOptIn,
+    Value<bool>? aiGuidanceOptIn,
     Value<bool>? onboardingCompleted,
     Value<String>? selectedSound,
     Value<String?>? quietHours,
     Value<int>? streakGoal,
     Value<int>? actionWindowMinutes,
     Value<bool>? enforceActionWindow,
+    Value<String>? workDays,
+    Value<int>? workStartMinute,
+    Value<int>? workEndMinute,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
@@ -1339,12 +1521,16 @@ class UserPreferencesTableCompanion
       soundEnabled: soundEnabled ?? this.soundEnabled,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
       statisticsOptIn: statisticsOptIn ?? this.statisticsOptIn,
+      aiGuidanceOptIn: aiGuidanceOptIn ?? this.aiGuidanceOptIn,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
       selectedSound: selectedSound ?? this.selectedSound,
       quietHours: quietHours ?? this.quietHours,
       streakGoal: streakGoal ?? this.streakGoal,
       actionWindowMinutes: actionWindowMinutes ?? this.actionWindowMinutes,
       enforceActionWindow: enforceActionWindow ?? this.enforceActionWindow,
+      workDays: workDays ?? this.workDays,
+      workStartMinute: workStartMinute ?? this.workStartMinute,
+      workEndMinute: workEndMinute ?? this.workEndMinute,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -1379,6 +1565,9 @@ class UserPreferencesTableCompanion
     if (statisticsOptIn.present) {
       map['statistics_opt_in'] = Variable<bool>(statisticsOptIn.value);
     }
+    if (aiGuidanceOptIn.present) {
+      map['ai_guidance_opt_in'] = Variable<bool>(aiGuidanceOptIn.value);
+    }
     if (onboardingCompleted.present) {
       map['onboarding_completed'] = Variable<bool>(onboardingCompleted.value);
     }
@@ -1396,6 +1585,15 @@ class UserPreferencesTableCompanion
     }
     if (enforceActionWindow.present) {
       map['enforce_action_window'] = Variable<bool>(enforceActionWindow.value);
+    }
+    if (workDays.present) {
+      map['work_days'] = Variable<String>(workDays.value);
+    }
+    if (workStartMinute.present) {
+      map['work_start_minute'] = Variable<int>(workStartMinute.value);
+    }
+    if (workEndMinute.present) {
+      map['work_end_minute'] = Variable<int>(workEndMinute.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
@@ -1417,12 +1615,16 @@ class UserPreferencesTableCompanion
           ..write('soundEnabled: $soundEnabled, ')
           ..write('hapticsEnabled: $hapticsEnabled, ')
           ..write('statisticsOptIn: $statisticsOptIn, ')
+          ..write('aiGuidanceOptIn: $aiGuidanceOptIn, ')
           ..write('onboardingCompleted: $onboardingCompleted, ')
           ..write('selectedSound: $selectedSound, ')
           ..write('quietHours: $quietHours, ')
           ..write('streakGoal: $streakGoal, ')
           ..write('actionWindowMinutes: $actionWindowMinutes, ')
           ..write('enforceActionWindow: $enforceActionWindow, ')
+          ..write('workDays: $workDays, ')
+          ..write('workStartMinute: $workStartMinute, ')
+          ..write('workEndMinute: $workEndMinute, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -2560,6 +2762,26 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $ReminderLogsTableTable(this);
   late final $AnalyticsDailyTableTable analyticsDailyTable =
       $AnalyticsDailyTableTable(this);
+  late final Index userPreferencesUserIdIdx = Index(
+    'user_preferences_user_id_idx',
+    'CREATE INDEX user_preferences_user_id_idx ON user_preferences_table (user_id)',
+  );
+  late final Index reminderLogsUserTimestampIdx = Index(
+    'reminder_logs_user_timestamp_idx',
+    'CREATE INDEX reminder_logs_user_timestamp_idx ON reminder_logs_table (user_id, timestamp)',
+  );
+  late final Index reminderLogsUserActionTimestampIdx = Index(
+    'reminder_logs_user_action_timestamp_idx',
+    'CREATE INDEX reminder_logs_user_action_timestamp_idx ON reminder_logs_table (user_id, action_taken, timestamp)',
+  );
+  late final Index analyticsDailyUserDateIdx = Index(
+    'analytics_daily_user_date_idx',
+    'CREATE INDEX analytics_daily_user_date_idx ON analytics_daily_table (user_id, date)',
+  );
+  late final Index analyticsDailyUserSyncedIdx = Index(
+    'analytics_daily_user_synced_idx',
+    'CREATE INDEX analytics_daily_user_synced_idx ON analytics_daily_table (user_id, synced_to_cloud)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2569,6 +2791,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     userPreferencesTable,
     reminderLogsTable,
     analyticsDailyTable,
+    userPreferencesUserIdIdx,
+    reminderLogsUserTimestampIdx,
+    reminderLogsUserActionTimestampIdx,
+    analyticsDailyUserDateIdx,
+    analyticsDailyUserSyncedIdx,
   ];
 }
 
@@ -2869,12 +3096,16 @@ typedef $$UserPreferencesTableTableCreateCompanionBuilder =
       Value<bool> soundEnabled,
       Value<bool> hapticsEnabled,
       Value<bool> statisticsOptIn,
+      Value<bool> aiGuidanceOptIn,
       Value<bool> onboardingCompleted,
       Value<String> selectedSound,
       Value<String?> quietHours,
       Value<int> streakGoal,
       Value<int> actionWindowMinutes,
       Value<bool> enforceActionWindow,
+      Value<String> workDays,
+      Value<int> workStartMinute,
+      Value<int> workEndMinute,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
@@ -2888,12 +3119,16 @@ typedef $$UserPreferencesTableTableUpdateCompanionBuilder =
       Value<bool> soundEnabled,
       Value<bool> hapticsEnabled,
       Value<bool> statisticsOptIn,
+      Value<bool> aiGuidanceOptIn,
       Value<bool> onboardingCompleted,
       Value<String> selectedSound,
       Value<String?> quietHours,
       Value<int> streakGoal,
       Value<int> actionWindowMinutes,
       Value<bool> enforceActionWindow,
+      Value<String> workDays,
+      Value<int> workStartMinute,
+      Value<int> workEndMinute,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
@@ -2947,6 +3182,11 @@ class $$UserPreferencesTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get aiGuidanceOptIn => $composableBuilder(
+    column: $table.aiGuidanceOptIn,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<bool> get onboardingCompleted => $composableBuilder(
     column: $table.onboardingCompleted,
     builder: (column) => ColumnFilters(column),
@@ -2974,6 +3214,21 @@ class $$UserPreferencesTableTableFilterComposer
 
   ColumnFilters<bool> get enforceActionWindow => $composableBuilder(
     column: $table.enforceActionWindow,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get workDays => $composableBuilder(
+    column: $table.workDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get workStartMinute => $composableBuilder(
+    column: $table.workStartMinute,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get workEndMinute => $composableBuilder(
+    column: $table.workEndMinute,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3032,6 +3287,11 @@ class $$UserPreferencesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get aiGuidanceOptIn => $composableBuilder(
+    column: $table.aiGuidanceOptIn,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get onboardingCompleted => $composableBuilder(
     column: $table.onboardingCompleted,
     builder: (column) => ColumnOrderings(column),
@@ -3059,6 +3319,21 @@ class $$UserPreferencesTableTableOrderingComposer
 
   ColumnOrderings<bool> get enforceActionWindow => $composableBuilder(
     column: $table.enforceActionWindow,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get workDays => $composableBuilder(
+    column: $table.workDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get workStartMinute => $composableBuilder(
+    column: $table.workStartMinute,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get workEndMinute => $composableBuilder(
+    column: $table.workEndMinute,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3111,6 +3386,11 @@ class $$UserPreferencesTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get aiGuidanceOptIn => $composableBuilder(
+    column: $table.aiGuidanceOptIn,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get onboardingCompleted => $composableBuilder(
     column: $table.onboardingCompleted,
     builder: (column) => column,
@@ -3138,6 +3418,19 @@ class $$UserPreferencesTableTableAnnotationComposer
 
   GeneratedColumn<bool> get enforceActionWindow => $composableBuilder(
     column: $table.enforceActionWindow,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get workDays =>
+      $composableBuilder(column: $table.workDays, builder: (column) => column);
+
+  GeneratedColumn<int> get workStartMinute => $composableBuilder(
+    column: $table.workStartMinute,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get workEndMinute => $composableBuilder(
+    column: $table.workEndMinute,
     builder: (column) => column,
   );
 
@@ -3196,12 +3489,16 @@ class $$UserPreferencesTableTableTableManager
                 Value<bool> soundEnabled = const Value.absent(),
                 Value<bool> hapticsEnabled = const Value.absent(),
                 Value<bool> statisticsOptIn = const Value.absent(),
+                Value<bool> aiGuidanceOptIn = const Value.absent(),
                 Value<bool> onboardingCompleted = const Value.absent(),
                 Value<String> selectedSound = const Value.absent(),
                 Value<String?> quietHours = const Value.absent(),
                 Value<int> streakGoal = const Value.absent(),
                 Value<int> actionWindowMinutes = const Value.absent(),
                 Value<bool> enforceActionWindow = const Value.absent(),
+                Value<String> workDays = const Value.absent(),
+                Value<int> workStartMinute = const Value.absent(),
+                Value<int> workEndMinute = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => UserPreferencesTableCompanion(
@@ -3213,12 +3510,16 @@ class $$UserPreferencesTableTableTableManager
                 soundEnabled: soundEnabled,
                 hapticsEnabled: hapticsEnabled,
                 statisticsOptIn: statisticsOptIn,
+                aiGuidanceOptIn: aiGuidanceOptIn,
                 onboardingCompleted: onboardingCompleted,
                 selectedSound: selectedSound,
                 quietHours: quietHours,
                 streakGoal: streakGoal,
                 actionWindowMinutes: actionWindowMinutes,
                 enforceActionWindow: enforceActionWindow,
+                workDays: workDays,
+                workStartMinute: workStartMinute,
+                workEndMinute: workEndMinute,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
@@ -3232,12 +3533,16 @@ class $$UserPreferencesTableTableTableManager
                 Value<bool> soundEnabled = const Value.absent(),
                 Value<bool> hapticsEnabled = const Value.absent(),
                 Value<bool> statisticsOptIn = const Value.absent(),
+                Value<bool> aiGuidanceOptIn = const Value.absent(),
                 Value<bool> onboardingCompleted = const Value.absent(),
                 Value<String> selectedSound = const Value.absent(),
                 Value<String?> quietHours = const Value.absent(),
                 Value<int> streakGoal = const Value.absent(),
                 Value<int> actionWindowMinutes = const Value.absent(),
                 Value<bool> enforceActionWindow = const Value.absent(),
+                Value<String> workDays = const Value.absent(),
+                Value<int> workStartMinute = const Value.absent(),
+                Value<int> workEndMinute = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => UserPreferencesTableCompanion.insert(
@@ -3249,12 +3554,16 @@ class $$UserPreferencesTableTableTableManager
                 soundEnabled: soundEnabled,
                 hapticsEnabled: hapticsEnabled,
                 statisticsOptIn: statisticsOptIn,
+                aiGuidanceOptIn: aiGuidanceOptIn,
                 onboardingCompleted: onboardingCompleted,
                 selectedSound: selectedSound,
                 quietHours: quietHours,
                 streakGoal: streakGoal,
                 actionWindowMinutes: actionWindowMinutes,
                 enforceActionWindow: enforceActionWindow,
+                workDays: workDays,
+                workStartMinute: workStartMinute,
+                workEndMinute: workEndMinute,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),

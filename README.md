@@ -17,7 +17,7 @@ The default interface language is French for CNPS Cameroon; English is selectabl
 flowchart LR
     subgraph Native["Native surfaces"]
         AND["Android<br/>app + widget + notification"]
-        IOS["iOS<br/>app + WidgetKit + Live Activity"]
+        IOS["iOS<br/>app + WidgetKit"]
         DESK["Desktop<br/>Windows · macOS · Linux"]
         WEB["Web<br/>PWA, installable"]
     end
@@ -50,12 +50,18 @@ flowchart LR
 One codebase, six platforms. On-device Drift is always the source of truth;
 Supabase is an optional mirror that the app works fully without.
 
+Personal guidance uses deterministic local rules by default. An optional,
+separate consent in Settings can enable manually requested, company-hosted AI
+guidance through a Supabase Edge Function; see
+[`docs/AI_INTEGRATION.md`](docs/AI_INTEGRATION.md) for the data boundary and
+server setup.
+
 ---
 
 ## 🌟 Key Features
 
 0. **The Action Window — the core rule**
-   - A movement break counts **only in the last 5 minutes of each hour**, measured against the device's local clock. Outside that window the primary action is visibly disabled and the reason is always on screen.
+   - A movement break counts during the selected action window before each reminder cadence boundary, measured against the device's local clock. Outside that window the primary action is visibly disabled and the reason is shown.
    - Reminders fire at the moment the window opens, so the alert and the rule always agree.
    - Snoozing advances to the *next* window rather than granting an immediate extra break, so snoozes cannot be accumulated to farm credit.
    - The window length and whether it is enforced at all are both configurable in **Settings → Reminder Cadence**.
@@ -88,7 +94,7 @@ Supabase is an optional mirror that the app works fully without.
    - Melodic audio cues via `audioplayers` (`chime.wav`, `success.wav`, `nudge.wav`, `click.wav`).
    - Three instant actions:
      - **"I Stood Up!"**: Logs 5 min movement, awards completed break, resets consecutive skips, reschedules cadence.
-     - **"Snooze 10m"**: Delays break for 10 minutes (ideal during active presentations or meetings).
+     - **"Next reminder"**: Moves this alert to the next valid break window.
      - **"Skip"**: Records missed break and tracks skips.
    - **3-Consecutive-Skips Nudge Logic**: When 3 consecutive breaks are missed, automatically fires a gentle encouragement nudge with a dedicated audio tone.
 
@@ -99,7 +105,7 @@ Supabase is an optional mirror that the app works fully without.
      - **Amber / Yellow**: Snoozed breaks.
      - **Coral / Red**: Skipped breaks.
      - **Slate / Grey**: Rest days / no activity.
-   - Tap any day to inspect full modal breakdown (exact date, stands completed, minutes active, adherence rate).
+   - Tap any day to inspect full modal breakdown (exact date, stands completed, minutes active, and completion rate among recorded actions).
 
 5. **5-Minute Guided Desk Stretch Routine**
    - In-app interactive routine with 60-second steps:
@@ -112,23 +118,23 @@ Supabase is an optional mirror that the app works fully without.
 
 6. **Organization Health Insights (Admin View)**
    - Materialized / PostgreSQL view aggregates across departments.
-   - Company adherence benchmark and active employee count.
-   - Department leaderboard (Engineering, Product & Design, Marketing, Operations).
-   - Peak skip hours analysis to identify meeting overlaps and deep work fatigue.
+   - Organization completion rate among recorded actions and active employee count.
+   - Department completion-rate leaderboard (Engineering, Product & Design, Marketing, Operations).
+   - Organization views show privacy-protected daily aggregates; individual skip-hour analysis is not available.
    - **Strict Privacy RLS**: No personal timestamps or individual employee logs are exposed to administrators.
 
 7. **Adaptive Multi-Platform Layout**
    - Automatically switches between bottom `NavigationBar` on mobile (<720px) and side `NavigationRail` on desktop/tablet (>=720px).
-   - **Floating round reminder control** pinned bottom-left, separate from the bottom navigation, opening the quick action sheet (stand up / snooze / skip / stretch).
+   - A round reminder quick-action control stays separate from navigation: it floats above the compact bottom bar and sits in the expanded content header.
    - Pull down on Home, Leaderboard, Analytics or Settings to sync with Supabase.
 8. **Account and Workspace Services**
    - Email/password sign-up and sign-in, magic links, and Google/Apple OAuth through Supabase Auth.
-   - First sign-in reassigns the device's local profile, preferences, and history to the authenticated user in one local database transaction.
+   - First sign-in claims the device's local profile, preferences, and history; its device-only work schedule follows the profile.
    - Workspace invite codes are checked by a restricted database function; administrators cannot read individual activity.
    - Opted-in accounts receive realtime updates for their own daily summaries; reminder-level action history remains device-local.
 9. **Preferences**
-   - Language (fr/en), team and workspace label, reminder cadence, daily stand goal.
-   - Reminder tone picker, vibration/haptics toggle, quiet hours, notification permission, background-run opt-in, and local CSV export.
+   - Language (fr/en), team and workspace label, reminder cadence, daily stand goal, and editable workdays/hours (defaults to Monday–Friday, 09:00–17:00).
+   - Reminder tone picker, vibration/haptics toggle, quiet hours, notification permission, background-run opt-in, and local CSV export. Scheduled reminders and new break actions follow the selected work schedule.
 
 ---
 
@@ -144,7 +150,7 @@ Supabase is an optional mirror that the app works fully without.
 | **Charts** | `fl_chart` (Bar & Line charts) + Custom GitHub Heatmap Widget |
 | **Animations** | `flutter_animate` + Custom Physics `SpringButton` |
 | **Gamification** | Local XP/level engine (`GamificationMetrics`) |
-| **Time rules** | `StandWindow` action window + `ClockIntegrityGuard` |
+| **Time rules** | `StandWindow` action window + `WorkSchedule` + `ClockIntegrityGuard` |
 
 ---
 
@@ -252,15 +258,16 @@ lib/
 │   │   └── local_repository.dart # Type-safe reactive repository & queries
 │   ├── models/
 │   │   ├── user_profile.dart   # Employee profile model
-│   │   ├── user_preferences.dart # Cadence, theme, sound, quiet hours, goal
+│   │   ├── user_preferences.dart # Cadence, theme, work schedule, sound, goal
 │   │   ├── reminder_log.dart   # Individual private reminder action log
-│   │   ├── daily_analytics.dart # Daily adherence & stand minutes summary
+│   │   ├── daily_analytics.dart # Daily recorded-action completion & stand minutes summary
 │   │   ├── org_analytics.dart  # Aggregated company benchmarks & departments
 │   │   ├── gamification_metrics.dart # XP, levels & daily goal maths
 │   │   ├── leaderboard.dart    # Standings builders (org + personal)
-│   │   ├── stand_window.dart   # Hourly action window & clock-integrity guard
+│   │   ├── stand_window.dart   # Cadence action window & clock-integrity guard
+│   │   ├── work_schedule.dart  # Local workdays and work-hour boundaries
 │   │   ├── device_profile.dart # Transparent, auditable device metadata
-│   │   └── workday_metrics.dart # Adherence, streak & reminder clock
+│   │   └── workday_metrics.dart # Completion rate, streak & reminder clock
 │   └── remote/
 │       └── supabase_service.dart # Supabase client, RLS queries & offline sync
 ├── providers/
@@ -284,11 +291,10 @@ lib/
     │       └── slide_widgets.dart    # Individual slide components
     └── widgets/
         ├── glass_card.dart      # Shared glassmorphic surface
-        ├── reminder_fab.dart    # Round floating reminder control
+        ├── reminder_bell_button.dart # Round reminder quick actions
         ├── countdown_ring.dart  # Radial progress countdown with aura
         ├── posture_avatar.dart  # Kinematic custom-painted posture character
         ├── spring_button.dart   # Tactile physics bouncing button
-        ├── dynamic_island.dart  # Morphing reminder pill
         ├── particle_burst.dart  # Celebration confetti
         ├── contribution_heatmap_widget.dart # GitHub-style 52-week heatmap
         └── analytics_charts.dart # Weekly bar & 30-day line charts
@@ -451,3 +457,19 @@ and may only be used to identify the official application.
 
 The artwork in `assets/branding/CNPS_standup_logo.png`, and every icon generated
 from it, is original project artwork and is **not** an official CNPS logo.
+
+
+flowchart TD
+    A[Load settings from SQLite] --> B[Calculate eligible reminder times]
+    B --> C[Persist reminder events transactionally]
+    C --> D[Schedule OS notifications]
+    D --> E[Employee receives reminder]
+    E --> F{Employee action}
+    F -->|Complete| G[Save completed session in SQLite]
+    F -->|Snooze| H[Persist snooze and schedule deferred notification]
+    F -->|Skip| I[Persist skipped outcome]
+    G --> J[Refresh statistics]
+    H --> B
+    I --> J
+    J --> K[Optional sync outbox]
+    K --> L[Cloud analytics when connected]

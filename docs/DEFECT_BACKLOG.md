@@ -3,8 +3,9 @@
 Findings from a systematic review of the timer, state, storage and i18n
 subsystems. The Critical and High items were fixed — see the commits for
 `stand_window.dart`, `supabase_validation.sql`, `app_state.dart` and
-`local_repository.dart`. Everything below is **not fixed** and is recorded here
-so it is not rediscovered from scratch.
+`local_repository.dart`. The entries below capture the original audit snapshot;
+subsequent resolutions are recorded in the implementation follow-up at the end
+of this document.
 
 Each entry cites the evidence that established it. Nothing here was reproduced
 on a device unless the entry says so; several are read-from-code conclusions.
@@ -35,28 +36,24 @@ and `_GuidedStretchSheetState` has no `dispose`, so `initState`'s
 `startGuidedStretch()` keeps running and logs a stretch the user abandoned.
 Fix: cancel on dispose, or make the sheet non-dismissible.
 
-### `remindersSent` counts user actions, and `totalStandTime` is hard-coded to 5
+### `remindersSent` counts recorded user actions, not delivered reminders
 `local_repository.dart:280` increments on every action, so "reminders sent"
-equals completed + snoozed + skipped, which makes `adherenceRate` equal
-`completed / totalActions`. `:298` hard-codes 5 minutes, ignoring
-`actionWindowMinutes`, so a user with a 15-minute window accrues a third of the
-stand time they actually took — and that figure is what is uploaded as
-`p_total_stand_minutes`. Fix: increment where a reminder is emitted, derive
-stand time from the window length.
+equals completed + snoozed + skipped. The legacy `adherenceRate` getter thus
+means completed / recorded actions, not completed / delivered notifications.
+Stand time now uses the configured action-window length when a completion is
+recorded. The delivered-reminder denominator remains unresolved because no
+delivery/presentation event is stored.
 
-### No HTTP timeout or retry/backoff on any Supabase call
-`supabase_service.dart` — a hung socket leaves `_syncStatus = syncing` forever
-with no watchdog, and because `updatePreferences` awaits the sync, the
-statistics toggle handler never returns. The per-row loop continues straight
-through a 429/503. Fix: `.timeout(...)`, bounded backoff on reads, abort the
-row loop on the first 429/5xx.
+### Original finding: no HTTP timeout or retry/backoff on Supabase calls
+`supabase_service.dart` now applies a 20-second PostgREST per-request timeout,
+and a timeout stops the current analytics row loop. Auth-provider and realtime
+operations do not use that PostgREST timeout. The sync loop does not yet retry
+429/503 responses with backoff; unsent aggregates remain local for a later
+attempt.
 
-### `SyncStatus.idle` is rendered as "Cloud Connected"
-`app_state.dart:65` initialises `idle`; `supabase_service.dart:208` returns
-`idle` when the user is not opted in; `analytics_screen.dart:391` maps it to
-"Cloud Connected" while `settings_screen.dart:1263` maps the same value to
-"Local-only". A local-only user sees a green cloud. Fix: add a distinct
-`localOnly` member.
+### Original finding: `SyncStatus.idle` was rendered as "Cloud Connected"
+Analytics and Settings now consistently label `idle` as sharing off and
+`offline` as local-only. Only `success` is described as synced.
 
 ### Reminder-queue rebuild is ~96 sequential platform-channel calls, up to three times per preference change
 `notification_service.dart:396` cancels then schedules 48 reminders, each a
@@ -140,3 +137,20 @@ string passed through a variable is invisible to it.
 **On-device confirmation:** the onboarding profile slide renders "Full Name",
 "Designation / Role" and "Work Email (Optional)" in English inside an otherwise
 French screen.
+
+## Implementation follow-up — 2026-10-13
+
+- Reminder-event insertion and daily aggregate updates now use one Drift transaction; completion is claimed once per action window.
+- Stand-time credit now uses the configured action-window length.
+- The analytics ratio is labeled completion rate among recorded actions. It still does not count unanswered/delivered reminders.
+- PostgREST requests have a 20-second per-attempt timeout; timeout stops the current row loop and pending rows remain local.
+- Concurrent cloud-sync calls are shared, and account switches queue the new account's sync after the active operation.
+- Sync labels distinguish local-only, sharing off, and synced states.
+- Widget payload decoding now uses field types, preserving boolean flags even when integer fields contain `0` or `1`; serialization regression tests exercise the actual codec.
+- Dismissing the guided-stretch sheet cancels its timer; completing the routine uses its original action-window key, and the sheet closes when the routine ends.
+- Widget payloads refresh when clock trust changes and when the daily goal changes; fallback queue refreshes use the clamped cadence.
+- Snooze/skip clear guided-stretch state, and skipped reminders reschedule using the same clamped cadence as the action-window rules.
+
+Workday schedules now default to Monday–Friday, 09:00–17:00 and can be edited locally. The shared schedule rule filters in-app windows and the OS queue, and gates completion actions. Preferences are stored in Drift with a data-preserving v4-to-v6 migration; the OS queue re-anchors cadence boundaries against the local calendar day and Drift lookups have non-unique indexes. Boundary, queue, quiet-hours, and migration tests pass. DST transition simulation and device-delivery checks remain open. Multi-device reconciliation and uniqueness for `user_preferences.user_id` remain open because legacy duplicates must be preserved. Local deterministic guidance is implemented; long-term persistence of employee feedback is deferred.
+
+Company AI guidance now uses a separate default-off local consent and a manual Home action. An authenticated Supabase Edge Function proxies the typed daily summary to a configurable company OpenAI-compatible endpoint. Local deterministic rules remain the fallback; model credentials stay in Edge Function secrets. The proxy is only a scaffold until a company endpoint and Supabase project are configured and deployed. Long-term feedback persistence, live Edge Function/upstream tests, DST simulation, device delivery, multi-device reconciliation, and the preference ownership uniqueness decision remain open.

@@ -23,7 +23,11 @@ class DailyAnalytics {
     this.syncedToCloud = false,
   });
 
-  /// Adherence rate as a percentage [0 - 100]
+  /// Completion rate among recorded reminder actions, as a percentage [0–100].
+  ///
+  /// This is not the percentage of delivered reminders completed: reminders
+  /// with no recorded response are not included in [remindersSent]. The legacy
+  /// field/getter name is retained for local and Supabase schema compatibility.
   double get adherenceRate {
     if (remindersSent == 0) return 0.0;
     return ((remindersCompleted / remindersSent) * 100).clamp(0.0, 100.0);

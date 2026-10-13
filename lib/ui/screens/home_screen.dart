@@ -5,14 +5,16 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/data/models/gamification_metrics.dart';
 import 'package:standup_app/data/models/workday_metrics.dart';
 import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/services/haptics_service.dart';
+import 'package:standup_app/services/guidance_provider.dart';
 import 'package:standup_app/ui/layout/adaptive.dart';
+import 'package:standup_app/ui/widgets/account_button.dart';
 import 'package:standup_app/ui/widgets/countdown_ring.dart';
-import 'package:standup_app/ui/widgets/dynamic_island.dart';
 import 'package:standup_app/ui/widgets/glass_card.dart';
 import 'package:standup_app/ui/widgets/particle_burst.dart';
 import 'package:standup_app/ui/widgets/posture_avatar.dart';
@@ -79,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
           content: Row(
             children: [
               Icon(icon, size: 18, color: Colors.white),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.lg),
               Expanded(child: Text(message)),
             ],
           ),
@@ -176,29 +178,30 @@ class _HomeScreenState extends State<HomeScreen> {
     today,
     bool isAlert,
   ) {
+    final guidance = widget.appState.personalGuidance;
     return Column(
       children: [
-        // Dynamic Island pill — always at top of safe area
         Padding(
-          padding: const EdgeInsets.only(top: 8, bottom: 4),
-          child: DynamicIsland(
-            remainingDuration: widget.appState.remainingDuration,
-            isBreakActive: widget.appState.isBreakActive,
-            accentColor: accent,
-            onComplete: _handleComplete,
-            onSnooze: () {
-              HapticsService.medium();
-              widget.appState.snoozeReminder(minutes: 10);
-            },
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.xl,
+            AppSpace.md,
+            AppSpace.xl,
+            AppSpace.xs,
           ),
-        ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.3),
+          child: _buildProfileNotificationHeader(context, theme, accent),
+        ).animate().fadeIn(duration: 450.ms).slideY(begin: -0.12),
 
         // Scrollable body — pull down to sync with Supabase.
         Expanded(
           child: RefreshIndicator(
             onRefresh: () => widget.appState.triggerCloudSync(),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+              padding: const EdgeInsets.fromLTRB(
+                18,
+                AppSpace.md,
+                18,
+                AppSpace.section,
+              ),
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
               ),
@@ -211,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       .fadeIn(delay: 100.ms, duration: 500.ms)
                       .slideX(begin: -0.15),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpace.xxl),
 
                   // Level & daily-goal strip
                   _buildProgressStrip(theme, accent)
@@ -219,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       .fadeIn(delay: 150.ms, duration: 500.ms)
                       .slideY(begin: 0.1),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpace.xxl),
 
                   // Posture card — glassmorphism
                   _buildPostureCard(theme, isDark, accent)
@@ -227,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       .fadeIn(delay: 200.ms, duration: 500.ms)
                       .slideY(begin: 0.15),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpace.huge),
 
                   // Countdown ring — centred, particle burst wrapper
                   Center(
@@ -248,7 +251,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     curve: Curves.easeOutBack,
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpace.section),
 
                   // Action buttons
                   _buildActionRow(context, isDark, accent)
@@ -256,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       .fadeIn(delay: 400.ms, duration: 400.ms)
                       .slideY(begin: 0.2),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpace.xl),
 
                   // Guided stretch button
                   _buildStretchButton(
@@ -264,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     accent,
                   ).animate().fadeIn(delay: 500.ms, duration: 400.ms),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpace.huge),
 
                   // Today summary card — glass
                   _buildSummaryCard(theme, isDark, accent, today)
@@ -272,9 +275,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       .fadeIn(delay: 600.ms, duration: 500.ms)
                       .slideY(begin: 0.1),
 
+                  if (guidance != null ||
+                      widget.appState.isAiGuidanceOptedIn) ...[
+                    const SizedBox(height: AppSpace.xl),
+                    _buildGuidanceCard(context, theme, accent, guidance),
+                  ],
+
                   // Alert nudge badge when overdue
                   if (isAlert) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpace.xl),
                     // The shimmer is an unbounded repeat loop. Honour the
                     // platform reduced-motion signal so it cannot run forever
                     // for a user who has asked for less motion.
@@ -297,6 +306,102 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildProfileNotificationHeader(
+    BuildContext context,
+    ThemeData theme,
+    Color accent,
+  ) {
+    final user = widget.appState.userProfile;
+    final name = user?.name.trim().isNotEmpty == true
+        ? user!.name.trim()
+        : appString(context, 'Your account');
+    final windowOpen = widget.appState.isActionWindowOpen;
+    final remaining = formatClock(
+      windowOpen
+          ? widget.appState.windowTimeRemaining
+          : widget.appState.timeUntilNextWindow,
+    );
+
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.lg,
+        vertical: AppSpace.md,
+      ),
+      borderRadius: BorderRadius.circular(AppRadius.xxl),
+      child: Row(
+        children: [
+          AccountButton(
+            appState: widget.appState,
+            onRerunOnboarding: widget.onRerunOnboarding,
+            size: 46,
+          ),
+          const SizedBox(width: AppSpace.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  appString(context, 'Profile and reminders'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpace.md),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpace.lg,
+              vertical: AppSpace.md,
+            ),
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  appString(
+                    context,
+                    windowOpen ? 'WINDOW CLOSES IN' : 'NEXT WINDOW IN',
+                  ),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                Text(
+                  remaining,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: accent,
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Compact level + daily-goal strip. Gives the Duolingo-style sense of
   /// progress right on the dashboard instead of hiding it in another tab.
   Widget _buildProgressStrip(ThemeData theme, Color accent) {
@@ -313,7 +418,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.xxl,
+        vertical: AppSpace.xl,
+      ),
       child: Row(
         children: [
           // Level badge
@@ -325,7 +433,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: accent.withValues(alpha: 0.16),
               border: Border.all(
                 color: accent.withValues(alpha: 0.5),
-                width: 2,
+                width: AppSpace.xxs,
               ),
             ),
             alignment: Alignment.center,
@@ -338,7 +446,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.xl),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -349,7 +457,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       appString(context, 'Level'),
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: AppFontSize.footnote,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -360,7 +468,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: AppSpace.sm),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
                   child: LinearProgressIndicator(
@@ -373,7 +481,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpace.xl),
           // Daily goal + streak
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -383,7 +491,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Icon(
                     Icons.local_fire_department_rounded,
-                    size: 16,
+                    size: AppSpace.xxl,
                     color: streak > 0
                         ? Colors.orange.shade700
                         : theme.colorScheme.onSurfaceVariant,
@@ -392,13 +500,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     '$streak',
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: AppFontSize.small,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.sm),
               SizedBox(
                 width: 54,
                 child: ClipRRect(
@@ -432,8 +540,9 @@ class _HomeScreenState extends State<HomeScreen> {
     today,
     bool isAlert,
   ) {
+    final guidance = widget.appState.personalGuidance;
     return Padding(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(AppSpace.gutter),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -442,6 +551,8 @@ class _HomeScreenState extends State<HomeScreen> {
             flex: 5,
             child: Column(
               children: [
+                _buildProfileNotificationHeader(context, theme, accent),
+                const SizedBox(height: AppSpace.xl),
                 // Greeting
                 _buildGreeting(
                   context,
@@ -449,7 +560,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   accent,
                   user,
                 ).animate().fadeIn(duration: 500.ms),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpace.section),
 
                 // Ring with particles
                 Center(
@@ -466,13 +577,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ).animate().scale(duration: 700.ms, curve: Curves.easeOutBack),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: AppSpace.gutter),
                 _buildActionRow(
                   context,
                   isDark,
                   accent,
                 ).animate().fadeIn(delay: 200.ms),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpace.xl),
                 _buildStretchButton(
                   context,
                   accent,
@@ -481,7 +592,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          const SizedBox(width: 32),
+          const SizedBox(width: AppSpace.gutter),
 
           // Right panel: posture card + summary
           Expanded(
@@ -493,15 +604,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   isDark,
                   accent,
                 ).animate().fadeIn(delay: 150.ms).slideX(begin: 0.15),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpace.huge),
                 _buildSummaryCard(
                   theme,
                   isDark,
                   accent,
                   today,
                 ).animate().fadeIn(delay: 250.ms).slideX(begin: 0.15),
+                if (guidance != null ||
+                    widget.appState.isAiGuidanceOptedIn) ...[
+                  const SizedBox(height: AppSpace.xl),
+                  _buildGuidanceCard(context, theme, accent, guidance),
+                ],
                 if (isAlert) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpace.xl),
                   _buildAlertBadge(accent),
                 ],
               ],
@@ -540,7 +656,7 @@ class _HomeScreenState extends State<HomeScreen> {
               appString(context, greeting).toUpperCase(),
               style: theme.textTheme.labelSmall?.copyWith(
                 letterSpacing: 1.2,
-                fontSize: 10,
+                fontSize: AppFontSize.micro,
               ),
             ),
             const SizedBox(height: 3),
@@ -552,10 +668,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 letterSpacing: -0.7,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: AppSpace.xxs),
             Text(
               '${user?.designation ?? appString(context, 'Team Member')} · ${user?.department ?? appString(context, 'General')}',
-              style: theme.textTheme.bodySmall?.copyWith(fontSize: 12),
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: AppFontSize.footnote,
+              ),
             ),
           ],
         ),
@@ -568,7 +686,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildPostureCard(ThemeData theme, bool isDark, Color accent) {
     final isAlert = widget.appState.isActionWindowOpen;
     return GlassCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.xxl),
       child: Row(
         children: [
           Expanded(
@@ -577,12 +695,12 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
+                    horizontal: AppSpace.md,
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
                     color: accent.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: Text(
                     appString(context, 'A MOMENT TO RESET'),
@@ -594,7 +712,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpace.md),
                 Text(
                   appString(
                     context,
@@ -606,7 +724,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpace.xs),
                 Text(
                   appString(
                     context,
@@ -615,14 +733,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         : 'Let your shoulders soften and your spine settle comfortably.',
                   ),
                   style: theme.textTheme.bodySmall?.copyWith(
-                    fontSize: 11,
+                    fontSize: AppFontSize.caption,
                     height: 1.5,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpace.md),
           PostureAvatar(
             isStanding: isAlert,
             stretchProgress: isAlert ? 0.9 : 0.2,
@@ -639,7 +757,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       children: [
         _buildWindowBanner(context, accent, windowOpen),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpace.xl),
         Row(
           children: [
             Expanded(
@@ -651,12 +769,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: SpringButton(
                   onTap: _handleComplete,
                   backgroundColor: AppColors.completed,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.symmetric(vertical: AppSpace.xxl),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.accessibility_new, size: 18),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpace.sm),
                       // Flexible, not a bare Text: this row is a flex-4 share
                       // of a phone's width, and the French label ("Je me suis
                       // levé·e !") is far longer than the English one.
@@ -672,13 +790,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.md),
             Expanded(
               flex: 3,
               child: SpringButton(
                 onTap: () {
                   unawaited(HapticsService.medium());
-                  unawaited(widget.appState.snoozeReminder(minutes: 10));
+                  unawaited(widget.appState.snoozeReminder());
                 },
                 backgroundColor: isDark
                     ? const Color(0xFF2D2517)
@@ -687,16 +805,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 border: Border.all(
                   color: AppColors.snoozed.withValues(alpha: 0.3),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.xxl),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.snooze, size: 16),
-                    const SizedBox(width: 4),
+                    Icon(Icons.snooze, size: AppSpace.xxl),
+                    const SizedBox(width: AppSpace.xs),
                     Flexible(
                       child: Text(
-                        appString(context, 'Snooze 10m'),
-                        style: const TextStyle(fontSize: 13),
+                        appString(context, 'Next reminder'),
+                        style: const TextStyle(fontSize: AppFontSize.small),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -705,7 +823,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpace.md),
             Expanded(
               flex: 2,
               child: SpringButton(
@@ -720,11 +838,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 border: Border.all(
                   color: AppColors.skipped.withValues(alpha: 0.3),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: AppSpace.xxl),
                 child: Center(
                   child: Text(
                     appString(context, 'Skip'),
-                    style: const TextStyle(fontSize: 13),
+                    style: const TextStyle(fontSize: AppFontSize.small),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
@@ -757,7 +875,10 @@ class _HomeScreenState extends State<HomeScreen> {
           );
 
     return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.xxl,
+        vertical: AppSpace.xl,
+      ),
       tintColor: isOpen ? accent.withValues(alpha: 0.12) : null,
       border: Border.all(
         color: isOpen
@@ -769,9 +890,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(
             isOpen ? Icons.check_circle_rounded : Icons.schedule_rounded,
             color: isOpen ? accent : theme.colorScheme.onSurfaceVariant,
-            size: 20,
+            size: AppSpace.huge,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.xl),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -781,20 +902,20 @@ class _HomeScreenState extends State<HomeScreen> {
                   label,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: 13,
+                    fontSize: AppFontSize.small,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpace.xxs),
                 Text(detail, style: theme.textTheme.bodySmall),
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.lg),
           Text(
             countdown,
             style: TextStyle(
               fontWeight: FontWeight.w800,
-              fontSize: 15,
+              fontSize: AppFontSize.label,
               fontFeatures: const [FontFeature.tabularFigures()],
               color: isOpen ? accent : theme.colorScheme.onSurface,
             ),
@@ -815,8 +936,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.fitness_center, size: 16),
-          const SizedBox(width: 8),
+          Icon(Icons.fitness_center, size: AppSpace.xxl),
+          const SizedBox(width: AppSpace.md),
           // The longest label in the app in French
           // ("Commencer les étirements guidés (5 min)"), and it overflows even
           // in English at 320px without a flex constraint.
@@ -827,6 +948,166 @@ class _HomeScreenState extends State<HomeScreen> {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuidanceCard(
+    BuildContext context,
+    ThemeData theme,
+    Color accent,
+    GuidanceResult? guidance,
+  ) {
+    final completed = widget.appState.todayAnalytics.remindersCompleted;
+    final goal = widget.appState.preferences.streakGoal;
+    final titleKey = guidance == null
+        ? 'Personal wellness guidance'
+        : switch (guidance.kind) {
+            GuidanceKind.takeShortMovementBreak =>
+              'A short movement break may help',
+            GuidanceKind.adjustReminderCadence =>
+              'Try a gentler reminder cadence',
+            GuidanceKind.celebrate =>
+              guidance.reason == GuidanceReason.goalProgress
+                  ? 'Daily movement goal reached'
+                  : 'Nice consistency today',
+          };
+    final detail = guidance == null
+        ? appString(
+            context,
+            'Ask the company AI for one suggestion based on your daily summary.',
+          )
+        : switch (guidance.reason) {
+            GuidanceReason.goalProgress =>
+              guidance.kind == GuidanceKind.celebrate
+                  ? appString(
+                      context,
+                      'You have reached your daily movement goal.',
+                    )
+                  : '$completed / $goal ${appString(context, 'breaks')} today',
+            GuidanceReason.repeatedSnoozes => appString(
+              context,
+              'Several reminders were postponed or skipped today.',
+            ),
+            GuidanceReason.consistentActivity => appString(
+              context,
+              'You have completed several breaks today.',
+            ),
+          };
+    final suggestionKey = guidance == null
+        ? null
+        : switch (guidance.kind) {
+            GuidanceKind.takeShortMovementBreak =>
+              'Take a short movement break when your next window opens.',
+            GuidanceKind.adjustReminderCadence => 'If reminders feel too frequent, try a longer interval in Settings.',
+            GuidanceKind.celebrate =>
+              'Your steady movement is building a healthy rhythm.',
+          };
+    final icon = switch (guidance?.kind) {
+      GuidanceKind.takeShortMovementBreak => Icons.directions_walk_outlined,
+      GuidanceKind.adjustReminderCadence => Icons.schedule_outlined,
+      GuidanceKind.celebrate => Icons.celebration_outlined,
+      null => Icons.auto_awesome_outlined,
+    };
+
+    return GlassCard(
+      padding: const EdgeInsets.all(AppSpace.xl),
+      borderRadius: BorderRadius.circular(AppRadius.xxl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: accent, size: 22),
+              const SizedBox(width: AppSpace.md),
+              Expanded(
+                child: Text(
+                  appString(context, titleKey),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.md),
+          Text(detail, style: theme.textTheme.bodyMedium),
+          if (guidance != null)
+            Text(
+              appString(
+                context,
+                widget.appState.hasAiGuidanceResult
+                    ? 'Company AI guidance'
+                    : 'Local guidance',
+              ),
+              style: theme.textTheme.labelSmall,
+            ),
+          const SizedBox(height: AppSpace.xs),
+          if (suggestionKey != null)
+            Text(
+              appString(context, suggestionKey),
+              style: theme.textTheme.bodySmall,
+            ),
+          if (widget.appState.isAiGuidanceOptedIn) ...[
+            const SizedBox(height: AppSpace.sm),
+            TextButton.icon(
+              onPressed:
+                  widget.appState.isAiGuidanceLoading ||
+                      !widget.appState.canRequestAiGuidance
+                  ? null
+                  : widget.appState.requestAiGuidance,
+              icon: widget.appState.isAiGuidanceLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.auto_awesome_outlined, size: 17),
+              label: Text(
+                appString(
+                  context,
+                  widget.appState.isAiGuidanceLoading
+                      ? 'Asking company AI…'
+                      : 'Ask company AI',
+                ),
+              ),
+            ),
+            if (!widget.appState.canRequestAiGuidance &&
+                !widget.appState.isAiGuidanceLoading)
+              Text(
+                appString(context, 'Sign in to request company AI guidance.'),
+                style: theme.textTheme.bodySmall,
+              ),
+            if (widget.appState.aiGuidanceUnavailable)
+              Text(
+                appString(
+                  context,
+                  'Company AI is unavailable. Showing local guidance.',
+                ),
+                style: theme.textTheme.bodySmall,
+              ),
+          ],
+          const SizedBox(height: AppSpace.md),
+          Wrap(
+            spacing: AppSpace.sm,
+            children: [
+              TextButton.icon(
+                onPressed: () => widget.appState.recordGuidanceFeedback(
+                  GuidanceFeedback.suggestionsHelpful,
+                ),
+                icon: const Icon(Icons.thumb_up_outlined, size: 16),
+                label: Text(appString(context, 'Helpful')),
+              ),
+              TextButton.icon(
+                onPressed: () => widget.appState.recordGuidanceFeedback(
+                  GuidanceFeedback.suggestionsTooFrequent,
+                ),
+                icon: const Icon(Icons.notifications_off_outlined, size: 16),
+                label: Text(appString(context, 'Too frequent')),
+              ),
+            ],
           ),
         ],
       ),
@@ -855,15 +1136,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: theme.textTheme.titleMedium,
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.md,
+                  vertical: AppSpace.xs,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.completed.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  '${today.adherenceRate.toStringAsFixed(0)}% ${appString(context, 'Adherence')}',
+                  '${today.adherenceRate.toStringAsFixed(0)}% ${appString(context, 'Completion rate')}',
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: AppFontSize.caption,
                     fontWeight: FontWeight.bold,
                     color: AppColors.completed,
                   ),
@@ -871,7 +1155,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.xxl),
           Row(
             children: [
               _buildSummaryItem(
@@ -900,7 +1184,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpace.xl),
           Row(
             children: [
               Expanded(
@@ -922,7 +1206,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 7),
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
             child: LinearProgressIndicator(
               value: goalProgress,
               minHeight: 7,
@@ -937,13 +1221,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildAlertBadge(Color accent) {
     return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.xxl,
+        vertical: AppSpace.xl,
+      ),
       tintColor: accent.withValues(alpha: 0.15),
       border: Border.all(color: accent.withValues(alpha: 0.4)),
       child: Row(
         children: [
-          Icon(Icons.notifications_active_rounded, color: accent, size: 20),
-          const SizedBox(width: 10),
+          Icon(
+            Icons.notifications_active_rounded,
+            color: accent,
+            size: AppSpace.huge,
+          ),
+          const SizedBox(width: AppSpace.lg),
           Expanded(
             child: Text(
               appString(
@@ -953,7 +1244,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 color: accent,
                 fontWeight: FontWeight.w600,
-                fontSize: 13,
+                fontSize: AppFontSize.small,
               ),
             ),
           ),
@@ -972,8 +1263,14 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-          const SizedBox(height: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: AppFontSize.caption,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: AppSpace.xs),
           Text(
             value,
             style: TextStyle(
@@ -999,21 +1296,24 @@ class _OrgPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.lg,
+        vertical: AppSpace.sm,
+      ),
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: accent.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.business, color: accent, size: 14),
-          const SizedBox(width: 6),
+          const SizedBox(width: AppSpace.sm),
           Text(
             name,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: AppFontSize.caption,
               fontWeight: FontWeight.w700,
               color: accent,
             ),
@@ -1035,18 +1335,10 @@ class _CalmCanvasPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final bounds = Offset.zero & size;
-    canvas.drawRect(
-      bounds,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? const [Color(0xFF141A17), Color(0xFF171F1B)]
-              : const [Color(0xFFF3F0E7), Color(0xFFEDECE3)],
-        ).createShader(bounds),
-    );
+    // No base fill here. The page colour belongs to `AppCanvas`, which every
+    // screen shares; this painter only adds the accent wash that gives the
+    // timer a quiet focal point. Painting a gradient here as well is what made
+    // the home screen a different colour from every other screen.
 
     // One low-contrast wash gives the timer a quiet focal point.
     final center = Offset(size.width * 0.82, size.height * 0.18);
@@ -1094,6 +1386,9 @@ class _GuidedStretchSheet extends StatefulWidget {
 }
 
 class _GuidedStretchSheetState extends State<_GuidedStretchSheet> {
+  bool _hasStarted = false;
+  bool _popScheduled = false;
+
   // Stored as English source strings and translated at render time so the whole
   // routine switches language with the rest of the interface.
   final List<Map<String, String>> _stretches = [
@@ -1122,7 +1417,53 @@ class _GuidedStretchSheetState extends State<_GuidedStretchSheet> {
   @override
   void initState() {
     super.initState();
+    widget.appState.addListener(_onAppStateChanged);
+    _hasStarted = true;
     widget.appState.startGuidedStretch();
+  }
+
+  void _onAppStateChanged() {
+    if (!_hasStarted || widget.appState.isBreakActive || _popScheduled) return;
+    _popScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+        Navigator.of(context).maybePop();
+      }
+    });
+  }
+
+  Future<void> _finishGuidedStretch() async {
+    HapticsService.celebration();
+    try {
+      final completed = await widget.appState.finishGuidedStretch();
+      if (!mounted || completed) return;
+      final message = widget.appState.lastActionRejection;
+      if (message != null) {
+        ScaffoldMessenger.maybeOf(context)
+            ?.showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(
+            appString(context, 'Unable to save the completed stretch'),
+          ),
+        ),
+      );
+      debugPrint('Unable to save guided stretch: $error');
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.appState.removeListener(_onAppStateChanged);
+    // Dismissing the sheet means the user abandoned the routine. Stop its
+    // timer before it can auto-log an activity after the sheet is gone.
+    if (widget.appState.isBreakActive) {
+      widget.appState.cancelGuidedStretch();
+    }
+    super.dispose();
   }
 
   @override
@@ -1146,7 +1487,12 @@ class _GuidedStretchSheetState extends State<_GuidedStretchSheet> {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
         child: Container(
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.section,
+            AppSpace.xl,
+            AppSpace.section,
+            AppSpace.gutter,
+          ),
           decoration: BoxDecoration(
             color: isDark
                 ? Colors.white.withValues(alpha: 0.06)
@@ -1167,13 +1513,13 @@ class _GuidedStretchSheetState extends State<_GuidedStretchSheet> {
               // Handle
               Container(
                 width: 44,
-                height: 4,
+                height: AppSpace.xs,
                 decoration: BoxDecoration(
                   color: Colors.grey.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpace.huge),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1185,26 +1531,26 @@ class _GuidedStretchSheetState extends State<_GuidedStretchSheet> {
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                      horizontal: AppSpace.xl,
+                      vertical: AppSpace.sm,
                     ),
                     decoration: BoxDecoration(
                       color: accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
                     child: Text(
                       '${mins.toString().padLeft(2, '0')}:${secs.toString().padLeft(2, '0')}',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: accent,
-                        fontSize: 15,
+                        fontSize: AppFontSize.label,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpace.huge),
               // Step progress dots
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1213,21 +1559,21 @@ class _GuidedStretchSheetState extends State<_GuidedStretchSheet> {
                   final done = i < step;
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    margin: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
                     width: active ? 24 : 8,
-                    height: 8,
+                    height: AppSpace.md,
                     decoration: BoxDecoration(
                       color: done
                           ? AppColors.completed
                           : active
                           ? accent
                           : Colors.grey.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppRadius.xs),
                     ),
                   );
                 }),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpace.huge),
               Container(
                     width: 116,
                     height: 116,
@@ -1249,7 +1595,7 @@ class _GuidedStretchSheetState extends State<_GuidedStretchSheet> {
                   )
                   .animate(key: ValueKey(step))
                   .scale(duration: 400.ms, curve: Curves.easeOutBack),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.xl),
               Text(
                 appString(context, current['title']!),
                 style: theme.textTheme.titleMedium?.copyWith(
@@ -1257,7 +1603,7 @@ class _GuidedStretchSheetState extends State<_GuidedStretchSheet> {
                 ),
                 textAlign: TextAlign.center,
               ).animate(key: ValueKey('$step-title')).fadeIn(duration: 300.ms),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpace.md),
               Text(
                     appString(context, current['instruction']!),
                     style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
@@ -1270,21 +1616,16 @@ class _GuidedStretchSheetState extends State<_GuidedStretchSheet> {
                 children: [
                   Expanded(
                     child: SpringButton(
-                      onTap: () {
-                        HapticsService.celebration();
-                        widget.appState.completeReminder();
-                        Navigator.of(context).pop();
-                      },
+                      onTap: () => unawaited(_finishGuidedStretch()),
                       backgroundColor: AppColors.completed,
                       child: Text(appString(context, 'Finish & Log Stand')),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.xl),
                   SpringButton(
                     onTap: () {
                       HapticsService.light();
                       widget.appState.cancelGuidedStretch();
-                      Navigator.of(context).pop();
                     },
                     backgroundColor: Colors.grey.withValues(alpha: 0.2),
                     foregroundColor: theme.textTheme.bodyLarge?.color,

@@ -1,3 +1,5 @@
+import 'package:standup_app/core/app_spacing.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -63,7 +65,7 @@ class _SplashScreenState extends State<SplashScreen> {
             Container(
                   width: 184,
                   height: 164,
-                  padding: const EdgeInsets.all(4),
+                  padding: const EdgeInsets.all(AppSpace.xs),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(30),
@@ -88,7 +90,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 .animate()
                 .scale(duration: 800.ms, curve: Curves.easeOutBack)
                 .fadeIn(duration: 600.ms),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpace.gutter),
 
             // Title
             Text(
@@ -103,24 +105,24 @@ class _SplashScreenState extends State<SplashScreen> {
                 .fadeIn(delay: 300.ms, duration: 600.ms)
                 .slideY(begin: 0.2, end: 0, curve: Curves.easeOut),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.md),
 
             // Tagline
             Text(
               appString(context, 'EMPLOYEE HEALTH & WELLNESS CADENCE'),
               style: TextStyle(
-                fontSize: 11,
+                fontSize: AppFontSize.caption,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.5,
                 color: accent,
               ),
             ).animate().fadeIn(delay: 500.ms, duration: 600.ms),
 
-            const SizedBox(height: 48),
+            const SizedBox(height: AppSpace.control),
 
             // Loading dots indicator
             SizedBox(
-              width: 48,
+              width: AppSpace.control,
               child: LinearProgressIndicator(
                 backgroundColor: accent.withValues(alpha: 0.15),
                 valueColor: AlwaysStoppedAnimation<Color>(accent),

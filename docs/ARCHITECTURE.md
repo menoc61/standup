@@ -76,6 +76,14 @@ notifier, so they cannot.
 notification presentation and the widget bridge are the two candidates — and keep
 the timer and analytics together, because they are one state machine.
 
+`WorkSchedule` is persisted in the Drift user-preferences table with the v6
+data-preserving migration and is the common filter for the in-app next-window
+calculation, notification queue, and completion gate. Drift also indexes
+preference ownership, reminder lookup/action timestamps, and daily analytics
+lookups.
+Defaults are Monday–Friday, 09:00–17:00 in device-local time; settings can edit
+days and same-day start/end times. The schedule stays on-device and is not synced.
+
 ### When to add a second notifier
 
 Add a local `StatefulWidget` for animation controllers, scroll offsets, and
@@ -147,6 +155,17 @@ developer without credentials should get a working app, not a crash on launch.
 
 Credentials are read from `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. Never
 put a service-role key in the client or commit one to the repository.
+
+### Personalized guidance and company AI
+
+Deterministic local guidance remains the fallback. A separate local opt-in and
+manual Home action can invoke `ai-guidance` through the signed-in Supabase
+session. Only coarse daily counts, goal/cadence settings, and structured
+feedback cross this boundary; the Edge Function authenticates the caller and
+forwards no identity or event timestamps to the configured company model.
+Typed model output is validated in the function and client before localized UI
+copy is shown. Setup and privacy details are in
+[`AI_INTEGRATION.md`](AI_INTEGRATION.md).
 
 ```mermaid
 flowchart TD
@@ -223,8 +242,9 @@ erDiagram
 ```
 
 Note the `date` uniqueness on `DAILY_ANALYTICS`: one row per user per day. That
-is what makes streak and adherence calculations a single query rather than an
-aggregation over raw logs.
+is what makes streak and recorded-action completion-rate calculations a single
+query rather than an aggregation over raw logs. The legacy field name
+`reminders_sent` represents recorded actions, not OS-delivered notifications.
 
 ---
 

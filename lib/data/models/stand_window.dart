@@ -1,3 +1,5 @@
+import 'package:standup_app/core/app_cadence.dart';
+
 /// A single actionable span inside [StandWindow].
 class WindowSpan {
   final DateTime start;
@@ -33,10 +35,16 @@ class StandWindow {
   const StandWindow._();
 
   /// Default: a break may only be logged in the final 5 minutes of the hour.
-  static const int defaultActionWindowMinutes = 5;
+  ///
+  /// An alias for [AppCadence.defaultActionWindowMinutes]. It stays here because
+  /// every constructor in this file takes it as a default argument, and referring
+  /// to the cadence module at each of those sites would make the arithmetic
+  /// harder to read than the name it replaces.
+  static const int defaultActionWindowMinutes =
+      AppCadence.defaultActionWindowMinutes;
 
   /// Default spacing between windows: one per hour.
-  static const int defaultCadenceMinutes = 60;
+  static const int defaultCadenceMinutes = AppCadence.defaultCadenceMinutes;
 
   /// The actionable window that contains [now], or null when [now] sits in the
   /// gap between windows.
@@ -102,6 +110,28 @@ class StandWindow {
     final elapsedMs = now.difference(midnight).inMilliseconds;
     final steps = elapsedMs <= 0 ? 0 : elapsedMs ~/ cadenceMs;
     return midnight.add(Duration(milliseconds: steps * cadenceMs));
+  }
+
+  /// The next cadence boundary after [boundary], re-anchored to that local
+  /// calendar day. The OS queue uses this instead of multiplying one duration
+  /// across multiple dates, so a daylight-saving transition cannot shift its
+  /// wall-clock sequence away from [activeWindow].
+  static DateTime nextBoundaryAfter({
+    required DateTime boundary,
+    int cadenceMinutes = defaultCadenceMinutes,
+  }) {
+    _validate(defaultActionWindowMinutes, cadenceMinutes);
+    final midnight = boundary.isUtc
+        ? DateTime.utc(boundary.year, boundary.month, boundary.day)
+        : DateTime(boundary.year, boundary.month, boundary.day);
+    final cadenceMs = cadenceMinutes * 60 * 1000;
+    final elapsedMs = boundary.difference(midnight).inMilliseconds;
+    final steps = elapsedMs < 0 ? 0 : elapsedMs ~/ cadenceMs;
+    var next = midnight.add(Duration(milliseconds: (steps + 1) * cadenceMs));
+    if (!next.isAfter(boundary)) {
+      next = midnight.add(Duration(milliseconds: (steps + 2) * cadenceMs));
+    }
+    return next;
   }
 
   /// Time remaining until [now] leaves the active window. Zero when the window

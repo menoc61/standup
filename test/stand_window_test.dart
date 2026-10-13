@@ -6,6 +6,41 @@ void main() {
   // The 90-minute option is the one that exposed the anchoring bug.
   const cadences = [30, 60, 90];
 
+  group('StandWindow.nextBoundaryAfter', () {
+    for (final cadence in cadences) {
+      test('cadence $cadence stays aligned across local midnight', () {
+        final midnight = DateTime(2026, 1, 1);
+        final cadenceMs = cadence * 60 * 1000;
+        for (var step = 0; step < 24 * 60 ~/ cadence; step++) {
+          final boundary = midnight.add(
+            Duration(milliseconds: step * cadenceMs),
+          );
+          final next = StandWindow.nextBoundaryAfter(
+            boundary: boundary,
+            cadenceMinutes: cadence,
+          );
+          final expected = StandWindow.nextWindow(
+            now: boundary.add(const Duration(microseconds: 1)),
+            actionWindowMinutes: 5,
+            cadenceMinutes: cadence,
+          )!.end;
+          expect(next, expected);
+          expect(next.isAfter(boundary), isTrue);
+        }
+      });
+    }
+
+    test('preserves UTC timestamps when supplied', () {
+      final boundary = DateTime.utc(2026, 3, 8, 6, 30);
+      final next = StandWindow.nextBoundaryAfter(
+        boundary: boundary,
+        cadenceMinutes: 90,
+      );
+      expect(next.isUtc, isTrue);
+      expect(next, DateTime.utc(2026, 3, 8, 7, 30));
+    });
+  });
+
   group('StandWindow.activeWindow', () {
     test('opens in the last five minutes of the hour', () {
       // 09:58 is inside the 09:55 -> 10:00 window.

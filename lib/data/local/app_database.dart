@@ -1,5 +1,7 @@
+import 'package:standup_app/core/app_cadence.dart';
 import 'package:drift/drift.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/data/models/work_schedule.dart';
 
 import 'database_connection_native.dart'
     if (dart.library.js_interop) 'database_connection_web.dart'
@@ -21,6 +23,7 @@ class UserProfilesTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@TableIndex(name: 'user_preferences_user_id_idx', columns: {#userId})
 class UserPreferencesTable extends Table {
   TextColumn get id => text()();
   TextColumn get userId => text()();
@@ -32,27 +35,44 @@ class UserPreferencesTable extends Table {
   TextColumn get colorSystem =>
       text().withDefault(const Constant(AppColors.defaultAccentId))();
   IntColumn get notificationFrequency =>
-      integer().withDefault(const Constant(60))();
+      integer().withDefault(const Constant(AppCadence.defaultCadenceMinutes))();
   BoolColumn get soundEnabled => boolean().withDefault(const Constant(true))();
   BoolColumn get hapticsEnabled =>
       boolean().withDefault(const Constant(true))();
   BoolColumn get statisticsOptIn =>
       boolean().withDefault(const Constant(false))();
+  BoolColumn get aiGuidanceOptIn =>
+      boolean().withDefault(const Constant(false))();
   BoolColumn get onboardingCompleted =>
       boolean().withDefault(const Constant(false))();
   TextColumn get selectedSound => text().withDefault(const Constant('chime'))();
   TextColumn get quietHours => text().nullable()();
-  IntColumn get streakGoal => integer().withDefault(const Constant(8))();
-  IntColumn get actionWindowMinutes =>
-      integer().withDefault(const Constant(5))();
+  IntColumn get streakGoal =>
+      integer().withDefault(const Constant(AppCadence.defaultDailyGoal))();
+  IntColumn get actionWindowMinutes => integer().withDefault(
+    const Constant(AppCadence.defaultActionWindowMinutes),
+  )();
   BoolColumn get enforceActionWindow =>
       boolean().withDefault(const Constant(true))();
+  TextColumn get workDays => text().withDefault(const Constant('1,2,3,4,5'))();
+  IntColumn get workStartMinute =>
+      integer().withDefault(const Constant(WorkSchedule.defaultStartMinute))();
+  IntColumn get workEndMinute =>
+      integer().withDefault(const Constant(WorkSchedule.defaultEndMinute))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
+@TableIndex(
+  name: 'reminder_logs_user_timestamp_idx',
+  columns: {#userId, #timestamp},
+)
+@TableIndex(
+  name: 'reminder_logs_user_action_timestamp_idx',
+  columns: {#userId, #actionTaken, #timestamp},
+)
 class ReminderLogsTable extends Table {
   TextColumn get id => text()();
   TextColumn get userId => text()();
@@ -67,6 +87,11 @@ class ReminderLogsTable extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@TableIndex(name: 'analytics_daily_user_date_idx', columns: {#userId, #date})
+@TableIndex(
+  name: 'analytics_daily_user_synced_idx',
+  columns: {#userId, #syncedToCloud},
+)
 class AnalyticsDailyTable extends Table {
   TextColumn get id => text()();
   TextColumn get userId => text()();
@@ -99,7 +124,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -131,6 +156,42 @@ class AppDatabase extends _$AppDatabase {
         );
         await customStatement(
           'ALTER TABLE user_preferences_table ADD COLUMN enforce_action_window INTEGER NOT NULL DEFAULT 1',
+        );
+      }
+      if (from < 5) {
+        // Existing preferences receive the confirmed local work schedule.
+        await customStatement(
+          "ALTER TABLE user_preferences_table ADD COLUMN work_days TEXT NOT NULL DEFAULT '1,2,3,4,5'",
+        );
+        await customStatement(
+          'ALTER TABLE user_preferences_table ADD COLUMN work_start_minute INTEGER NOT NULL DEFAULT 540',
+        );
+        await customStatement(
+          'ALTER TABLE user_preferences_table ADD COLUMN work_end_minute INTEGER NOT NULL DEFAULT 1020',
+        );
+      }
+      if (from < 6) {
+        await customStatement(
+          'CREATE INDEX user_preferences_user_id_idx ON user_preferences_table (user_id)',
+        );
+        await customStatement(
+          'CREATE INDEX reminder_logs_user_timestamp_idx ON reminder_logs_table (user_id, timestamp)',
+        );
+        await customStatement(
+          'CREATE INDEX reminder_logs_user_action_timestamp_idx ON reminder_logs_table (user_id, action_taken, timestamp)',
+        );
+        await customStatement(
+          'CREATE INDEX analytics_daily_user_date_idx ON analytics_daily_table (user_id, date)',
+        );
+        await customStatement(
+          'CREATE INDEX analytics_daily_user_synced_idx ON analytics_daily_table (user_id, synced_to_cloud)',
+        );
+      }
+      if (from < 7) {
+        // Remote AI is a distinct, explicit opt-in. Existing users remain
+        // local-only until they enable it in Settings.
+        await customStatement(
+          'ALTER TABLE user_preferences_table ADD COLUMN ai_guidance_opt_in INTEGER NOT NULL DEFAULT 0',
         );
       }
     },

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/data/models/daily_analytics.dart';
 import 'package:standup_app/data/models/gamification_metrics.dart';
@@ -42,7 +43,12 @@ class LeaderboardScreen extends StatelessWidget {
         child: RefreshIndicator(
           onRefresh: () => appState.triggerCloudSync(),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpace.huge,
+              AppSpace.xxl,
+              AppSpace.huge,
+              120,
+            ),
             physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics(),
             ),
@@ -55,7 +61,7 @@ class LeaderboardScreen extends StatelessWidget {
                 xpToNext: xpToNext,
                 accent: accent,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpace.xxl),
 
               // Daily goal + streak
               Row(
@@ -68,20 +74,20 @@ class LeaderboardScreen extends StatelessWidget {
                       accent: accent,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpace.xl),
                   Expanded(
                     child: _StreakCard(streak: streak, accent: accent),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpace.section),
 
               // Standings
               Text(
                 appString(context, 'Weekly ranking'),
                 style: theme.textTheme.titleMedium,
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: AppSpace.sm),
               Text(
                 online
                     ? appString(
@@ -94,13 +100,15 @@ class LeaderboardScreen extends StatelessWidget {
                       ),
                 style: theme.textTheme.bodySmall,
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: AppSpace.xl),
 
               if (entries.isEmpty)
                 GlassCard(
                   child: Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpace.section,
+                      ),
                       child: Text(
                         appString(
                           context,
@@ -117,7 +125,7 @@ class LeaderboardScreen extends StatelessWidget {
                   final index = entry.key;
                   final row = entry.value;
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.only(bottom: AppSpace.lg),
                     child: _LeaderboardRow(
                       entry: row,
                       accent: accent,
@@ -125,7 +133,7 @@ class LeaderboardScreen extends StatelessWidget {
                     ),
                   );
                 }),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpace.xl),
             ],
           ),
         ),
@@ -196,7 +204,7 @@ class _LevelHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return GlassCard(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpace.huge),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -223,7 +231,7 @@ class _LevelHero extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: AppSpace.xl),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,7 +242,7 @@ class _LevelHero extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSpace.xxs),
                     Text(
                       '$xp ${appString(context, 'XP')} • $xpToNext ${appString(context, 'XP')} ${appString(context, 'to next level')}',
                       style: theme.textTheme.bodySmall,
@@ -244,23 +252,26 @@ class _LevelHero extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.xxl),
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
             child: Stack(
               children: [
-                Container(height: 10, color: accent.withValues(alpha: 0.15)),
+                Container(
+                  height: AppSpace.lg,
+                  color: accent.withValues(alpha: 0.15),
+                ),
                 FractionallySizedBox(
                   widthFactor: progress <= 0 ? 0.01 : progress,
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 600),
                     curve: Curves.easeOutCubic,
-                    height: 10,
+                    height: AppSpace.lg,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [accent, accent.withValues(alpha: 0.65)],
                       ),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
                     ),
                   ),
                 ),
@@ -290,7 +301,7 @@ class _GoalCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return GlassCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -309,17 +320,20 @@ class _GoalCard extends StatelessWidget {
                 Text(
                   '$completed',
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: AppFontSize.body,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.lg),
           Text(
             appString(context, 'Daily stand goal'),
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: AppFontSize.footnote,
+            ),
           ),
           Text('$completed / $goal', style: theme.textTheme.bodySmall),
         ],
@@ -338,7 +352,7 @@ class _StreakCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return GlassCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpace.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -347,10 +361,13 @@ class _StreakCard extends StatelessWidget {
             size: 34,
             color: streak > 0 ? Colors.orange.shade700 : accent,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.lg),
           Text(
             appString(context, 'Day streak'),
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: AppFontSize.footnote,
+            ),
           ),
           Text('$streak', style: theme.textTheme.bodySmall),
         ],
@@ -380,7 +397,10 @@ class _LeaderboardRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpace.xl,
+        vertical: AppSpace.xl,
+      ),
       tintColor: entry.isCurrentUser ? accent.withValues(alpha: 0.1) : null,
       child: Row(
         children: [
@@ -400,7 +420,7 @@ class _LeaderboardRow extends StatelessWidget {
                     ),
                   ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.xl),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,7 +431,7 @@ class _LeaderboardRow extends StatelessWidget {
                       : entry.name,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: 14,
+                    fontSize: AppFontSize.body,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -420,7 +440,7 @@ class _LeaderboardRow extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpace.lg),
           SizedBox(
             width: 60,
             child: Text(
@@ -428,7 +448,7 @@ class _LeaderboardRow extends StatelessWidget {
               textAlign: TextAlign.right,
               style: TextStyle(
                 fontWeight: FontWeight.w800,
-                fontSize: 15,
+                fontSize: AppFontSize.label,
                 color: accent,
               ),
             ),

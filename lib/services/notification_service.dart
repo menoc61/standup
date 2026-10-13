@@ -5,12 +5,53 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:standup_app/core/app_identity.dart';
 import 'package:standup_app/data/models/stand_window.dart';
+import 'package:standup_app/data/models/work_schedule.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
 typedef NotificationActionCallback = void Function(String action, int id);
 
+/// Creates future alert instants using the same work-schedule rule as the
+/// in-app action window. This is pure so queue filtering is testable without a
+/// platform notification plugin.
+@visibleForTesting
+List<DateTime> reminderTimesForSchedule({
+  required DateTime firstBoundary,
+  required int frequencyMinutes,
+  required int actionWindowMinutes,
+  required WorkSchedule schedule,
+  required DateTime now,
+  String? quietHours,
+  int count = 48,
+  int maxLookAheadDays = 90,
+}) {
+  if (frequencyMinutes <= 0) {
+    throw ArgumentError.value(frequencyMinutes, 'frequencyMinutes');
+  }
+  if (actionWindowMinutes < 0 || count < 0 || maxLookAheadDays <= 0) {
+    throw ArgumentError('Reminder queue bounds must be non-negative.');
+  }
+
+  final candidates = maxLookAheadDays * 24 * 60 ~/ frequencyMinutes;
+  final reminders = <DateTime>[];
+  var boundary = firstBoundary;
+  for (var i = 0; i < candidates && reminders.length < count; i++) {
+    final when = boundary.subtract(Duration(minutes: actionWindowMinutes));
+    if (!when.isBefore(now.subtract(const Duration(minutes: 1))) &&
+        schedule.allowsWindow(when, boundary) &&
+        !QuietHours.isQuietAt(quietHours, when)) {
+      reminders.add(when);
+    }
+    boundary = StandWindow.nextBoundaryAfter(
+      boundary: boundary,
+      cadenceMinutes: frequencyMinutes,
+    );
+  }
+  return reminders;
+}
+
 class NotificationService {
+  Future<void> _queueOperations = Future<void>.value();
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   final Map<int, Timer> _linuxTimers = {};
@@ -88,9 +129,11 @@ class NotificationService {
 
     final DarwinInitializationSettings darwinSettings =
         DarwinInitializationSettings(
-          requestAlertPermission: true,
-          requestBadgePermission: true,
-          requestSoundPermission: true,
+          // Ask from the onboarding/settings action after the user sees why
+          // reminders are useful, never during app initialization.
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
           notificationCategories: <DarwinNotificationCategory>[
             DarwinNotificationCategory(
               'standup_reminder',
@@ -101,7 +144,7 @@ class NotificationService {
                 ),
                 DarwinNotificationAction.plain(
                   'snooze',
-                  french ? 'Dans 10 min' : 'Snooze 10m',
+                  french ? 'Prochain rappel' : 'Next reminder',
                 ),
                 DarwinNotificationAction.plain(
                   'skip',
@@ -234,7 +277,7 @@ class NotificationService {
         ),
         AndroidNotificationAction(
           'snooze',
-          french ? 'Dans 10 min' : 'Snooze 10m',
+          french ? 'Prochain rappel' : 'Next reminder',
         ),
         AndroidNotificationAction('skip', french ? 'Passer' : 'Skip'),
       ],
@@ -255,7 +298,7 @@ class NotificationService {
         ),
         LinuxNotificationAction(
           key: 'snooze',
-          label: french ? 'Dans 10 min' : 'Snooze 10m',
+          label: french ? 'Prochain rappel' : 'Next reminder',
         ),
         LinuxNotificationAction(key: 'skip', label: french ? 'Passer' : 'Skip'),
       ],
@@ -391,58 +434,82 @@ class NotificationService {
     required String body,
     String? quietHours,
     int actionWindowMinutes = 0,
+    String workDays = '1,2,3,4,5',
+    int workStartMinute = 540,
+    int workEndMinute = 1020,
+  }) {
+    final operation = _queueOperations.then(
+      (_) => _rebuildReminderSeries(
+        firstReminder: firstReminder,
+        frequencyMinutes: frequencyMinutes,
+        title: title,
+        body: body,
+        quietHours: quietHours,
+        actionWindowMinutes: actionWindowMinutes,
+        workDays: workDays,
+        workStartMinute: workStartMinute,
+        workEndMinute: workEndMinute,
+      ),
+    );
+    // A failed rebuild must be reported to its caller without poisoning the
+    // queue: later preference changes still need a chance to repair it.
+    _queueOperations = operation.catchError((Object error, StackTrace stack) {
+      debugPrint('Unable to rebuild reminder queue: $error');
+    });
+    return operation;
+  }
+
+  Future<void> _rebuildReminderSeries({
+    required DateTime firstReminder,
+    required int frequencyMinutes,
+    required String title,
+    required String body,
+    String? quietHours,
+    int actionWindowMinutes = 0,
+    String workDays = '1,2,3,4,5',
+    int workStartMinute = 540,
+    int workEndMinute = 1020,
   }) async {
+    if (frequencyMinutes <= 0) {
+      throw ArgumentError.value(frequencyMinutes, 'frequencyMinutes');
+    }
+    final workSchedule = WorkSchedule(
+      days: workDays.split(',').map(int.tryParse).whereType<int>(),
+      startMinute: workStartMinute,
+      endMinute: workEndMinute,
+    );
     const firstId = 101;
     const count = 48;
     for (var i = 0; i < count; i++) {
       await cancelReminder(firstId + i);
     }
 
-    final offset = actionWindowMinutes > 0
-        ? Duration(minutes: actionWindowMinutes)
-        : Duration.zero;
-
-    var scheduled = 0;
-    var skippedInQuietHours = 0;
-
-    for (var i = 0; i < count; i++) {
-      final boundary = firstReminder.add(
-        Duration(minutes: frequencyMinutes * i),
+    // Refill 48 actual reminder slots across weekends, sparse custom schedules,
+    // and quiet hours. Ninety days lets a one-day-per-week schedule stay queued.
+    final reminders = reminderTimesForSchedule(
+      firstBoundary: firstReminder,
+      frequencyMinutes: frequencyMinutes,
+      actionWindowMinutes: actionWindowMinutes,
+      schedule: workSchedule,
+      now: DateTime.now(),
+      quietHours: quietHours,
+      count: count,
+    );
+    if (reminders.isEmpty) {
+      debugPrint(
+        'Reminder queue is empty: no future action windows match the work '
+        'schedule and quiet hours.',
       );
-      final when = boundary.subtract(offset);
-      if (when.isBefore(DateTime.now().subtract(const Duration(minutes: 1)))) {
-        continue;
-      }
-      if (_isInsideQuietWindow(when, quietHours)) {
-        skippedInQuietHours++;
-        continue;
-      }
+    }
+    for (var i = 0; i < reminders.length; i++) {
       await scheduleStandupReminder(
         id: firstId + i,
-        scheduledTime: when,
+        scheduledTime: reminders[i],
         title: title,
         body: body,
       );
-      scheduled++;
-    }
-
-    // A quiet window that happens to cover every candidate instant would leave
-    // the user with no OS reminders at all while the in-app timer kept
-    // advancing. That failure is invisible from the UI, so it is reported
-    // rather than silently swallowed.
-    if (scheduled == 0 && skippedInQuietHours > 0) {
-      debugPrint(
-        'Reminder queue is empty: all $skippedInQuietHours candidate slots fall '
-        'inside quiet hours "$quietHours". Reminders resume after the window '
-        'ends; shorten it or pick another cadence.',
-      );
     }
   }
-
-  /// Parses `"HH:MM-HH:MM"` into minutes-from-midnight bounds. A malformed or
-  /// absent value returns null, which disables quiet hours.
-  static bool _isInsideQuietWindow(DateTime when, String? raw) =>
-      QuietHours.isQuietAt(raw, when);
 
   Future<void> dispatchLaunchAction() async {
     try {

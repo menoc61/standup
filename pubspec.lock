@@ -437,14 +437,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.7.1"
-  glass_bottom_navigation:
-    dependency: "direct main"
-    description:
-      name: glass_bottom_navigation
-      sha256: "526a55c29accdf3bccf4fa6b90b1415c6fa3cac88d20bbc799e0be877bc404d5"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.0"
   glob:
     dependency: transitive
     description:

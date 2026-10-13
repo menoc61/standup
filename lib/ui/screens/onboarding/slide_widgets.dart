@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/ui/widgets/posture_avatar.dart';
 import 'package:standup_app/ui/widgets/spring_button.dart';
@@ -26,30 +27,33 @@ class WelcomeSlide extends StatelessWidget {
             accentColor: accentColor,
             size: 180,
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpace.gutter),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: AppSpace.sm,
+            ),
             decoration: BoxDecoration(
               color: accentColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(AppRadius.xl),
             ),
             child: Text(
               appString(context, 'HEALTH & WELLNESS CADENCE'),
               style: TextStyle(
-                fontSize: 11,
+                fontSize: AppFontSize.caption,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 1.0,
                 color: accentColor,
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.xxl),
           Text(
             appString(context, 'StandUp Ergonomics'),
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineLarge,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.xl),
           Text(
             appString(
               context,
@@ -85,13 +89,13 @@ class TheProblemSlide extends StatelessWidget {
             accentColor: AppColors.skipped,
             size: 160,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.section),
           Text(
             appString(context, 'The Sedentary Trap'),
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineMedium,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.xl),
           Text(
             appString(
               context,
@@ -100,19 +104,19 @@ class TheProblemSlide extends StatelessWidget {
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.section),
           _buildRiskRow(
             Icons.airline_seat_recline_extra,
             appString(context, 'Spinal Compression'),
             appString(context, 'Lumbar strain & shoulder stiffness'),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.lg),
           _buildRiskRow(
             Icons.favorite_border,
             appString(context, 'Metabolic Sluggishness'),
             appString(context, 'Drop in circulation & calorie burn'),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.lg),
           _buildRiskRow(
             Icons.battery_alert,
             appString(context, 'Energy Crashes'),
@@ -125,7 +129,7 @@ class TheProblemSlide extends StatelessWidget {
 
   Widget _buildRiskRow(IconData icon, String title, String desc) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.xl),
       decoration: BoxDecoration(
         color: AppColors.skipped.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
@@ -134,7 +138,7 @@ class TheProblemSlide extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, color: AppColors.skipped, size: 22),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.xl),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,12 +147,15 @@ class TheProblemSlide extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: 13,
+                    fontSize: AppFontSize.small,
                   ),
                 ),
                 Text(
                   desc,
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  style: const TextStyle(
+                    fontSize: AppFontSize.caption,
+                    color: Colors.grey,
+                  ),
                 ),
               ],
             ),
@@ -181,13 +188,13 @@ class TheSolutionSlide extends StatelessWidget {
             accentColor: accentColor,
             size: 170,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.section),
           Text(
             appString(context, 'The 5-Minute Solution'),
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineMedium,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.xl),
           Text(
             appString(
               context,
@@ -196,21 +203,21 @@ class TheSolutionSlide extends StatelessWidget {
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.section),
           _buildBenefitRow(
             Icons.check_circle_outline,
             appString(context, '+32% Sustained Focus'),
             appString(context, 'Oxygen boost resets mental clarity'),
             accentColor,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.lg),
           _buildBenefitRow(
             Icons.accessibility_new,
             appString(context, 'Zero Lower Back Strain'),
             appString(context, 'Intervertebral discs decompress'),
             accentColor,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.lg),
           _buildBenefitRow(
             Icons.trending_up,
             appString(context, 'Passive Caloric Health'),
@@ -229,7 +236,7 @@ class TheSolutionSlide extends StatelessWidget {
     Color color,
   ) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.xl),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
@@ -238,7 +245,7 @@ class TheSolutionSlide extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, color: color, size: 22),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpace.xl),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,12 +254,15 @@ class TheSolutionSlide extends StatelessWidget {
                   title,
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: 13,
+                    fontSize: AppFontSize.small,
                   ),
                 ),
                 Text(
                   desc,
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  style: const TextStyle(
+                    fontSize: AppFontSize.caption,
+                    color: Colors.grey,
+                  ),
                 ),
               ],
             ),
@@ -284,7 +294,7 @@ class HowItWorksSlide extends StatelessWidget {
             textAlign: TextAlign.center,
             style: theme.textTheme.headlineMedium,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.xl),
           Text(
             appString(
               context,
@@ -301,15 +311,15 @@ class HowItWorksSlide extends StatelessWidget {
             'Soft acoustic tones notify you when it is time to rise.',
             accentColor,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.xl),
           _buildStepCard(
             context,
             '2',
             'One-Tap Actions',
-            '"I Stood Up" logs 5 min active time. "Snooze 10m" pauses if you are presenting.',
+            '"I Stood Up" logs 5 min active time. "Next reminder" moves the alert to your next break window.',
             AppColors.snoozed,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.xl),
           _buildStepCard(
             context,
             '3',
@@ -317,7 +327,7 @@ class HowItWorksSlide extends StatelessWidget {
             'If you skip 3 times, StandUp gently reminds you why your back needs relief.',
             AppColors.completed,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.xl),
           _buildStepCard(
             context,
             '4',
@@ -338,7 +348,7 @@ class HowItWorksSlide extends StatelessWidget {
     Color color,
   ) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpace.xl),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(14),
@@ -356,7 +366,7 @@ class HowItWorksSlide extends StatelessWidget {
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: AppFontSize.small,
               ),
             ),
           ),
@@ -369,12 +379,15 @@ class HowItWorksSlide extends StatelessWidget {
                   appString(context, title),
                   style: const TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: 13,
+                    fontSize: AppFontSize.small,
                   ),
                 ),
                 Text(
                   appString(context, desc),
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  style: const TextStyle(
+                    fontSize: AppFontSize.caption,
+                    color: Colors.grey,
+                  ),
                 ),
               ],
             ),
@@ -425,12 +438,12 @@ class ProfileSetupSlide extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpace.huge),
           Text(
             appString(context, 'Personalize Profile'),
             style: theme.textTheme.headlineMedium,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.md),
           Text(
             appString(
               context,
@@ -438,7 +451,7 @@ class ProfileSetupSlide extends StatelessWidget {
             ),
             style: theme.textTheme.bodyMedium,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.section),
           _buildInput(
             context,
             label: 'Full Name',
@@ -462,9 +475,12 @@ class ProfileSetupSlide extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             appString(context, 'Department'),
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: AppFontSize.small,
+            ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.sm),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(
@@ -479,14 +495,17 @@ class ProfileSetupSlide extends StatelessWidget {
                 items: departments.map((dept) {
                   return DropdownMenuItem(
                     value: dept,
-                    child: Text(dept, style: const TextStyle(fontSize: 14)),
+                    child: Text(
+                      dept,
+                      style: const TextStyle(fontSize: AppFontSize.body),
+                    ),
                   );
                 }).toList(),
                 onChanged: onDepartmentChanged,
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.section),
         ],
       ),
     );
@@ -503,9 +522,12 @@ class ProfileSetupSlide extends StatelessWidget {
       children: [
         Text(
           appString(context, label),
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: AppFontSize.small,
+          ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: AppSpace.sm),
         TextField(
           controller: controller,
           decoration: InputDecoration(
@@ -513,7 +535,7 @@ class ProfileSetupSlide extends StatelessWidget {
             filled: true,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
-              vertical: 12,
+              vertical: AppSpace.xl,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
@@ -552,7 +574,7 @@ class OrganizationLinkSlide extends StatelessWidget {
             appString(context, 'Organization Workspace'),
             style: theme.textTheme.headlineMedium,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.md),
           Text(
             appString(
               context,
@@ -560,13 +582,13 @@ class OrganizationLinkSlide extends StatelessWidget {
             ),
             style: theme.textTheme.bodyMedium,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.section),
           if (detectedOrgName.isNotEmpty) ...[
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpace.xxl),
               decoration: BoxDecoration(
                 color: accentColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
                 border: Border.all(color: accentColor.withValues(alpha: 0.3)),
               ),
               child: Row(
@@ -580,7 +602,7 @@ class OrganizationLinkSlide extends StatelessWidget {
                         Text(
                           appString(context, 'Detected Workspace:'),
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: AppFontSize.caption,
                             color: Colors.grey,
                           ),
                         ),
@@ -588,7 +610,7 @@ class OrganizationLinkSlide extends StatelessWidget {
                           detectedOrgName,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                            fontSize: AppFontSize.label,
                           ),
                         ),
                       ],
@@ -597,20 +619,20 @@ class OrganizationLinkSlide extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpace.huge),
           ],
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpace.xxl),
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest.withValues(
                 alpha: 0.45,
               ),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
             child: Row(
               children: [
                 Icon(Icons.info_outline),
-                SizedBox(width: 12),
+                SizedBox(width: AppSpace.xl),
                 Expanded(
                   child: Text(
                     appString(
@@ -622,7 +644,7 @@ class OrganizationLinkSlide extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.xl),
           Text(
             appString(
               context,
@@ -673,12 +695,12 @@ class PreferencesSlide extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpace.xxl),
           Text(
             appString(context, 'Preferences & Cadence'),
             style: theme.textTheme.headlineMedium,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.sm),
           Text(
             appString(
               context,
@@ -686,28 +708,33 @@ class PreferencesSlide extends StatelessWidget {
             ),
             style: theme.textTheme.bodyMedium,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpace.huge),
 
           // Frequency
           Text(
             appString(context, 'Reminder Frequency'),
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: AppFontSize.small,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.md),
           Row(
             children: [30, 60, 90].map((mins) {
               final isSel = selectedFrequency == mins;
               return Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
                   child: InkWell(
                     onTap: () => onFrequencyChanged(mins),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: AppSpace.xl,
+                      ),
                       decoration: BoxDecoration(
                         color: isSel ? accent : theme.cardTheme.color,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                         border: Border.all(
                           color: isSel
                               ? accent
@@ -722,7 +749,7 @@ class PreferencesSlide extends StatelessWidget {
                               ? Colors.white
                               : theme.textTheme.bodyLarge?.color,
                           fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                          fontSize: AppFontSize.small,
                         ),
                       ),
                     ),
@@ -731,14 +758,17 @@ class PreferencesSlide extends StatelessWidget {
               );
             }).toList(),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpace.huge),
 
           // Color System
           Text(
             appString(context, 'Color Accent'),
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: AppFontSize.small,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpace.md),
 
           // The swatch list comes from `AppColors.accents` rather than being
           // written out here, so the picker can never offer an option the theme
@@ -803,7 +833,7 @@ class PreferencesSlide extends StatelessWidget {
               );
             }).toList(),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpace.huge),
 
           // Sound Toggle & Test
           Row(
@@ -818,7 +848,7 @@ class PreferencesSlide extends StatelessWidget {
                       appString(context, 'Sound Chimes'),
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 14,
+                        fontSize: AppFontSize.body,
                       ),
                     ),
                     Text(
@@ -833,7 +863,7 @@ class PreferencesSlide extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpace.md),
               Switch(
                 value: soundEnabled,
                 onChanged: onSoundChanged,
@@ -842,26 +872,29 @@ class PreferencesSlide extends StatelessWidget {
             ],
           ),
           if (soundEnabled) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpace.sm),
             SpringButton(
               onTap: onTestSound,
               backgroundColor: accent.withValues(alpha: 0.15),
               foregroundColor: accent,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: AppSpace.md,
+              ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.volume_up, size: 16),
-                  SizedBox(width: 8),
+                  Icon(Icons.volume_up, size: AppSpace.xxl),
+                  SizedBox(width: AppSpace.md),
                   Text(
                     appString(context, 'Play Preview Chime'),
-                    style: const TextStyle(fontSize: 12),
+                    style: const TextStyle(fontSize: AppFontSize.footnote),
                   ),
                 ],
               ),
             ),
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.section),
         ],
       ),
     );
@@ -892,7 +925,7 @@ class PermissionsSlide extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpace.section),
             decoration: BoxDecoration(
               color: accentColor.withValues(alpha: 0.12),
               shape: BoxShape.circle,
@@ -903,12 +936,12 @@ class PermissionsSlide extends StatelessWidget {
               size: 56,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.section),
           Text(
             appString(context, 'System Permissions'),
             style: theme.textTheme.headlineMedium,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.lg),
           Text(
             appString(
               context,
@@ -926,7 +959,7 @@ class PermissionsSlide extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(granted ? Icons.check_circle : Icons.lock_open, size: 18),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpace.md),
                 Flexible(
                   child: Text(
                     appString(
@@ -976,7 +1009,7 @@ class PrivacySlide extends StatelessWidget {
           Row(
             children: [
               Icon(Icons.shield, color: accentColor, size: 28),
-              const SizedBox(width: 10),
+              const SizedBox(width: AppSpace.lg),
               // The longest title in the onboarding in French
               // ("La confidentialité dès la conception") — roughly twice the
               // English length, and it overflowed a 23px headline on every
@@ -991,7 +1024,7 @@ class PrivacySlide extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.xl),
           Text(
             appString(
               context,
@@ -999,26 +1032,26 @@ class PrivacySlide extends StatelessWidget {
             ),
             style: theme.textTheme.bodyMedium,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpace.huge),
           _buildPrivacyItem(
             context,
             Icons.storage,
             '100% Local Drift Database',
             'Exact reminder timestamps & skip logs stay strictly on your device.',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.xl),
           _buildPrivacyItem(
             context,
             Icons.cloud_sync,
             'Anonymized Aggregates',
             'Only daily counts (e.g. 7 stands completed) sync to Supabase for company metrics.',
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpace.huge),
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: theme.cardTheme.color,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppRadius.lg),
               border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
             ),
             child: Row(
@@ -1031,7 +1064,7 @@ class PrivacySlide extends StatelessWidget {
                         appString(context, 'Contribute to Org Statistics'),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                          fontSize: AppFontSize.small,
                         ),
                       ),
                       Text(
@@ -1066,8 +1099,8 @@ class PrivacySlide extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: Colors.grey),
-        const SizedBox(width: 12),
+        Icon(icon, size: AppSpace.huge, color: Colors.grey),
+        const SizedBox(width: AppSpace.xl),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1076,12 +1109,15 @@ class PrivacySlide extends StatelessWidget {
                 appString(context, title),
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
-                  fontSize: 13,
+                  fontSize: AppFontSize.small,
                 ),
               ),
               Text(
                 appString(context, desc),
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: const TextStyle(
+                  fontSize: AppFontSize.footnote,
+                  color: Colors.grey,
+                ),
               ),
             ],
           ),
@@ -1118,12 +1154,12 @@ class ReadyToGoSlide extends StatelessWidget {
             accentColor: accentColor,
             size: 190,
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpace.section),
           Text(
             appString(context, 'You Are Ready!'),
             style: theme.textTheme.headlineLarge,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpace.lg),
           Text(
             appString(
               context,
@@ -1132,12 +1168,12 @@ class ReadyToGoSlide extends StatelessWidget {
             textAlign: TextAlign.center,
             style: theme.textTheme.bodyMedium,
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpace.gutter),
           SpringButton(
             onTap: onComplete,
             backgroundColor: accentColor,
             isFullWidth: true,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: AppSpace.xxl),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -1148,7 +1184,7 @@ class ReadyToGoSlide extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(width: 8),
+                SizedBox(width: AppSpace.md),
                 Icon(Icons.arrow_forward, size: 18),
               ],
             ),

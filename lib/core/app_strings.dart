@@ -59,7 +59,7 @@ String formatDurationLabel(BuildContext context, int minutes) {
 /// ## Why this lives next to [formatDurationLabel]
 ///
 /// Four widgets each had their own copy — the home screen, the countdown ring,
-/// the Dynamic Island, and the ongoing notification. They all agreed today, which
+/// the home header, and the ongoing notification. They all agree, which
 /// is exactly the problem: a change to one would silently disagree with the
 /// others, and a countdown that renders `9:60` on the ring but `10:00` on the
 /// widget looks broken rather than wrong.
@@ -111,12 +111,6 @@ const Map<String, String> _french = {
   'BREAK IN PROGRESS': 'PAUSE EN COURS',
   'Movement Time': 'Temps de mouvement',
   'until next 5-min stand': 'avant la prochaine pause de 5 min',
-  // Dynamic island. These were hard-coded English literals, so a French user
-  // saw an English header on the one compact surface that has room for none of
-  // the longer phrasing.
-  'Time to Stand Up!': 'C\'est l\'heure de vous lever !',
-  '5-minute posture reset ready': 'Pause de 5 minutes prête',
-  '{time} until break': '{time} avant la pause',
   'Welcome': 'Bienvenue',
   'Why movement matters': 'Pourquoi bouger compte',
   'A simple solution': 'Une solution simple',
@@ -153,10 +147,35 @@ const Map<String, String> _french = {
   'Contribute Statistics': 'Partager des statistiques',
   'Share anonymized daily counts with employer':
       'Partager des totaux quotidiens anonymisés avec l’employeur',
+  'When you ask, send daily counts, goal, cadence and feedback to the company AI. No names or event times.': 'À votre demande, les totaux du jour, l’objectif, le rythme et votre avis sont envoyés à l’IA de l’organisation. Aucun nom ni horaire d’événement n’est transmis.',
+  'AI guidance is requested manually and requires a signed-in company account. Local guidance remains available when AI is off or unavailable.': 'Les conseils IA sont demandés manuellement avec un compte connecté de l’organisation. Les conseils locaux restent disponibles si l’IA est désactivée ou indisponible.',
+  'Personal wellness guidance': 'Conseils de bien-être personnalisés',
+  'Ask the company AI for one suggestion based on your daily summary.': 'Demandez une suggestion à l’IA de l’organisation à partir de votre résumé quotidien.',
+  'Ask company AI': 'Demander à l’IA de l’organisation',
+  'Asking company AI…': 'Demande à l’IA de l’organisation…',
+  'Company AI is unavailable. Showing local guidance.': 'L’IA de l’organisation est indisponible. Les conseils locaux sont affichés.',
+  'Sign in to request company AI guidance.':
+      'Connectez-vous pour demander un conseil à l’IA de l’organisation.',
+  'Local guidance': 'Conseil local',
+  'Company AI guidance': 'Conseils IA de l’organisation',
   'Supabase Cloud Sync': 'Synchronisation Supabase',
   'Sync Now': 'Synchroniser',
   'Replay 10-Slide Onboarding Tour': 'Revoir la présentation en 10 étapes',
   'Reminder Cadence': 'Rythme des rappels',
+  'Work schedule': 'Horaires de travail',
+  'Choose the days and hours for reminders.':
+      'Choisissez les jours et les heures des rappels.',
+  'Monday': 'Lundi',
+  'Tuesday': 'Mardi',
+  'Wednesday': 'Mercredi',
+  'Thursday': 'Jeudi',
+  'Friday': 'Vendredi',
+  'Saturday': 'Samedi',
+  'Sunday': 'Dimanche',
+  'Starts': 'Début',
+  'Ends': 'Fin',
+  'End time must be after start time.':
+      'L’heure de fin doit être après l’heure de début.',
   'Language': 'Langue',
   'French': 'Français',
   'English': 'Anglais',
@@ -167,7 +186,10 @@ const Map<String, String> _french = {
   'SHORTCUTS': 'RACCOURCIS',
   'I Stood Up!': 'Je me suis levé·e !',
   'I stood up!': 'Je me suis levé·e !',
-  'Snooze 10m': 'Rappel dans 10 min',
+  'Next reminder': 'Prochain rappel',
+  'WINDOW CLOSES IN': 'FIN DE LA PAUSE DANS',
+  'NEXT WINDOW IN': 'PROCHAINE PAUSE DANS',
+  'Profile and reminders': 'Profil et rappels',
   'Skip': 'Passer',
   'Reminder': 'Rappel',
   'Start stretch': 'Commencer les étirements',
@@ -178,11 +200,29 @@ const Map<String, String> _french = {
   "Today's Activity": 'Activité du jour',
   '5-Min Guided Stretch': 'Étirements guidés (5 min)',
   'Finish & Log Stand': 'Terminer et enregistrer',
+  'Unable to save the completed stretch':
+      'Impossible d’enregistrer la pause terminée',
   'Cancel': 'Annuler',
   'Stand Duration Trend': 'Durée des pauses debout',
   'Action Distribution': 'Répartition des actions',
   'Wellness Analytics': 'Statistiques de bien-être',
-  'Consistency & Adherence': 'Régularité et assiduité',
+  'A short movement break may help': 'Une courte pause active peut aider',
+  'Try a gentler reminder cadence': 'Essayez un rythme de rappel plus doux',
+  'Daily movement goal reached': 'Objectif quotidien atteint',
+  'Nice consistency today': 'Belle régularité aujourd’hui',
+  'You have reached your daily movement goal.':
+      'Vous avez atteint votre objectif quotidien de mouvement.',
+  'Several reminders were postponed or skipped today.':
+      'Plusieurs rappels ont été reportés ou ignorés aujourd’hui.',
+  'You have completed several breaks today.':
+      'Vous avez terminé plusieurs pauses aujourd’hui.',
+  'Take a short movement break when your next window opens.': 'Faites une courte pause active à l’ouverture de votre prochaine fenêtre.',
+  'If reminders feel too frequent, try a longer interval in Settings.': 'Si les rappels sont trop fréquents, choisissez un intervalle plus long dans les paramètres.',
+  'Your steady movement is building a healthy rhythm.':
+      'Votre régularité vous aide à garder un bon rythme.',
+  'Helpful': 'Utile',
+  'Too frequent': 'Trop fréquent',
+  'Consistency & Completion': 'Régularité et complétion',
   'Contribution Heatmap': 'Carte des pauses',
   'GitHub-style hourly movement matrix':
       'Activité quotidienne sur les 5 derniers mois',
@@ -200,13 +240,15 @@ const Map<String, String> _french = {
   'Aggregated anonymized health benchmarks powered by Supabase views.':
       'Indicateurs de santé agrégés et anonymisés, fournis par Supabase.',
   'Privacy-Enforced: RLS hides individual timestamps & employee names.': 'Confidentialité renforcée : les règles RLS masquent les noms et les horaires individuels.',
-  'Department Adherence Leaderboard': 'Assiduité par service',
-  'Peak Skip Hours Analysis': 'Heures où les rappels sont le plus ignorés',
+  'Department Completion Leaderboard': 'Taux de complétion par service',
   'HEALTH & WELLNESS CADENCE': 'BIEN-ÊTRE AU TRAVAIL • CNPS CAMEROUN',
   'StandUp Ergonomics': 'Bouger mieux au travail',
   'The Sedentary Trap': 'Les effets de la sédentarité',
   'The 5-Minute Solution': 'La pause de 5 minutes',
   'Personalize Profile': 'Votre profil',
+  'Full Name': 'Nom complet',
+  'Designation / Role': 'Fonction / rôle',
+  'Work Email (Optional)': 'Courriel professionnel (facultatif)',
   'Department': 'Service',
   'Organization Workspace': 'Espace de travail de l’organisation',
   'Preferences & Cadence': 'Préférences et rythme',
@@ -294,7 +336,8 @@ const Map<String, String> _french = {
   'We believe employee health monitoring must never compromise personal autonomy.': 'Le suivi du bien-être ne doit jamais porter atteinte à votre vie privée.',
   'Help leadership understand posture wellness trends.': 'Aidez l’organisation à comprendre les tendances de bien-être, sans partager vos détails individuels.',
   'stands': 'pauses debout',
-  'Adherence': 'Assiduité',
+  'Completion rate': 'Taux de complétion',
+  'Of recorded actions': 'Parmi les actions enregistrées',
   'breaks': 'pauses',
   'minutes': 'minutes',
   'times': 'fois',
@@ -305,16 +348,10 @@ const Map<String, String> _french = {
   'tracked days': 'jours suivis',
   'Completed': 'Terminées',
   'Snoozed': 'Reportées',
-  'Snoozed (10m)': 'Reportées (10 min)',
   'Skipped': 'Ignorées',
-  'No reason given': 'Aucune raison indiquée',
   'Tap any square to inspect details. Green: completed • Amber: snoozed • Red: skipped': 'Touchez une case pour voir le détail. Vert : terminée • Ambre : reportée • Rouge : ignorée',
   'It\'s time to stand up! Your body will thank you.':
       'C’est le moment de vous lever ! Votre corps vous remerciera.',
-  'Time-level activity stays private on employee devices.':
-      'Les horaires individuels restent privés sur les appareils des employés.',
-  'Hours with the most skipped reminders.':
-      'Heures où les rappels sont le plus souvent ignorés.',
   'active members': 'membres actifs',
   'stands completed': 'pauses debout terminées',
   'skips': 'rappels ignorés',
@@ -332,7 +369,7 @@ const Map<String, String> _french = {
   'Soft acoustic tones notify you when it is time to rise.':
       'Un son discret vous rappelle qu’il est temps de vous lever.',
   'One-Tap Actions': 'Des actions en un geste',
-  '"I Stood Up" logs 5 min active time. "Snooze 10m" pauses if you are presenting.': '« Je me suis levé·e » enregistre cinq minutes actives. Reportez le rappel de dix minutes si vous êtes en réunion.',
+  '"I Stood Up" logs 5 min active time. "Next reminder" moves the alert to your next break window.': '« Je me suis levé·e » enregistre cinq minutes actives. Le prochain rappel est placé dans la prochaine fenêtre de pause.',
   'Intelligent Nudge Logic': 'Des encouragements bienveillants',
   'If you skip 3 times, StandUp gently reminds you why your back needs relief.': 'Après plusieurs rappels ignorés, StandUp vous encourage doucement à prendre soin de votre dos.',
   'GitHub-Style Analytics': 'Un suivi de vos habitudes',
@@ -342,7 +379,7 @@ const Map<String, String> _french = {
       'Application Flutter + Supabase + Drift',
   'EMPLOYEE HEALTH & WELLNESS CADENCE':
       'SANTÉ ET BIEN-ÊTRE AU TRAVAIL • CNPS CAMEROUN',
-  'Org Adherence': 'Assiduité de l’organisation',
+  'Org Completion Rate': 'Taux de complétion de l’organisation',
   'Auto': 'Auto',
   'Continue': 'Continuer',
   // Preferences — new rows
@@ -411,11 +448,9 @@ const Map<String, String> _french = {
   'Current Streak': 'Série en cours',
   'Syncing...': 'Synchronisation...',
   'Supabase Synced': 'Synchronisé avec Supabase',
-  'Offline Queue': 'File hors ligne',
+  'Local-only': 'Données conservées sur cet appareil',
   'Sync Pending': 'Synchronisation en attente',
-  'Cloud Connected': 'Cloud connecté',
-  'Local-only until Supabase Auth is configured':
-      'Hors ligne tant que Supabase Auth n’est pas configuré',
+  'Sharing off': 'Partage désactivé',
   'Synchronizing in progress...': 'Synchronisation en cours...',
   'Daily totals synced': 'Totaux quotidiens synchronisés',
   'Sync failed; your local data is safe':
@@ -423,7 +458,6 @@ const Map<String, String> _french = {
   // Org admin
   'Active Employees': 'Collaborateurs actifs',
   'Enrolled teammates': 'Collègues inscrits',
-  'Completion benchmark': 'Objectif de complétion',
   'Stands Logged': 'Pauses enregistrées',
   'mins movement': 'min de mouvement',
   'Skipped Breaks': 'Pauses ignorées',
@@ -497,7 +531,7 @@ const Map<String, String> _french = {
   'Forward': 'Suivant',
   'Open': 'Ouvrir',
   'Organization dashboard': 'Tableau de bord de l’organisation',
-  'Anonymised adherence and team trends. No individual is ever named.': 'Adhérence anonymisée et tendances d’équipe. Aucun individu n’est jamais nommé.',
+  'Anonymised completion trends among recorded actions. No individual is named.': 'Taux de complétion des actions enregistrées. Aucune personne n’est nommée.',
   'Open settings': 'Ouvrir les paramètres',
   'Your account': 'Votre compte',
   'Collecting…': 'Collecte en cours…',

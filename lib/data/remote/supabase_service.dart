@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:standup_app/core/app_identity.dart';
@@ -8,6 +10,7 @@ import 'package:standup_app/data/models/user_profile.dart';
 enum SyncStatus { idle, syncing, success, offline, error }
 
 class SupabaseService {
+  static const Duration _databaseRequestTimeout = Duration(seconds: 20);
   static const String defaultUrl = String.fromEnvironment('SUPABASE_URL');
   static const String defaultAnonKey = String.fromEnvironment(
     'SUPABASE_PUBLISHABLE_KEY',
@@ -45,6 +48,9 @@ class SupabaseService {
         url: targetUrl,
         publishableKey: targetKey,
         debug: kDebugMode,
+        postgrestOptions: const PostgrestClientOptions(
+          requestTimeout: _databaseRequestTimeout,
+        ),
       );
       _isInitialized = true;
     } catch (e) {
@@ -219,6 +225,12 @@ class SupabaseService {
       // Individual reminder timestamps and actions stay on this device.
       final unsyncedAnalytics = await localRepo.getUnsyncedAnalytics(userId);
       for (final analytic in unsyncedAnalytics) {
+        // Auth can change while a long offline queue is being uploaded. Stop
+        // before the next aggregate if this session no longer belongs to the
+        // account whose local rows were selected.
+        if (client!.auth.currentUser?.id != userId) {
+          return SyncStatus.offline;
+        }
         try {
           // Go through the server-side validator rather than writing the table
           // directly. The RPC derives the user id from the JWT and the
@@ -241,6 +253,10 @@ class SupabaseService {
         } catch (e) {
           hadErrors = true;
           debugPrint('Error syncing analytics ${analytic.id}: $e');
+          // A timed-out request indicates the backend is not responding. Do
+          // not spend another timeout interval on every remaining day; all
+          // unsent rows remain local and will be retried on the next sync.
+          if (e is TimeoutException) break;
         }
       }
 

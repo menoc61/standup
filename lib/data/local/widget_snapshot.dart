@@ -2,10 +2,64 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:home_widget/home_widget.dart';
+import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/core/app_identity.dart';
 import 'package:standup_app/data/local/widget_palette.dart';
 import 'package:standup_app/data/models/gamification_metrics.dart';
 import 'package:standup_app/data/models/stand_window.dart';
+
+/// Codec for the compact key/value format consumed by the native widgets.
+///
+/// The wire format stores booleans and integers as decimal text, so decoding
+/// must use the known field types instead of guessing from the value alone
+/// (`"1"` is both a valid integer and the true boolean marker).
+abstract final class WidgetPayloadCodec {
+  static const _booleanKeys = {'window_open', 'goal_met', 'clock_suspect'};
+  static const _integerKeys = {
+    'window_minutes',
+    'cadence_minutes',
+    'streak',
+    'total_xp',
+    'level',
+    'today_completed',
+    'daily_goal',
+  };
+
+  static String encode(Map<String, dynamic> map) {
+    final buffer = StringBuffer();
+    map.forEach((key, value) {
+      if (value == null) return;
+      buffer
+        ..write(key)
+        ..write('=')
+        ..write(value is bool ? (value ? '1' : '0') : value.toString())
+        ..write(';');
+    });
+    return buffer.toString();
+  }
+
+  static Map<String, dynamic>? decode(String raw) {
+    final result = <String, dynamic>{};
+    for (final pair in raw.split(';')) {
+      if (pair.isEmpty) continue;
+      final separator = pair.indexOf('=');
+      if (separator <= 0) continue;
+      final key = pair.substring(0, separator);
+      final value = pair.substring(separator + 1);
+      if (_booleanKeys.contains(key)) {
+        if (value != '0' && value != '1') return null;
+        result[key] = value == '1';
+      } else if (_integerKeys.contains(key)) {
+        final parsed = int.tryParse(value);
+        if (parsed == null) return null;
+        result[key] = parsed;
+      } else {
+        result[key] = value;
+      }
+    }
+    return result;
+  }
+}
 
 /// The snapshot of state a home-screen widget needs.
 ///
@@ -166,13 +220,18 @@ class WidgetSnapshot {
       windowEndsAtIso: map['window_ends_at'] as String?,
       windowOpensAtIso: map['window_opens_at'] as String?,
       windowOpen: map['window_open'] as bool? ?? false,
-      windowMinutes: (map['window_minutes'] as num?)?.toInt() ?? 5,
-      cadenceMinutes: (map['cadence_minutes'] as num?)?.toInt() ?? 60,
+      windowMinutes:
+          (map['window_minutes'] as num?)?.toInt() ??
+          AppCadence.defaultActionWindowMinutes,
+      cadenceMinutes:
+          (map['cadence_minutes'] as num?)?.toInt() ??
+          AppCadence.defaultCadenceMinutes,
       streak: (map['streak'] as num?)?.toInt() ?? 0,
       totalXp: (map['total_xp'] as num?)?.toInt() ?? 0,
       level: (map['level'] as num?)?.toInt() ?? 1,
       todayCompleted: (map['today_completed'] as num?)?.toInt() ?? 0,
-      dailyGoal: (map['daily_goal'] as num?)?.toInt() ?? 8,
+      dailyGoal:
+          (map['daily_goal'] as num?)?.toInt() ?? AppCadence.defaultDailyGoal,
       goalMet: map['goal_met'] as bool? ?? false,
       clockSuspect: map['clock_suspect'] as bool? ?? false,
       palette: WidgetPaletteHex(
@@ -327,34 +386,11 @@ class WidgetBridge {
   }
 
   static String _encode(Map<String, dynamic> map) {
-    // A tiny pipe-delimited encoding avoids pulling in a JSON encoder purely
-    // for the widget channel, which is the hot path when a break is logged.
-    final buffer = StringBuffer();
-    map.forEach((key, value) {
-      if (value == null) return;
-      buffer
-        ..write(key)
-        ..write('=')
-        ..write(value is bool ? (value ? '1' : '0') : value.toString())
-        ..write(';');
-    });
-    return buffer.toString();
+    return WidgetPayloadCodec.encode(map);
   }
 
-  static Map<String, dynamic>? _decode(String raw) {
-    final result = <String, dynamic>{};
-    for (final pair in raw.split(';')) {
-      if (pair.isEmpty) continue;
-      final index = pair.indexOf('=');
-      if (index <= 0) continue;
-      final key = pair.substring(0, index);
-      final value = pair.substring(index + 1);
-      result[key] =
-          int.tryParse(value) ??
-          (value == '1' || value == '0' ? value == '1' : value);
-    }
-    return result;
-  }
+  static Map<String, dynamic>? _decode(String raw) =>
+      WidgetPayloadCodec.decode(raw);
 }
 
 void debugPrintSafe(String message) {

@@ -15,7 +15,7 @@
 ;
 ;  * Nothing mutable lives under the install directory. The Drift database is
 ;    at %USERPROFILE%\Documents\standup_app.sqlite and SharedPreferences is
-;    under %APPDATA%\com.healthwellness\... - both per user, neither touched by
+;    under %APPDATA%\com.cnps\... - both per user, neither touched by
 ;    this script. Uninstalling removes the program and leaves user data alone,
 ;    so reinstalling restores the user's history.
 ;
@@ -54,9 +54,9 @@
 [Setup]
 AppId={{6F2A1C64-6B4E-4E1E-9F0B-1B7A5D3C9E21}
 AppName={#AppName}
-AppVersion={#AppVersion}
+AppVersion=1.0.0
 AppVerName={#AppName} {#AppVersion}
-AppPublisher={#AppPublisher}
+AppPublisher=CNPS
 DefaultDirName={localappdata}\Programs\CNPS StandUp
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes

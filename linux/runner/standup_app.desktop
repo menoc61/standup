@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=CNPS StandUp
-GenericName=Wellbeing Reminder
+GenericName=CNPS StandUp
 Comment=Hourly stand-up and posture-break reminders with anonymised team analytics.
 Exec=standup_app
 Icon=standup_app
@@ -9,4 +9,4 @@ Terminal=false
 Categories=Utility;Health;
 Keywords=wellbeing;health;posture;standup;ergonomics;
 StartupNotify=true
-StartupWMClass=com.healthwellness.standup_app
+StartupWMClass=com.cnps.standup

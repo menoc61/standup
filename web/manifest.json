@@ -1,7 +1,7 @@
 {
     "name": "CNPS StandUp — Bien-être au travail",
     "short_name": "StandUp",
-    "id": "com.healthwellness.standup_app",
+    "id": "com.cnps.standup",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",

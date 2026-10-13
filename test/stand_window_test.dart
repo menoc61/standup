@@ -84,7 +84,7 @@ void main() {
         throwsArgumentError,
       );
     });
-  test('lastBoundaryAtOrBefore returns the boundary that just closed', () {
+    test('lastBoundaryAtOrBefore returns the boundary that just closed', () {
       // Exact boundary stays on itself.
       expect(
         StandWindow.lastBoundaryAtOrBefore(now: DateTime(2026, 1, 1, 10)),
@@ -93,9 +93,12 @@ void main() {
       // One microsecond earlier is the previous one.
       expect(
         StandWindow.lastBoundaryAtOrBefore(
-          now: DateTime(2026, 1, 1, 10).subtract(
-            const Duration(microseconds: 1),
-          ),
+          now: DateTime(
+            2026,
+            1,
+            1,
+            10,
+          ).subtract(const Duration(microseconds: 1)),
         ),
         DateTime(2026, 1, 1, 9),
       );
@@ -104,29 +107,41 @@ void main() {
       // then pushes the floor forward to 10:00.
       expect(
         StandWindow.lastBoundaryAtOrBefore(
-          now: DateTime(2026, 1, 1, 10).subtract(const Duration(milliseconds: 1)),
+          now: DateTime(
+            2026,
+            1,
+            1,
+            10,
+          ).subtract(const Duration(milliseconds: 1)),
         ),
         DateTime(2026, 1, 1, 9),
       );
       // Just after a boundary.
       expect(
-        StandWindow.lastBoundaryAtOrBefore(now: DateTime(2026, 1, 1, 10, 0, 0, 1)),
+        StandWindow.lastBoundaryAtOrBefore(
+          now: DateTime(2026, 1, 1, 10, 0, 0, 1),
+        ),
         DateTime(2026, 1, 1, 10),
       );
       // Just before a boundary.
       expect(
-        StandWindow.lastBoundaryAtOrBefore(now: DateTime(2026, 1, 1, 9, 59, 59)),
+        StandWindow.lastBoundaryAtOrBefore(
+          now: DateTime(2026, 1, 1, 9, 59, 59),
+        ),
         DateTime(2026, 1, 1, 9),
       );
     });
 
-test('every completion key reconstructs a real window', () {
+    test('every completion key reconstructs a real window', () {
       // The dedupe key is the closing instant of a window: the open one while a
       // window is open, and the one that has just closed once it is not. The
       // recovery below is the invariant _alreadyCompletedInWindow depends on -
       // it turns the key back into [end - window, end) and searches there.
       DateTime keyFor(DateTime when, int cadence) {
-        final open = StandWindow.activeWindow(now: when, cadenceMinutes: cadence);
+        final open = StandWindow.activeWindow(
+          now: when,
+          cadenceMinutes: cadence,
+        );
         return open?.end ??
             StandWindow.lastBoundaryAtOrBefore(
               now: when,
@@ -152,7 +167,8 @@ test('every completion key reconstructs a real window', () {
           expect(
             reconstructed!.end,
             key,
-            reason: 'cadence $cadence at $now: key $key does not close the '
+            reason:
+                'cadence $cadence at $now: key $key does not close the '
                 'window it reconstructs',
           );
 
@@ -160,14 +176,17 @@ test('every completion key reconstructs a real window', () {
           // tapping at two different points in a single break could record it
           // twice. The key does change as a window opens - that is the handover
           // from the previous window - so this is checked per window.
-          for (var offset = 0;
-              offset < StandWindow.defaultActionWindowMinutes;
-              offset++) {
+          for (
+            var offset = 0;
+            offset < StandWindow.defaultActionWindowMinutes;
+            offset++
+          ) {
             final inside = key.subtract(Duration(minutes: offset));
             expect(
               keyFor(inside, cadence),
               key,
-              reason: 'cadence $cadence: minute $inside inside the window '
+              reason:
+                  'cadence $cadence: minute $inside inside the window '
                   'ending $key produced a different key',
             );
           }
@@ -193,9 +212,11 @@ test('every completion key reconstructs a real window', () {
 
           for (var day = 1; day <= 2; day++) {
             for (var minuteOfDay = 0; minuteOfDay < 24 * 60; minuteOfDay++) {
-              final now = DateTime(2026, 1, day).add(
-                Duration(minutes: minuteOfDay),
-              );
+              final now = DateTime(
+                2026,
+                1,
+                day,
+              ).add(Duration(minutes: minuteOfDay));
               final window = StandWindow.activeWindow(
                 now: now,
                 actionWindowMinutes: windowMinutes,

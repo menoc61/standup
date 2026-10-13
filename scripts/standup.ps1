@@ -97,8 +97,8 @@ Set-Location $Script:ProjectRoot
 # ── Configuration ────────────────────────────────────────────────────────────
 
 $Script:AppName = 'CNPS StandUp'
-$Script:AndroidPackage = 'com.healthwellness.standup_app'
-$Script:IOSBundleId = 'com.healthwellness.standupApp'
+$Script:AndroidPackage = 'com.cnps.standup'
+$Script:IOSBundleId = 'com.cnps.standup'
 $Script:Platforms = @('android', 'ios', 'web', 'windows', 'macos', 'linux')
 $Script:ValidModes = @('debug', 'profile', 'release')
 $Script:SkipBuild = [bool] $SkipBuild
@@ -457,7 +457,7 @@ function Invoke-Doctor {
     }
 
     Write-Section 'Home-screen widgets'
-    $provider = 'android\app\src\main\kotlin\com\healthwellness\standup_app\widget\StandUpWidgetProvider.kt'
+    $provider = 'android\app\src\main\kotlin\com\cnps\standup\widget\StandUpWidgetProvider.kt'
     if (Test-Path (Join-Path $Script:ProjectRoot $provider)) {
         Write-Success 'Android provider present'
     } else {

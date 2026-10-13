@@ -1343,7 +1343,9 @@ class SettingsScreen extends StatelessWidget {
                           context,
                           'StandUp v1.0.0 • Production Flutter + Supabase + Drift',
                         ),
-                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 10,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       // Attribution lives here and in LICENSE/pubspec rather
@@ -1351,7 +1353,9 @@ class SettingsScreen extends StatelessWidget {
                       // authorship.
                       Text(
                         appString(context, 'Built by Mony Aye Tigana for CNPS'),
-                        style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 10,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ],

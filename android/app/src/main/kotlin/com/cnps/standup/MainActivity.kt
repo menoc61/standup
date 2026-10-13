@@ -1,4 +1,4 @@
-package com.healthwellness.standup_app
+package com.cnps.standup
 
 import android.content.Context
 import android.content.Intent

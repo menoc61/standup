@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:standup_app/core/app_identity.dart';
 import 'package:standup_app/data/models/stand_window.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -116,8 +117,8 @@ class NotificationService {
 
     const WindowsInitializationSettings windowsSettings =
         WindowsInitializationSettings(
-          appName: 'StandUp Wellness Reminder',
-          appUserModelId: 'com.healthwellness.standup_app',
+          appName: AppIdentity.windowsNotificationAppName,
+          appUserModelId: AppIdentity.windowsCompanyName,
           guid: 'a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d',
         );
 

@@ -86,16 +86,30 @@ destroys your history:
 | Data | Location |
 | --- | --- |
 | Break history, streaks, analytics | `%USERPROFILE%\Documents\standup_app.sqlite` |
-| Language, accent and reminder settings | `%APPDATA%\com.healthwellness\CNPS StandUp\shared_preferences.json` |
+| Language, accent and reminder settings | `%APPDATA%\com.cnps.standup\CNPS StandUp\shared_preferences.json` |
 
 To fully remove the app, uninstall it from Add/Remove Programs and then delete
 those two files.
 
-> **Note for upgraders from v1.0.0.** That release registered its settings
-> folder under `CSPH StandUp`. After upgrading, Windows looks in
-> `CNPS StandUp`, so your language and reminder settings reset to defaults
-> once. Your break history in `Documents` is untouched. This is deliberate and
-> will not be corrected in this build.
+The database filename is `standup_app.sqlite`, deliberately not
+`com.cnps.standup.sqlite`: it comes from the Dart package name via
+`AppIdentity.databaseFileName`, and renaming it would silently discard every
+existing install's history rather than migrate it.
+
+> **Not yet verified on a real Windows build.** The settings path is derived from
+> the `CompanyName` and `ProductName` fields in `windows/runner/Runner.rc`, which
+> `path_provider` reads from the executable's version resource. Both are now
+> stamped from `AppIdentity` by `tool/stamp_identity.dart`, so the value above
+> should be correct — but no Windows build has been produced in this environment,
+> so treat the exact folder name as unconfirmed until one is installed and
+> inspected.
+
+> **Note for upgraders.** Renaming `CompanyName` from `com.healthwellness` to
+> `com.cnps.standup` changed the folder `path_provider` resolves, so Windows
+> looks in a new location and your language, accent and reminder settings reset to
+> defaults once. Your break history in `Documents` is untouched. This is a
+> deliberate consequence of adopting one CNPS-branded identifier across all
+> platforms; it happens once, and no later build will repeat it.
 
 #### Building it yourself
 

@@ -173,7 +173,7 @@ void main() {
     });
 
     test('the provider names match the native declarations', () {
-      // Android: com.healthwellness.standup_app.widget.StandUpWidgetProvider
+      // Android: com.cnps.standup.widget.StandUpWidgetProvider
       // iOS: the WidgetKit bundle's CNPSStandUpWidget
       // A mismatch here fails silently at runtime, so it is asserted.
       expect(WidgetBridge.uriOpen, 'CNPSwidget://open');

@@ -253,7 +253,8 @@ class AppState extends ChangeNotifier {
 
     // 1. Load Profile
     _userProfile = await localRepo.getUserProfile();
-    final userId = _userProfile?.id ?? '$kLocalUserIdPrefix${const Uuid().v4()}';
+    final userId =
+        _userProfile?.id ?? '$kLocalUserIdPrefix${const Uuid().v4()}';
 
     if (_userProfile == null) {
       _userProfile = UserProfile(
@@ -1082,7 +1083,8 @@ class AppState extends ChangeNotifier {
         );
     await localRepo.saveUserProfile(_userProfile!);
 
-    _preferences = await localRepo.getUserPreferences(accountId) ??
+    _preferences =
+        await localRepo.getUserPreferences(accountId) ??
         UserPreferences.defaultPreferences(accountId);
     final preferences = _preferences!;
     await localRepo.saveUserPreferences(preferences);

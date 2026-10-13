@@ -47,7 +47,7 @@ WHITE = (255, 255, 255)
 # from this constant, so the entry can never name files that were not written.
 ICON_STEM = "standup_app_icon"
 DESKTOP_STEM = "standup_app"
-APPLICATION_ID = "com.healthwellness.standup_app"
+APPLICATION_ID = "com.cnps.standup"
 
 DESKTOP_FILE = f"""[Desktop Entry]
 Type=Application

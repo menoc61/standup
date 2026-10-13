@@ -56,9 +56,26 @@ jobs:
       - name: Run tests
         run: flutter test --reporter expanded
 
+      # The app's identity (bundle id, app group, app name, version) is declared
+      # once in lib/core/app_identity.dart and stamped into the Gradle, Xcode,
+      # CMake, .rc, .desktop, manifest.json and helper-script copies. This step
+      # asserts none of them has drifted.
+      #
+      # It is a separate step rather than a test because running `dart run` from
+      # inside `flutter test` deadlocks on the shared package-config lock. The
+      # file-content assertions in test/identity_test.dart cover the same ground
+      # for the values that matter at runtime.
+      - name: Native identity files match AppIdentity
+        run: |
+          dart run tool/stamp_identity.dart --check || {
+            echo "::error::Native identity has drifted from lib/core/app_identity.dart"
+            echo "Run 'dart run tool/stamp_identity.dart' and commit the result."
+            exit 1
+          }
+
       - name: Format check
         run: |
-          dart format --output=none --set-exit-if-changed lib test
+          dart format --output=none --set-exit-if-changed lib test tool
 
   # ---------------------------------------------------------------------------
   # Android release build. Runs on every push so a broken Gradle setup is

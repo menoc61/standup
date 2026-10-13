@@ -42,13 +42,12 @@ Map<String, String> viewDefinitions(String raw) {
 void main() {
   final schema = File('$repoRoot${Platform.pathSeparator}supabase_schema.sql')
       .readAsStringSync();
-  final validation =
-      File('$repoRoot${Platform.pathSeparator}supabase_validation.sql')
-          .readAsStringSync();
+  final validation = File(
+    '$repoRoot${Platform.pathSeparator}supabase_validation.sql',
+  ).readAsStringSync();
 
   final schemaViews = viewDefinitions(schema);
-  final validationViews =
-      viewDefinitions(validation);
+  final validationViews = viewDefinitions(validation);
 
   group('Aggregate views keep their authorization clauses', () {
     // These are the views that expose organisation-level data. Each one must
@@ -92,10 +91,11 @@ void main() {
                 'cohort of one employee becomes a published statistic.',
           );
           // Normalise case and whitespace away, because the two scripts spell the same
-// clause differently (`COUNT(DISTINCT user_id)` against a qualified alias).
-String normaliseSql(String sql) => sql.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+          // clause differently (`COUNT(DISTINCT user_id)` against a qualified alias).
+          String normaliseSql(String sql) =>
+              sql.toLowerCase().replaceAll(RegExp(r'\s+'), '');
 
-final cohortFloor = RegExp(r'count\(distinct[\w.]*user_id\)>=5');
+          final cohortFloor = RegExp(r'count\(distinct[\w.]*user_id\)>=5');
 
           expect(
             cohortFloor.hasMatch(normaliseSql(entry.value!)),

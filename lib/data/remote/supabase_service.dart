@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:standup_app/core/app_identity.dart';
 import 'package:standup_app/data/local/local_repository.dart';
 import 'package:standup_app/data/models/org_analytics.dart';
 import 'package:standup_app/data/models/user_profile.dart';
@@ -63,7 +64,7 @@ class SupabaseService {
     final response = await supabase.auth.signUp(
       email: email.trim(),
       password: password,
-      emailRedirectTo: kIsWeb ? null : 'standup://login-callback',
+      emailRedirectTo: kIsWeb ? null : AppIdentity.authRedirectUrl,
     );
     return response.session != null;
   }
@@ -95,7 +96,7 @@ class SupabaseService {
     }
     await supabase.auth.signInWithOAuth(
       provider,
-      redirectTo: kIsWeb ? null : 'standup://login-callback',
+      redirectTo: kIsWeb ? null : AppIdentity.authRedirectUrl,
     );
   }
 
@@ -106,7 +107,7 @@ class SupabaseService {
     }
     await supabase.auth.signInWithOtp(
       email: email.trim(),
-      emailRedirectTo: kIsWeb ? null : 'standup://login-callback',
+      emailRedirectTo: kIsWeb ? null : AppIdentity.authRedirectUrl,
     );
   }
 

@@ -1,4 +1,4 @@
-package com.healthwellness.standup_app.widget
+package com.cnps.standup.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -10,8 +10,8 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
-import com.healthwellness.standup_app.MainActivity
-import com.healthwellness.standup_app.R
+import com.cnps.standup.MainActivity
+import com.cnps.standup.R
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
 import es.antonborri.home_widget.HomeWidgetLaunchIntent
 import java.text.SimpleDateFormat

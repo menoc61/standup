@@ -35,9 +35,9 @@ cd "${PROJECT_ROOT}"
 # ── Configuration ────────────────────────────────────────────────────────────
 
 APP_NAME="CNPS StandUp"
-ANDROID_PACKAGE="com.healthwellness.standup_app"
-IOS_BUNDLE_ID="com.healthwellness.standupApp"
-WIDGET_PROVIDER="com.healthwellness.standup_app.widget.StandUpWidgetProvider"
+ANDROID_PACKAGE="com.cnps.standup"
+IOS_BUNDLE_ID="com.cnps.standup"
+WIDGET_PROVIDER="com.cnps.standup.widget.StandUpWidgetProvider"
 WIDGET_IOS_KIND="CNPSStandUpWidget"
 
 # Platforms the project knows how to build. `all` is expanded by build_all.
@@ -362,7 +362,7 @@ cmd_doctor() {
   fi
 
   section "Home-screen widgets"
-  if [[ -f "${PROJECT_ROOT}/android/app/src/main/kotlin/com/healthwellness/standup_app/widget/StandUpWidgetProvider.kt" ]]; then
+  if [[ -f "${PROJECT_ROOT}/android/app/src/main/kotlin/com/cnps/standup/widget/StandUpWidgetProvider.kt" ]]; then
     success "Android provider present"
   else
     warn "Android provider missing"

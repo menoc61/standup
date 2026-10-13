@@ -35,7 +35,7 @@ struct WidgetPayload {
     /// window that closed days ago.
     private static let maxAge: TimeInterval = 6 * 60 * 60
 
-    static let appGroup = "group.com.healthwellness.standupApp"
+    static let appGroup = "group.com.cnps.standup"
     static let snapshotKey = "snapshot"
 
     static func load(now: Date = Date()) -> WidgetPayload {

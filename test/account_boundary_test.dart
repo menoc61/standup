@@ -42,25 +42,27 @@ void main() {
       );
     });
 
-    test('claiming a device-local identity moves its rows to the account',
-        () async {
-      const localId = 'local_11111111-2222-3333-4444-555555555555';
-      await repo.saveUserProfile(profile(localId));
+    test(
+      'claiming a device-local identity moves its rows to the account',
+      () async {
+        const localId = 'local_11111111-2222-3333-4444-555555555555';
+        await repo.saveUserProfile(profile(localId));
 
-      // This is the intended path: never-synced device history is claimed by
-      // the account the user just signed in to.
-      await repo.reassignLocalUser(localId, 'account-a');
+        // This is the intended path: never-synced device history is claimed by
+        // the account the user just signed in to.
+        await repo.reassignLocalUser(localId, 'account-a');
 
-      expect(await repo.getUserProfileById('account-a'), isNotNull);
-      expect(
-        await repo.getUserProfileById(localId),
-        isNull,
-        reason: 'The local identity should no longer exist after being claimed.',
-      );
-    });
+        expect(await repo.getUserProfileById('account-a'), isNotNull);
+        expect(
+          await repo.getUserProfileById(localId),
+          isNull,
+          reason:
+              'The local identity should no longer exist after being claimed.',
+        );
+      },
+    );
 
-    test('signing back into the first account still finds its own rows',
-        () async {
+    test('signing back into the first account still finds its own rows', () async {
       // The sequence that leaked data, reduced to what the repository must
       // guarantee: A claims the local history, then a switch to B happens, and
       // signing back into A must still resolve A - not B, and not nothing.
@@ -76,18 +78,20 @@ void main() {
       expect(await repo.getUserProfileById('account-b'), isNotNull);
     });
 
-    test('reassigning when the target already has a row still refuses',
-        () async {
-      // The pre-existing guard, kept because it is still correct: it stops a
-      // merge of two real accounts even if the caller gets the order wrong.
-      await repo.saveUserProfile(profile('account-a'));
-      await repo.saveUserProfile(profile('account-b'));
+    test(
+      'reassigning when the target already has a row still refuses',
+      () async {
+        // The pre-existing guard, kept because it is still correct: it stops a
+        // merge of two real accounts even if the caller gets the order wrong.
+        await repo.saveUserProfile(profile('account-a'));
+        await repo.saveUserProfile(profile('account-b'));
 
-      await expectLater(
-        repo.reassignLocalUser('account-a', 'account-b'),
-        throwsStateError,
-      );
-      expect(await repo.getUserProfileById('account-a'), isNotNull);
-    });
+        await expectLater(
+          repo.reassignLocalUser('account-a', 'account-b'),
+          throwsStateError,
+        );
+        expect(await repo.getUserProfileById('account-a'), isNotNull);
+      },
+    );
   });
 }

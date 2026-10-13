@@ -55,11 +55,10 @@ bool _isGenerated(String path) {
 /// is only useful if it stays strict, so a new entry means re-examining whether
 /// the mention is actually load-bearing.
 const _allowedMentions = <String, String>{
-  // Tells a v1.0.0 upgrader which settings folder the old release created,
-  // because the rename moves it and their settings reset once. Removing the
-  // literal would make the note unactionable.
-  'docs/INSTALL_AND_LAUNCH.md':
-      'documents the legacy v1.0.0 settings folder name for upgraders',
+  // Lists the retired brand as a token to *forbid*, so that a half-applied
+  // rename of the bundle id is caught. The mention is the point.
+  'test/identity_test.dart':
+      'declares the retired brand as a forbidden token for identity_test.dart',
 };
 
 /// Every authored source file under the repository root.
@@ -114,26 +113,29 @@ void main() {
       );
     });
 
-    test('no authored source file still carries the retired brand in its name', () {
-      final offenders = <String>[];
-      for (final file in sourceFilesIn(repoRoot)) {
-        final relative = file.path
-            .substring(repoRoot.length)
-            .replaceAll(r'\', '/')
-            .replaceFirst(RegExp('^/'), '');
-        if (RegExp('csph', caseSensitive: false).hasMatch(relative)) {
-          offenders.add(relative);
+    test(
+      'no authored source file still carries the retired brand in its name',
+      () {
+        final offenders = <String>[];
+        for (final file in sourceFilesIn(repoRoot)) {
+          final relative = file.path
+              .substring(repoRoot.length)
+              .replaceAll(r'\', '/')
+              .replaceFirst(RegExp('^/'), '');
+          if (RegExp('csph', caseSensitive: false).hasMatch(relative)) {
+            offenders.add(relative);
+          }
         }
-      }
-      expect(
-        offenders,
-        isEmpty,
-        reason:
-            'These files are still named after the retired brand, so the '
-            'references pointing at them cannot resolve:\n'
-            '${offenders.join('\n')}',
-      );
-    });
+        expect(
+          offenders,
+          isEmpty,
+          reason:
+              'These files are still named after the retired brand, so the '
+              'references pointing at them cannot resolve:\n'
+              '${offenders.join('\n')}',
+        );
+      },
+    );
   });
 
   group('Renamed files exist where the references point', () {
@@ -163,15 +165,18 @@ void main() {
       );
       expect(resRoot.existsSync(), isTrue);
 
-      final bad = resRoot
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where(
-            (f) => RegExp('[A-Z]').hasMatch(f.path.split(RegExp(r'[/\\]')).last),
-          )
-          .map((f) => f.path.split(RegExp(r'[/\\]')).last)
-          .toList()
-        ..sort();
+      final bad =
+          resRoot
+              .listSync(recursive: true)
+              .whereType<File>()
+              .where(
+                (f) =>
+                    RegExp('[A-Z]')
+                        .hasMatch(f.path.split(RegExp(r'[/\\]')).last),
+              )
+              .map((f) => f.path.split(RegExp(r'[/\\]')).last)
+              .toList()
+            ..sort();
 
       expect(
         bad,
@@ -263,14 +268,16 @@ void main() {
       }
 
       expect(referenced, isNotEmpty);
-      final undefined = referenced
-          .where((name) => !stringsXml.contains('name="$name"'))
-          .toList()
-        ..sort();
+      final undefined =
+          referenced
+              .where((name) => !stringsXml.contains('name="$name"'))
+              .toList()
+            ..sort();
       expect(
         undefined,
         isEmpty,
-        reason: 'The widget layout reads undefined string resources: $undefined',
+        reason:
+            'The widget layout reads undefined string resources: $undefined',
       );
     });
   });

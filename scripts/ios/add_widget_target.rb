@@ -27,8 +27,8 @@ WIDGET_DIR = File.join(IOS_DIR, 'StandUpWidget')
 ASSET_CATALOG = File.join(WIDGET_DIR, 'Assets.xcassets')
 
 WIDGET_TARGET_NAME = 'StandUpWidget'
-WIDGET_BUNDLE_ID = 'com.healthwellness.standupApp.StandUpWidget'
-APP_GROUP = 'group.com.healthwellness.standupApp'
+WIDGET_BUNDLE_ID = 'com.cnps.standup.StandUpWidget'
+APP_GROUP = 'group.com.cnps.standup'
 
 # WidgetKit interactive buttons and the `.containerBackground` modifier both
 # need iOS 17. The app itself still supports 15, so only this target is raised.

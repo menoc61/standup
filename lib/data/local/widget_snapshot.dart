@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:home_widget/home_widget.dart';
+import 'package:standup_app/core/app_identity.dart';
 import 'package:standup_app/data/local/widget_palette.dart';
 import 'package:standup_app/data/models/gamification_metrics.dart';
 import 'package:standup_app/data/models/stand_window.dart';
@@ -202,17 +203,16 @@ class WidgetBridge {
   /// `home_widget` resolves a bare name against the application id, but this
   /// provider lives in the `.widget` sub-package, so the qualified name is
   /// required for `updateWidget` to find it.
-  static const _qualifiedProviderAndroid =
-      'com.healthwellness.standup_app.widget.StandUpWidgetProvider';
+  static const _qualifiedProviderAndroid = AppIdentity.androidWidgetProvider;
   static const _providerIOS = 'CNPSStandUpWidget';
 
   static const String keySnapshot = 'snapshot';
 
   /// Route used by the widget's action button, on both platforms.
-  static const String uriComplete = 'CNPSwidget://complete';
+  static const String uriComplete = AppIdentity.widgetCompleteUri;
 
   /// Route used when the widget body is tapped, to open the app.
-  static const String uriOpen = 'CNPSwidget://open';
+  static const String uriOpen = AppIdentity.widgetOpenUri;
 
   /// App Group shared with the WidgetKit extension.
   ///
@@ -220,7 +220,7 @@ class WidgetBridge {
   /// sides read: the app writes, the extension renders. It must match the
   /// entitlement in `ios/Runner/Runner.entitlements` and
   /// `ios/StandUpWidget/StandUpWidget.entitlements`.
-  static const String appGroupId = 'group.com.healthwellness.standupApp';
+  static const String appGroupId = AppIdentity.appGroupId;
 
   /// Key the iOS widget writes a pending action into.
   static const String pendingActionKey = 'home_widget_pending_action';

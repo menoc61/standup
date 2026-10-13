@@ -156,7 +156,7 @@ pending action to a container nothing is reading.
 
 ```mermaid
 flowchart TD
-    ID["App Group identifier<br/>group.com.healthwellness.standupApp"]
+    ID["App Group identifier<br/>group.com.cnps.standup"]
     ID --> A1["Runner target"]
     ID --> A2["StandUpWidget target"]
     A1 -. "must match exactly" .- A2

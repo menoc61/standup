@@ -270,9 +270,12 @@ query rather than an aggregation over raw logs. The legacy field name
   (`core/break_block.dart`) is a pure five-input veto: opt-in, present, inside the
   window, not already logged, no stretch running. `AppState.isBreakBlockActive`
   delegates to it and `ui/widgets/break_block.dart` only renders the answer.
-  It is an in-app `ModalBarrier` cover, **not** an OS lock — the native keep-above
-  work is what makes it survive Alt-Tab, and until that lands the block is honest
-  about covering only the app's own window.
+  It is an in-app `ModalBarrier` cover, **not** an OS lock. Raising the window
+  while the cover is up goes through the `WindowChrome` port
+  (`services/window_chrome.dart`), applied on transition only, so Alt-Tab is not
+  the free escape it would otherwise be. It does not activate or un-minimise the
+  window, and Alt-Tab/Super still work: what the feature claims is "stays in
+  front of what you are looking at", not "locks the machine".
 - **The guided stretch is bound to the window it started in.** A stretch that
   begins at the end of a window necessarily finishes after it, so its completion
   is honoured via `_breakWindowKey`. Without that binding the completion would be

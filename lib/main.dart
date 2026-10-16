@@ -13,6 +13,7 @@ import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/services/audio_service.dart';
 import 'package:standup_app/services/idle_time_source.dart';
 import 'package:standup_app/services/notification_service.dart';
+import 'package:standup_app/services/window_chrome.dart';
 import 'package:standup_app/ui/screens/main_shell.dart';
 import 'package:standup_app/ui/screens/onboarding/onboarding_screen.dart';
 import 'package:standup_app/ui/screens/splash_screen.dart';
@@ -50,6 +51,8 @@ void main() async {
     // Answers `null` (unknown) on every platform until the native presence
     // channel is built, so presence stays "present" and nothing misfires.
     idleTimeSource: const PlatformIdleTimeSource(),
+    // No-ops where the native side is missing, so a plain run is unaffected.
+    windowChrome: const PlatformWindowChrome(),
   );
   notificationService.onActionReceived = appState.handleNotificationAction;
   await appState.init();

@@ -26,6 +26,7 @@ import 'package:standup_app/services/audio_service.dart';
 import 'package:standup_app/services/haptics_service.dart';
 import 'package:standup_app/services/guidance_provider.dart';
 import 'package:standup_app/services/idle_time_source.dart';
+import 'package:standup_app/services/window_chrome.dart';
 import 'package:standup_app/services/supabase_guidance_provider.dart';
 import 'package:standup_app/services/live_countdown_service.dart';
 import 'package:standup_app/services/notification_service.dart';
@@ -48,6 +49,9 @@ class AppState extends ChangeNotifier {
 
   /// Reports how long the machine has been untouched, when the platform can.
   final IdleTimeSource idleTimeSource;
+
+  /// Raises and lowers the window when the forced break starts and ends.
+  final WindowChrome windowChrome;
 
   /// Persistent notification that counts down to the next break.
   ///
@@ -121,12 +125,18 @@ class AppState extends ChangeNotifier {
   /// Counts ticks so the idle reading is polled at human speed, not 1 Hz.
   int _presenceTicks = 0;
 
+  /// The keep-above state last sent to the platform. Starts false because that
+  /// is how a window is created, so the channel is crossed on transitions only —
+  /// never once per tick, and never at all on a run that never blocks.
+  bool _keepAboveApplied = false;
+
   AppState({
     required this.localRepo,
     required this.supabaseService,
     required this.notificationService,
     required this.audioService,
     this.idleTimeSource = const UnsupportedIdleTimeSource(),
+    this.windowChrome = const UnsupportedWindowChrome(),
     GuidanceProvider? aiGuidanceProvider,
   }) : _aiGuidanceProvider =
            aiGuidanceProvider ?? SupabaseGuidanceProvider(supabaseService);
@@ -596,6 +606,10 @@ class AppState extends ChangeNotifier {
       unawaited(_pollPresence());
     }
 
+    // The cover only stops the app being used; keeping the window above is what
+    // stops it being ignored. Applied on transition only.
+    _syncWindowKeepAbove();
+
     // When the boundary passes, roll forward to the following window.
     if (now.isAfter(_nextReminderTime ?? now)) {
       unawaited(_scheduleNextInterval(minutes: _cadenceMinutes));
@@ -629,6 +643,19 @@ class AppState extends ChangeNotifier {
     await drainPendingWidgetAction();
     // The launcher may have missed a state change while the app was away.
     await syncWidget();
+  }
+
+  /// Keeps the platform's keep-above flag in step with the forced break.
+  ///
+  /// Only the transition is sent: the ticker runs every second, and asking the
+  /// window manager to re-assert the same stacking order sixty times a minute
+  /// would be pure noise. Nothing is sent before the first change, so a plain
+  /// run on a platform with no native side never touches the channel at all.
+  void _syncWindowKeepAbove() {
+    final desired = isBreakBlockActive;
+    if (_keepAboveApplied == desired) return;
+    _keepAboveApplied = desired;
+    unawaited(windowChrome.setKeepAbove(desired));
   }
 
   /// Feeds one OS idle reading into the presence tracker.
@@ -1587,6 +1614,8 @@ class AppState extends ChangeNotifier {
     _authSubscription?.cancel();
     _authSubscription = null;
     _uptime.stop();
+    // Never leave the window stuck above everything after the app is done.
+    if (_keepAboveApplied) unawaited(windowChrome.setKeepAbove(false));
     // The notification service holds its own Linux timers and a callback into
     // this notifier; both must go or a late timer would notify a dead object.
     unawaited(supabaseService.stopWatchingAnalytics());

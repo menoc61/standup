@@ -35,6 +35,11 @@ class FlutterWindow : public Win32Window {
   // left alone. Held as a member because the channel must outlive OnCreate.
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       presence_channel_;
+
+  // Answers `standup/window` so the forced break can keep the window above
+  // other applications. Held for the same reason.
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      window_channel_;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

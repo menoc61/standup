@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <variant>
 
 #include "flutter/generated_plugin_registrant.h"
 
@@ -53,6 +54,57 @@ CreatePresenceChannel(flutter::FlutterEngine* engine) {
   return channel;
 }
 
+// Builds the window-chrome channel that raises and lowers the main window.
+//
+// `HWND_TOPMOST` is a persistent property of the window rather than a one-shot
+// raise, so the block stays above other applications without re-asserting on
+// every focus change. The window is deliberately not activated or restored here:
+// stealing focus is a separate promise (the tray/restore work) and this channel
+// only claims stacking order.
+std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+CreateWindowChannel(flutter::FlutterEngine* engine, Win32Window* window) {
+  auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      engine->messenger(), "standup/window",
+      &flutter::StandardMethodCodec::GetInstance());
+
+  channel->SetMethodCallHandler(
+      [window](const flutter::MethodCall<flutter::EncodableValue>& call,
+               std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+                   result) {
+        if (call.method_name() != "setKeepAbove") {
+          result->NotImplemented();
+          return;
+        }
+
+        // Anything other than an explicit true means "normal stacking", so a
+        // malformed argument can only lower the window, never wedge it on top.
+        bool keep_above = false;
+        const flutter::EncodableValue* arguments = call.arguments();
+        if (arguments != nullptr) {
+          const auto* map = std::get_if<flutter::EncodableMap>(arguments);
+          if (map != nullptr) {
+            auto value = map->find(flutter::EncodableValue("value"));
+            if (value != map->end()) {
+              const auto* flag = std::get_if<bool>(&value->second);
+              keep_above = flag != nullptr && *flag;
+            }
+          }
+        }
+
+        HWND handle = window->GetHandle();
+        if (handle == nullptr) {
+          result->Error("no_window", "The window has already been destroyed");
+          return;
+        }
+
+        SetWindowPos(handle, keep_above ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0,
+                     0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        result->Success();
+      });
+
+  return channel;
+}
+
 }  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
@@ -77,6 +129,8 @@ bool FlutterWindow::OnCreate() {
   }
   RegisterPlugins(flutter_controller_->engine());
   presence_channel_ = CreatePresenceChannel(flutter_controller_->engine());
+  window_channel_ =
+      CreateWindowChannel(flutter_controller_->engine(), this);
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {

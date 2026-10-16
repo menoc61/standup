@@ -19,6 +19,44 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
 }
 
+// Answers `standup/window` so the forced break can keep the window above other
+// applications.
+//
+// `gtk_window_set_keep_above` maps to `_NET_WM_STATE_ABOVE` under X11, which
+// window managers honour. Wayland has no equivalent protocol, so compositors are
+// free to ignore the request; the method still succeeds (the caller must never
+// be told a hint failed) and the platform note in docs/PLATFORM_SETUP.md says
+// the cover may not survive there.
+static void window_method_call_cb(FlMethodChannel* channel,
+                                 FlMethodCall* method_call,
+                                 gpointer user_data) {
+  GtkWindow* window = GTK_WINDOW(user_data);
+  g_autoptr(FlMethodResponse) response = nullptr;
+
+  if (g_strcmp0(fl_method_call_get_name(method_call), "setKeepAbove") == 0) {
+    // Only an explicit true raises the window; a malformed argument can only
+    // lower it, never wedge it on top.
+    gboolean keep_above = FALSE;
+    FlValue* arguments = fl_method_call_get_args(method_call);
+    if (arguments != nullptr &&
+        fl_value_get_type(arguments) == FL_VALUE_TYPE_MAP) {
+      FlValue* value = fl_value_lookup_string(arguments, "value");
+      if (value != nullptr && fl_value_get_type(value) == FL_VALUE_TYPE_BOOL) {
+        keep_above = fl_value_get_bool(value);
+      }
+    }
+    gtk_window_set_keep_above(window, keep_above);
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+  } else {
+    response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
+  }
+
+  g_autoptr(GError) error = nullptr;
+  if (!fl_method_call_respond(method_call, response, &error)) {
+    g_warning("Failed to send window response: %s", error->message);
+  }
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
@@ -74,6 +112,19 @@ static void my_application_activate(GApplication* application) {
   gtk_widget_realize(GTK_WIDGET(view));
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
+
+  // The channel is stored on the window so its lifetime matches the window it
+  // controls: nothing else holds a reference, so the handler cannot outlive the
+  // widget it calls into.
+  g_autoptr(FlStandardMethodCodec) window_codec = fl_standard_method_codec_new();
+  FlMethodChannel* window_channel = fl_method_channel_new(
+      fl_engine_get_binary_messenger(fl_view_get_engine(view)),
+      "standup/window", FL_METHOD_CODEC(window_codec));
+  fl_method_channel_set_method_call_handler(window_channel,
+                                            window_method_call_cb, window,
+                                            nullptr);
+  g_object_set_data_full(G_OBJECT(window), "standup-window-channel",
+                         window_channel, g_object_unref);
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }

@@ -145,12 +145,30 @@ Nothing read here is uploaded: see the local-only boundary in
 
 `BreakBlockOverlay` is a Flutter `ModalBarrier` plus a full-window `Material`.
 It is authoritative *inside* the app — no tap, scroll or drag reaches the screen
-underneath — but it cannot stop the user switching to another application:
-Alt-Tab, Super, or a window manager shortcut all still work, and on Wayland a
-keep-above request is frequently ignored outright. Making the cover survive that
-needs the native keep-above/raise work (Windows `SetWindowPos`,
-`gtk_window_present_with_time`), which is **not built yet**. Until then the
-feature is deliberately documented as "covers the app", not "locks the screen".
+underneath — but on its own it cannot stop the user switching to another
+application.
+
+Two platforms now also raise the window while the block is active, over the
+`standup/window` channel (`setKeepAbove`):
+
+| Platform | Implementation | Status |
+| --- | --- | --- |
+| Windows | `SetWindowPos` with `HWND_TOPMOST` / `HWND_NOTOPMOST` in `windows/runner/flutter_window.cpp` | implemented; **runtime unverified** here, CI only compiles it |
+| Linux (X11) | `gtk_window_set_keep_above`, i.e. `_NET_WM_STATE_ABOVE` in `linux/runner/my_application.cc` | implemented; **runtime unverified** here, CI only compiles it |
+| Linux (Wayland) | no equivalent protocol | compositor may ignore the request; the call still succeeds |
+| Android / Apple / Web | — | not planned |
+
+Keep-above is a standing property of the window rather than a one-shot raise, so
+it holds without re-asserting on every focus change. The channel deliberately
+does **not** activate, restore or un-minimise the window: stealing focus is a
+separate promise, and a window the user minimised while the block is due is left
+alone. Alt-Tab, Super and window-manager shortcuts remain available on every
+platform, so the feature is documented as "covers the app and stays in front",
+not "locks the screen". An OS-level lock remains a separate, unstarted tier.
+
+`WindowChrome` degrades to a no-op wherever the native side is missing, and both
+directions are only sent on a transition, so a normal run never touches the
+channel at all.
 
 ### Reminder delivery on Windows
 

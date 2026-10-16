@@ -139,6 +139,14 @@ class AppState extends ChangeNotifier {
   bool _autostartSupported = false;
   bool _autostartEnabled = false;
 
+  /// Whether the user has asked to be left alone for now.
+  ///
+  /// Session-only on purpose: a quiet mode that survived a restart is a silent
+  /// failure mode — the user forgets it is on and gets no reminders, with
+  /// nothing on screen explaining why. Restarting returns to normal, which is
+  /// the safe direction to fail in.
+  bool _quietMode = false;
+
   AppState({
     required this.localRepo,
     required this.supabaseService,
@@ -307,6 +315,32 @@ class AppState extends ChangeNotifier {
   /// when the queue is built.
   bool get isInQuietHours => _inQuietHours(preferences.quietHours);
 
+  /// Whether the user has paused interruptions by hand.
+  bool get isQuietMode => _quietMode;
+
+  /// Whether the app should stay silent right now, whether because the user
+  /// asked for it or because the schedule says so.
+  ///
+  /// One getter so the cue, the warning, the cover and the queue cannot disagree
+  /// about silence: an interruption the user suppressed must be suppressed
+  /// everywhere, not in three places out of four.
+  bool get isInterruptionPaused => _quietMode || isInQuietHours;
+
+  /// Pauses or resumes every interruption at once.
+  ///
+  /// Cues, the prelude banner, the OS queue, the live countdown and the forced
+  /// break all read [isQuietMode], so this is the single switch. The break
+  /// cadence keeps running underneath: the point is to stop being interrupted,
+  /// not to lose the day's rhythm, so the next window after resuming is simply
+  /// the next one due.
+  Future<void> setQuietMode(bool value) async {
+    if (_quietMode == value) return;
+    _quietMode = value;
+    notifyListeners();
+    await refreshReminderQueue();
+    await _syncLiveCountdown();
+  }
+
   /// Whether a stand action is currently permitted. A break counts only inside
   /// the final [_actionWindowMinutes] minutes of each cadence hour.
   bool get isActionWindowOpen => activeWindow != null;
@@ -353,6 +387,9 @@ class AppState extends ChangeNotifier {
   ///
   /// Purely presentational. It never changes whether a break counts.
   WindowSpan? get preludeWindow {
+    // Quiet mode silences the warning too: a banner announcing a break the app
+    // is under orders not to enforce would be an interruption with no purpose.
+    if (_quietMode) return null;
     if (!preferences.preludeEnabled) return null;
     final now = DateTime.now();
     if (activeWindow != null) return null;
@@ -366,6 +403,14 @@ class AppState extends ChangeNotifier {
       upcoming.start.subtract(Duration(minutes: minutes)),
       upcoming.start,
     );
+    // The warning must begin inside the working day too, or the banner would
+    // announce a break the OS queue has already refused to schedule.
+    if (!preferences.workSchedule.allowsWindow(
+      candidate.start,
+      candidate.end,
+    )) {
+      return null;
+    }
     return candidate.contains(now) ? candidate : null;
   }
 
@@ -399,6 +444,7 @@ class AppState extends ChangeNotifier {
     final window = activeWindow;
     return shouldBlockBreak(
       blockingEnabled: preferences.breakBlockingEnabled,
+      quiet: _quietMode,
       userAway: isUserAway,
       windowOpen: window != null,
       alreadyCompleted:
@@ -621,7 +667,7 @@ class AppState extends ChangeNotifier {
     final windowOpen = isActionWindowOpen;
     if (windowOpen && !_isBreakActive && !_reminderAlertPlayed && !isUserAway) {
       _reminderAlertPlayed = true;
-      if (!isInQuietHours) unawaited(audioService.playChime());
+      if (!isInterruptionPaused) unawaited(audioService.playChime());
     }
 
     // The prelude is the "get ready to stop" warning that precedes the window.
@@ -638,7 +684,7 @@ class AppState extends ChangeNotifier {
         !_preludeAlertPlayed &&
         !isUserAway) {
       _preludeAlertPlayed = true;
-      if (!isInQuietHours) unawaited(audioService.playNudge());
+      if (!isInterruptionPaused) unawaited(audioService.playNudge());
     }
 
     // Presence moves at human speed, so the OS reading is polled every few
@@ -799,6 +845,12 @@ class AppState extends ChangeNotifier {
       await liveCountdownService.cancel();
       return;
     }
+    // A countdown to an interruption the user has suppressed is itself an
+    // interruption, so quiet mode takes the ongoing notification down too.
+    if (_quietMode) {
+      await liveCountdownService.cancel();
+      return;
+    }
     await liveCountdownService.start(next);
   }
 
@@ -857,6 +909,7 @@ class AppState extends ChangeNotifier {
           ? 'Prenez 5 minutes pour vous étirer, respirer et bouger.'
           : 'Take a 5-minute break to stretch, breathe, and move.',
       quietHours: preferences.quietHours,
+      quiet: _quietMode,
       actionWindowMinutes: _actionWindowMinutes,
       preludeMinutes: preferences.preludeEnabled
           ? AppCadence.resolvePrelude(

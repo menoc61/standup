@@ -535,6 +535,11 @@ class NotificationService {
   /// [quietHours] is a `"HH:MM-HH:MM"` window during which no reminder is
   /// scheduled. The window may wrap past midnight (for example 22:00-06:00).
   ///
+  /// [quiet] empties the queue outright. It is a runtime state rather than a
+  /// schedule, so unlike [quietHours] it can only ever clear what is already
+  /// posted — which is why the cancellation below happens before the early
+  /// return rather than after it.
+  ///
   /// [actionWindowMinutes] shifts each alert to the start of the actionable
   /// window rather than the cadence boundary, so the user is notified exactly
   /// when the stand action becomes valid.
@@ -544,6 +549,7 @@ class NotificationService {
     required String title,
     required String body,
     String? quietHours,
+    bool quiet = false,
     int actionWindowMinutes = 0,
     int preludeMinutes = 0,
     String workDays = '1,2,3,4,5',
@@ -557,6 +563,7 @@ class NotificationService {
         title: title,
         body: body,
         quietHours: quietHours,
+        quiet: quiet,
         actionWindowMinutes: actionWindowMinutes,
         preludeMinutes: preludeMinutes,
         workDays: workDays,
@@ -578,6 +585,7 @@ class NotificationService {
     required String title,
     required String body,
     String? quietHours,
+    bool quiet = false,
     int actionWindowMinutes = 0,
     int preludeMinutes = 0,
     String workDays = '1,2,3,4,5',
@@ -596,6 +604,16 @@ class NotificationService {
     const count = AppCadence.scheduledReminderQueueSize;
     for (var i = 0; i < count; i++) {
       await cancelReminder(firstId + i);
+    }
+    const preludeFirstId = AppCadence.preludeNotificationIdBase;
+    for (var i = 0; i < count; i++) {
+      await cancelReminder(preludeFirstId + i);
+    }
+    // Quiet mode is the whole job when it is on: the cancellations above have
+    // just cleared both series, and re-posting anything would defeat the point.
+    if (quiet) {
+      debugPrint('Quiet mode: reminder queue emptied.');
+      return;
     }
 
     // Refill 48 actual reminder slots across weekends, sparse custom schedules,
@@ -627,10 +645,6 @@ class NotificationService {
     // The prelude queue is desktop-only. Mobile spends its entire outstanding
     // request budget on the actionable reminders, and the in-app banner already
     // warns the foreground user on every platform.
-    const preludeFirstId = AppCadence.preludeNotificationIdBase;
-    for (var i = 0; i < count; i++) {
-      await cancelReminder(preludeFirstId + i);
-    }
     if (!_supportsPreludeQueue) return;
 
     final preludes = preludeTimesForReminders(

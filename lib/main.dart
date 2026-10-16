@@ -20,6 +20,7 @@ import 'package:standup_app/ui/screens/onboarding/onboarding_screen.dart';
 import 'package:standup_app/ui/screens/splash_screen.dart';
 import 'package:standup_app/ui/widgets/break_block.dart';
 import 'package:standup_app/ui/widgets/prelude_alert.dart';
+import 'package:standup_app/ui/widgets/quiet_mode_banner.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -188,16 +189,22 @@ class _StandUpAppState extends State<StandUpApp> with WidgetsBindingObserver {
           darkTheme: darkTheme,
           // Both the heads-up banner and the forced-break cover are mounted here
           // so they sit above every route. Order matters: the banner is painted
-          // first, the cover last, so when both would apply the cover wins.
-          builder: (context, child) => PreludeAlert(
+          // first, the cover last, so when both would apply the cover wins. The
+          // quiet-mode bar sits outside both: it is the one state that suppresses
+          // the other two, so it must be visible whatever they decide.
+          builder: (context, child) => QuietModeOverlay(
             appState: widget.appState,
-            // Neither the warning nor the cover makes sense while splash or
-            // onboarding is on screen: there is no work to interrupt yet.
             active: _inAppSession,
-            child: BreakBlockOverlay(
+            child: PreludeAlert(
               appState: widget.appState,
+              // Neither the warning nor the cover makes sense while splash or
+              // onboarding is on screen: there is no work to interrupt yet.
               active: _inAppSession,
-              child: child ?? const SizedBox.shrink(),
+              child: BreakBlockOverlay(
+                appState: widget.appState,
+                active: _inAppSession,
+                child: child ?? const SizedBox.shrink(),
+              ),
             ),
           ),
           home: AnimatedSwitcher(

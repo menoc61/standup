@@ -284,6 +284,18 @@ query rather than an aggregation over raw logs. The legacy field name
   `setEnabled`, so a switch that was refused, or an entry the user deleted
   outside the app, shows the truth instead of the last tap. No native code, no
   new dependency, and no macOS path, because no macOS build exists to test one.
+- **Quiet mode is one flag, read everywhere, stored nowhere.** `isInterruptionPaused`
+  (`quietMode || quietHours`) is the single question the chime, the nudge, the
+  prelude getter, the forced-break rule (`shouldBlockBreak(quiet:)`) and the OS
+  queue ask, so "do not interrupt me" cannot be honoured in three places out of
+  four. It is deliberately **not** persisted: unlike a preference, a suppressed
+  state survives silently — the user forgets it is on and the app looks broken —
+  so a restart returns to normal and the bar in
+  `ui/widgets/quiet_mode_banner.dart` says so in the meantime. Workrave
+  distinguishes *quiet* from *suspended* because it records keyboard activity
+  that suspension must stop; this app records credit only on an explicit action,
+  so the second mode would be a distinction without a difference and is not
+  implemented.
 - **The guided stretch is bound to the window it started in.** A stretch that
   begins at the end of a window necessarily finishes after it, so its completion
   is honoured via `_breakWindowKey`. Without that binding the completion would be

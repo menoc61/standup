@@ -17,12 +17,14 @@ void main() {
       bool windowOpen = true,
       bool alreadyCompleted = false,
       bool breakInProgress = false,
+      bool quiet = false,
     }) => shouldBlockBreak(
       blockingEnabled: blockingEnabled,
       userAway: userAway,
       windowOpen: windowOpen,
       alreadyCompleted: alreadyCompleted,
       breakInProgress: breakInProgress,
+      quiet: quiet,
     );
 
     test('blocks only when every condition is met', () {
@@ -51,6 +53,12 @@ void main() {
       // The stretch screen already owns the UI; a cover on top of it would
       // fight the flow the block exists to encourage.
       expect(block(breakInProgress: true), isFalse);
+    });
+
+    test('quiet mode outranks every other reason to take the screen', () {
+      // A demo, a call, a presentation: the moment a takeover would be most
+      // damaging is the moment the user asked for quiet.
+      expect(block(quiet: true), isFalse);
     });
   });
 

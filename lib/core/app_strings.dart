@@ -565,4 +565,10 @@ const Map<String, String> _french = {
   'Start with your computer': 'Démarrer avec l’ordinateur',
   'Launches StandUp at sign-in so reminders still fire after a reboot.': 'Lance StandUp à l’ouverture de session pour que les rappels continuent après un redémarrage.',
   'This platform cannot register a startup app, so reminders only run while the app is open.': 'Cette plateforme ne peut pas enregistrer de démarrage automatique ; les rappels ne fonctionnent donc que lorsque l’application est ouverte.',
+  // Quiet mode
+  'Quiet mode': 'Mode silencieux',
+  'Pause reminders': 'Suspendre les rappels',
+  'Resume reminders': 'Reprendre les rappels',
+  'Resume': 'Reprendre',
+  'Reminders and the forced break are paused until you resume or restart StandUp.': 'Les rappels et la pause forcée sont en suspens jusqu’à ce que vous repreniez ou relanciez StandUp.',
 };

@@ -362,6 +362,28 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(width: AppSpace.md),
+          // Quiet mode is the one control the user reaches for *during* an
+          // interruption ("I am about to share my screen"), so it lives on the
+          // dashboard rather than two screens deep in Settings.
+          IconButton(
+            onPressed: () =>
+                widget.appState.setQuietMode(!widget.appState.isQuietMode),
+            tooltip: appString(
+              context,
+              widget.appState.isQuietMode
+                  ? 'Resume reminders'
+                  : 'Pause reminders',
+            ),
+            icon: Icon(
+              widget.appState.isQuietMode
+                  ? Icons.notifications_off_outlined
+                  : Icons.notifications_active_outlined,
+              color: widget.appState.isQuietMode
+                  ? theme.colorScheme.onSurfaceVariant
+                  : accent,
+            ),
+          ),
+          const SizedBox(width: AppSpace.xs),
           Container(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpace.lg,

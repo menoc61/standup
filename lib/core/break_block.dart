@@ -12,6 +12,9 @@
 ///
 /// * `blockingEnabled` — an intrusive feature is opt-in, never forced on a user
 ///   by an upgrade.
+/// * `quiet` — "do not interrupt me" outranks every other reason to cover the
+///   screen: a demo, a call or a presentation is exactly when a takeover would
+///   be most damaging, and it is the one veto the user sets by hand.
 /// * `userAway` — seizing the screen of someone in a meeting is worse than
 ///   missing the break entirely.
 /// * `windowOpen` — the block belongs to the break window, not to the whole hour.
@@ -27,8 +30,10 @@ bool shouldBlockBreak({
   required bool windowOpen,
   required bool alreadyCompleted,
   required bool breakInProgress,
+  bool quiet = false,
 }) {
   if (!blockingEnabled) return false;
+  if (quiet) return false;
   if (userAway) return false;
   if (!windowOpen) return false;
   if (alreadyCompleted) return false;

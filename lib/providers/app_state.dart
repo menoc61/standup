@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show OAuthProvider;
 import 'package:uuid/uuid.dart';
 import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/core/presence.dart';
 import 'package:standup_app/data/local/local_repository.dart';
 import 'package:standup_app/data/local/widget_snapshot.dart';
 import 'package:standup_app/data/models/daily_analytics.dart';
@@ -23,6 +24,7 @@ import 'package:standup_app/data/remote/supabase_service.dart';
 import 'package:standup_app/services/audio_service.dart';
 import 'package:standup_app/services/haptics_service.dart';
 import 'package:standup_app/services/guidance_provider.dart';
+import 'package:standup_app/services/idle_time_source.dart';
 import 'package:standup_app/services/supabase_guidance_provider.dart';
 import 'package:standup_app/services/live_countdown_service.dart';
 import 'package:standup_app/services/notification_service.dart';
@@ -42,6 +44,9 @@ class AppState extends ChangeNotifier {
   final NotificationService notificationService;
   final AudioService audioService;
   final GuidanceProvider _aiGuidanceProvider;
+
+  /// Reports how long the machine has been untouched, when the platform can.
+  final IdleTimeSource idleTimeSource;
 
   /// Persistent notification that counts down to the next break.
   ///
@@ -104,11 +109,23 @@ class AppState extends ChangeNotifier {
   /// notification action and a tap race each other.
   final Set<int> _actedWindows = <int>{};
 
+  /// Classifies the OS idle reading into present/away. See [ActiveTimeTracker].
+  final ActiveTimeTracker _presence = ActiveTimeTracker();
+
+  /// Whether a real idle reading has ever arrived. Sticky, because a platform
+  /// that answered once is a platform that can answer; a single transient `null`
+  /// is not a reason to tell the UI the feature is missing.
+  bool _presenceAvailable = false;
+
+  /// Counts ticks so the idle reading is polled at human speed, not 1 Hz.
+  int _presenceTicks = 0;
+
   AppState({
     required this.localRepo,
     required this.supabaseService,
     required this.notificationService,
     required this.audioService,
+    this.idleTimeSource = const UnsupportedIdleTimeSource(),
     GuidanceProvider? aiGuidanceProvider,
   }) : _aiGuidanceProvider =
            aiGuidanceProvider ?? SupabaseGuidanceProvider(supabaseService);
@@ -314,6 +331,24 @@ class AppState extends ChangeNotifier {
   /// Whether the advisory prelude before an upcoming break is currently open.
   bool get isPreludeOpen => preludeWindow != null;
 
+  /// Whether the user appears to be away from the machine.
+  ///
+  /// Always false on platforms that cannot report idle time, so nothing that
+  /// depends on this can misfire where the reading does not exist.
+  bool get isUserAway => _presence.isAway;
+
+  /// The current presence classification, for the UI to render.
+  Presence get userPresence => _presence.presence;
+
+  /// Whether this platform can actually detect presence.
+  ///
+  /// The diagnostics in Settings read this so the app never implies it is
+  /// watching for absence on a platform where it is not.
+  bool get presenceDetectionAvailable => _presenceAvailable;
+
+  /// How long the user has been away as of now, or zero while present.
+  Duration get timeAway => _presence.awayDuration(DateTime.now());
+
   WindowSpan? _nextEligibleWindow(DateTime now) {
     var cursor = now;
     final lookAheadWindows = 7 * 24 * 60 ~/ _cadenceMinutes + 4;
@@ -512,7 +547,7 @@ class AppState extends ChangeNotifier {
     // opposite intent, and the onboarding copy says "stand up when you hear
     // the gentle chime".
     final windowOpen = isActionWindowOpen;
-    if (windowOpen && !_isBreakActive && !_reminderAlertPlayed) {
+    if (windowOpen && !_isBreakActive && !_reminderAlertPlayed && !isUserAway) {
       _reminderAlertPlayed = true;
       if (!isInQuietHours) unawaited(audioService.playChime());
     }
@@ -522,9 +557,24 @@ class AppState extends ChangeNotifier {
     // invitation to stand, which still belongs to the moment the window opens.
     // The flag is reset when the next window is scheduled, so each window warns
     // exactly once.
-    if (isPreludeOpen && !_isBreakActive && !_preludeAlertPlayed) {
+    //
+    // Both cues are withheld while the user is away. The flag is deliberately
+    // left unset in that case, so someone who returns mid-window still hears the
+    // invitation they missed rather than being silently skipped.
+    if (isPreludeOpen &&
+        !_isBreakActive &&
+        !_preludeAlertPlayed &&
+        !isUserAway) {
       _preludeAlertPlayed = true;
       if (!isInQuietHours) unawaited(audioService.playNudge());
+    }
+
+    // Presence moves at human speed, so the OS reading is polled every few
+    // seconds rather than every tick.
+    _presenceTicks++;
+    if (_presenceTicks >= AppCadence.presencePollSeconds) {
+      _presenceTicks = 0;
+      unawaited(_pollPresence());
     }
 
     // When the boundary passes, roll forward to the following window.
@@ -552,10 +602,29 @@ class AppState extends ChangeNotifier {
   /// Reconciles the visible timer and daily totals after an OS suspend/resume.
   Future<void> onAppResumed() async {
     _tick();
+    // A suspend is exactly when the idle reading is most useful: the OS knows
+    // how long the machine went untouched, and it is the only trustworthy
+    // source after a gap.
+    await _pollPresence();
     await refreshReminderQueue();
     await drainPendingWidgetAction();
     // The launcher may have missed a state change while the app was away.
     await syncWidget();
+  }
+
+  /// Feeds one OS idle reading into the presence tracker.
+  ///
+  /// Failures are the source's problem: it degrades to `null`, and the tracker
+  /// holds its previous state rather than guessing. Only a real classification
+  /// change notifies, so this never wakes the UI on a polling interval.
+  Future<void> _pollPresence() async {
+    if (_disposed) return;
+    final idle = await idleTimeSource.currentIdleTime();
+    if (_disposed) return;
+    if (idle != null) _presenceAvailable = true;
+    final before = _presence.presence;
+    _presence.observe(idle: idle, now: DateTime.now());
+    if (before != _presence.presence) notifyListeners();
   }
 
   /// Applies a stand-up requested from a widget while the app was closed.

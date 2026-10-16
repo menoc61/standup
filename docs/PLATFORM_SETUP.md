@@ -116,6 +116,28 @@ The plain Visual Studio install is not enough; `flutter doctor` will tell you so
 CI builds this on the hosted `windows-latest` image, which already has the
 workload, so the job is not gated.
 
+### Presence detection (all platforms)
+
+The decision logic is Dart and tested; the *readers* are native and **not built
+yet**, so `AppState.presenceDetectionAvailable` is currently `false` everywhere
+and reminders always sound. Settings → Device says so out loud, on purpose.
+
+| Platform | Planned reader | Status |
+| --- | --- | --- |
+| Windows | `GetLastInputInfo` | not implemented |
+| Linux (X11) | `XScreenSaverQueryInfo` | not implemented |
+| Linux (Wayland) | no portable idle API | likely never; documented as unsupported |
+| Android | interactive/`PowerManager` state | not implemented |
+| macOS / Web | — | not planned |
+
+When a reader lands it answers over the `standup/presence` method channel
+(`getIdleTime` → milliseconds, or `null`), which `PlatformIdleTimeSource`
+already speaks. The threshold, hysteresis and clock-jump handling live in
+`core/presence.dart` and need no platform-specific tests.
+
+Nothing read here is uploaded: see the local-only boundary in
+`docs/ARCHITECTURE.md`.
+
 ### Reminder delivery on Windows
 
 Windows uses scheduled toast notifications, so a reminder can fire while the app

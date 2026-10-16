@@ -53,6 +53,19 @@ abstract final class AppCadence {
   /// The workday the daily-progress figures are measured against.
   static const int workdayMinutes = 8 * 60;
 
+  /// How long without keyboard or mouse input counts as being away.
+  ///
+  /// Five minutes is longer than a screen-read while still short enough that a
+  /// forgotten desk is recognised before the next break is due. It exists so the
+  /// app never chimes at, or seizes the screen of, an empty chair.
+  static const int defaultAwayThresholdMinutes = 5;
+
+  /// How often the OS idle reading is polled, in seconds.
+  ///
+  /// The reading moves at human speed, so polling every tick would be pure
+  /// waste; once every few seconds is indistinguishable and far cheaper.
+  static const int presencePollSeconds = 5;
+
   /// How long before a window opens the prelude warning appears.
   ///
   /// The prelude is the "get ready to stop" notice: it fires this many minutes

@@ -1858,6 +1858,33 @@ class _DeviceSection extends StatelessWidget {
                 ),
               ],
             ),
+          const SizedBox(height: AppSpace.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                appState.presenceDetectionAvailable
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                size: 18,
+                color: appState.presenceDetectionAvailable
+                    ? AppColors.completed
+                    : theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: AppSpace.md),
+              Expanded(
+                child: Text(
+                  appString(
+                    context,
+                    appState.presenceDetectionAvailable
+                        ? 'This device reports whether you are at the keyboard, so reminders stay quiet when you step away.'
+                        : 'This platform cannot report whether you are at the keyboard, so reminders always sound.',
+                  ),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

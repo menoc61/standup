@@ -259,6 +259,13 @@ query rather than an aggregation over raw logs. The legacy field name
   `ui/widgets/prelude_alert.dart` renders it. Because the prelude ends exactly
   where the window begins, the two are never open at the same instant, and the
   counting gate is untouched.
+- **Presence is local, and "unknown" is not "present" or "away".**
+  `ActiveTimeTracker` (`core/presence.dart`) turns the OS idle reading into
+  present/away behind an `IdleTimeSource` port. The reading never leaves the
+  device and is never synced. A platform that cannot answer returns `null`, which
+  the tracker treats as "no information" and holds its previous state — the app
+  must never chime at an empty chair *or* silence a present user by guessing.
+  The away threshold is `AppCadence.defaultAwayThresholdMinutes`.
 - **The guided stretch is bound to the window it started in.** A stretch that
   begins at the end of a window necessarily finishes after it, so its completion
   is honoured via `_breakWindowKey`. Without that binding the completion would be

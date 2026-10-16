@@ -560,4 +560,9 @@ const Map<String, String> _french = {
   'This device reports whether you are at the keyboard, so the in-app chime stays silent when you step away.': 'Cet appareil indique si vous êtes au clavier ; la sonnerie de l’application reste donc silencieuse lorsque vous vous absentez.',
   'This platform cannot report whether you are at the keyboard, so reminders always sound.': 'Cette plateforme ne peut pas indiquer si vous êtes au clavier ; les rappels sonnent donc toujours.',
   'The device clock has moved repeatedly, so totals are flagged as unreliable for the leaderboard.': 'L’horloge de l’appareil a été modifiée à plusieurs reprises ; les totaux sont donc signalés comme non fiables pour le classement.',
+  // Startup registration
+  'Startup': 'Démarrage',
+  'Start with your computer': 'Démarrer avec l’ordinateur',
+  'Launches StandUp at sign-in so reminders still fire after a reboot.': 'Lance StandUp à l’ouverture de session pour que les rappels continuent après un redémarrage.',
+  'This platform cannot register a startup app, so reminders only run while the app is open.': 'Cette plateforme ne peut pas enregistrer de démarrage automatique ; les rappels ne fonctionnent donc que lorsque l’application est ouverte.',
 };

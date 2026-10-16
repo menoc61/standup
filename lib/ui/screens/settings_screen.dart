@@ -1044,6 +1044,14 @@ class SettingsScreen extends StatelessWidget {
                 const SizedBox(height: AppSpace.section),
 
                 // ----------------------------------------------------------------
+                // Startup
+                // ----------------------------------------------------------------
+                _SectionTitle(appString(context, 'Startup')),
+                const SizedBox(height: AppSpace.xl),
+                _AutostartSection(appState: appState, accent: accent),
+                const SizedBox(height: AppSpace.section),
+
+                // ----------------------------------------------------------------
                 // Background run
                 // ----------------------------------------------------------------
                 _SectionTitle(appString(context, 'Background Run')),
@@ -2339,6 +2347,65 @@ class _QuietHoursRow extends StatelessWidget {
           onChanged: onChanged,
         ),
       ],
+    );
+  }
+}
+
+/// Registers the app with the desktop session.
+///
+/// This is the only reminder control that lives outside the app, so it is the
+/// one that decides whether a rebooted machine still reminds anyone. It is shown
+/// everywhere — including where the platform cannot do it — because "not
+/// supported here" is information the user needs, not a row to hide.
+class _AutostartSection extends StatelessWidget {
+  final AppState appState;
+  final Color accent;
+
+  const _AutostartSection({required this.appState, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final supported = appState.autostartSupported;
+
+    return GlassCard(
+      padding: const EdgeInsets.all(AppSpace.xxl),
+      child: Row(
+        children: [
+          Icon(Icons.login_outlined, color: accent),
+          const SizedBox(width: AppSpace.xl),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  appString(context, 'Start with your computer'),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: AppFontSize.small,
+                  ),
+                ),
+                const SizedBox(height: AppSpace.xxs),
+                Text(
+                  appString(
+                    context,
+                    supported
+                        ? 'Launches StandUp at sign-in so reminders still fire after a reboot.'
+                        : 'This platform cannot register a startup app, so reminders only run while the app is open.',
+                  ),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          if (supported)
+            Switch(
+              value: appState.autostartEnabled,
+              activeThumbColor: accent,
+              onChanged: (value) => appState.setAutostart(value),
+            ),
+        ],
+      ),
     );
   }
 }

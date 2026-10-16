@@ -11,6 +11,7 @@ import 'package:standup_app/data/local/widget_action_dispatcher.dart';
 import 'package:standup_app/data/remote/supabase_service.dart';
 import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/services/audio_service.dart';
+import 'package:standup_app/services/autostart_service.dart';
 import 'package:standup_app/services/idle_time_source.dart';
 import 'package:standup_app/services/notification_service.dart';
 import 'package:standup_app/services/window_chrome.dart';
@@ -53,6 +54,8 @@ void main() async {
     idleTimeSource: const PlatformIdleTimeSource(),
     // No-ops where the native side is missing, so a plain run is unaffected.
     windowChrome: const PlatformWindowChrome(),
+    // Writes the session entry the OS reads at sign-in.
+    autostartService: PlatformAutostartService(),
   );
   notificationService.onActionReceived = appState.handleNotificationAction;
   await appState.init();

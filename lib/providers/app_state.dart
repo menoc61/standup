@@ -23,6 +23,7 @@ import 'package:standup_app/data/models/workday_metrics.dart';
 import 'package:standup_app/data/models/work_schedule.dart';
 import 'package:standup_app/data/remote/supabase_service.dart';
 import 'package:standup_app/services/audio_service.dart';
+import 'package:standup_app/services/autostart_service.dart';
 import 'package:standup_app/services/haptics_service.dart';
 import 'package:standup_app/services/guidance_provider.dart';
 import 'package:standup_app/services/idle_time_source.dart';
@@ -52,6 +53,9 @@ class AppState extends ChangeNotifier {
 
   /// Raises and lowers the window when the forced break starts and ends.
   final WindowChrome windowChrome;
+
+  /// Registers the app with the desktop session, so a reboot still reminds.
+  final AutostartService autostartService;
 
   /// Persistent notification that counts down to the next break.
   ///
@@ -130,6 +134,11 @@ class AppState extends ChangeNotifier {
   /// never once per tick, and never at all on a run that never blocks.
   bool _keepAboveApplied = false;
 
+  /// Whether the desktop session can be registered with at all, and whether it
+  /// currently is. Both are read from the OS in [init].
+  bool _autostartSupported = false;
+  bool _autostartEnabled = false;
+
   AppState({
     required this.localRepo,
     required this.supabaseService,
@@ -137,6 +146,7 @@ class AppState extends ChangeNotifier {
     required this.audioService,
     this.idleTimeSource = const UnsupportedIdleTimeSource(),
     this.windowChrome = const UnsupportedWindowChrome(),
+    this.autostartService = const UnsupportedAutostartService(),
     GuidanceProvider? aiGuidanceProvider,
   }) : _aiGuidanceProvider =
            aiGuidanceProvider ?? SupabaseGuidanceProvider(supabaseService);
@@ -261,6 +271,26 @@ class AppState extends ChangeNotifier {
       pixelRatio: pixelRatio,
       locale: locale,
     );
+  }
+
+  /// Whether this platform can register the app to start with the session.
+  bool get autostartSupported => _autostartSupported;
+
+  /// Whether the session is currently set to start the app.
+  bool get autostartEnabled => _autostartEnabled;
+
+  /// Registers or unregisters the app with the desktop session.
+  ///
+  /// The switch follows the OS, not the tap: [AutostartService.setEnabled]
+  /// returns what the session now says, so a refused registry write or a
+  /// read-only autostart directory leaves the control showing the truth instead
+  /// of a state the next reboot would contradict.
+  Future<void> setAutostart(bool enabled) async {
+    if (!_autostartSupported) return;
+    final applied = await autostartService.setEnabled(enabled);
+    if (_disposed || applied == _autostartEnabled) return;
+    _autostartEnabled = applied;
+    notifyListeners();
   }
 
   double get timerProgress {
@@ -497,6 +527,14 @@ class AppState extends ChangeNotifier {
     audioService.soundEnabled = _preferences!.soundEnabled;
     audioService.selectedSound = _preferences!.selectedSound;
     HapticsService.enabled = _preferences!.hapticsEnabled;
+
+    // 2b. Session registration. Read from the OS rather than stored, because the
+    // user can remove the entry outside the app; a remembered flag would then
+    // disagree with the session that actually starts.
+    _autostartSupported = autostartService.isSupported;
+    if (_autostartSupported) {
+      _autostartEnabled = await autostartService.isEnabled();
+    }
 
     // 3. Today's Analytics & History
     final today = localRepo.getTodayDateString();

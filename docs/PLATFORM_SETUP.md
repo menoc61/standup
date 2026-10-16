@@ -203,6 +203,30 @@ that the bundle *compiles*.
 
 ---
 
+## Starting with the session (Windows and Linux)
+
+Delivery limits above share one cause: nothing happens unless the app is
+running. Settings → **Startup** registers the app with the desktop session so a
+reboot does not silently end the reminders.
+
+| Platform | Mechanism |
+| --- | --- |
+| Windows | `REG_SZ` value `StandUp` under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, written through `reg.exe` — the same entry Task Manager shows under Startup apps. The path is quoted, because the value is a command line and an install under `C:\Program Files\…` would otherwise be split at the first space. |
+| Linux | `standup.desktop` in `${XDG_CONFIG_HOME:-$HOME/.config}/autostart`, the freedesktop convention every desktop environment reads. |
+| macOS, Android, iOS, web | Not supported; Settings says so rather than pretending. |
+
+No native code and no new dependency are involved. The session entry is the
+state of record: `AppState` reads it at startup instead of storing a flag, so an
+entry removed from the desktop settings cannot leave the switch claiming the
+opposite. A Linux entry that names a different binary (an old debug path) reads
+as *disabled* and is rewritten when the user switches it on.
+
+Not verified on a real desktop session from this repository. The Dart contract —
+which file, which registry value, which read-back — is covered by
+`test/autostart_test.dart`.
+
+---
+
 ## Apple: WidgetKit and interactive widgets
 
 Apple targets need two extra steps that no amount of CI will do for you.

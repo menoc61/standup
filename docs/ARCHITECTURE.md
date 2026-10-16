@@ -276,6 +276,14 @@ query rather than an aggregation over raw logs. The legacy field name
   the free escape it would otherwise be. It does not activate or un-minimise the
   window, and Alt-Tab/Super still work: what the feature claims is "stays in
   front of what you are looking at", not "locks the machine".
+- **Starting with the session is the one control outside the app.**
+  `AutostartService` (`services/autostart_service.dart`) writes the entry the
+  desktop reads at sign-in — a `Run` registry value via `reg.exe` on Windows, a
+  freedesktop `.desktop` file on Linux — or removes it. The session entry is the
+  state of record: `AppState` reads it in `init` and reports the read-back from
+  `setEnabled`, so a switch that was refused, or an entry the user deleted
+  outside the app, shows the truth instead of the last tap. No native code, no
+  new dependency, and no macOS path, because no macOS build exists to test one.
 - **The guided stretch is bound to the window it started in.** A stretch that
   begins at the end of a window necessarily finishes after it, so its completion
   is honoured via `_breakWindowKey`. Without that binding the completion would be

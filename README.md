@@ -67,6 +67,7 @@ server setup.
    - The window length and whether it is enforced at all are both configurable in **Settings → Reminder Cadence**.
    - A **prelude warning** announces each break a few minutes early (default five) with a dismissible in-app banner and a softer cue, so work can be saved before the break begins. On Windows and Linux it is also delivered as an OS notification, so the warning is visible while you are working in another app. It is advisory only — it never changes whether a break counts — and its lead time can be tuned or turned off in **Settings → Reminder Cadence**.
    - An optional **forced break** covers the app for the duration of the break window, so the reminder cannot be dismissed by carrying on. It is off by default, lifts the moment the break is logged or the window closes, and is withheld entirely while the machine is untouched so it can never seize an empty desk. On Windows and Linux the window is also kept above other applications for the duration, so switching away is no longer an escape. It is an in-app cover, not an operating-system lock: see the platform note in `docs/PLATFORM_SETUP.md`.
+   - **Startup registration** (Settings → Startup) writes the session entry Windows and Linux read at sign-in — a `Run` value or an autostart `.desktop` file — so a reboot no longer ends the reminders. The session entry is the state of record: the switch reflects what the OS says, not the last tap.
 
 1. **Progress & Competition**
    - XP per completed break, level curve, and a daily-goal ring.
@@ -241,7 +242,7 @@ flutter run -d ios
 
 The interface selects its navigation and dashboard composition from the available window width. Touch-sized bottom navigation is used on compact windows; wider windows get a keyboard-friendly sidebar and a two-column dashboard. Flutter's native gesture and animation APIs provide press feedback, hover states, onboarding swipes, and reduced-motion-aware page transitions. GSAP and React Native Gesture Handler are not part of this Flutter codebase.
 
-Reminder delivery is implemented with each platform's available notification mechanism. Exact-time delivery and permission prompts vary by OS and user settings; Linux and browser reminders require the app or tab to remain open. Windows desktop builds require Visual Studio's C++ desktop workload. See the install guide for build prerequisites and known platform limits.
+Reminder delivery is implemented with each platform's available notification mechanism. Exact-time delivery and permission prompts vary by OS and user settings; Linux and browser reminders require the app or tab to remain open. On Windows and Linux the app can register itself to start with the session (Settings → Startup), which is what keeps reminders alive across a reboot. Windows desktop builds require Visual Studio's C++ desktop workload. See the install guide for build prerequisites and known platform limits.
 
 ---
 

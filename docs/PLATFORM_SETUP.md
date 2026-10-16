@@ -118,22 +118,25 @@ workload, so the job is not gated.
 
 ### Presence detection (all platforms)
 
-The decision logic is Dart and tested; the *readers* are native and **not built
-yet**, so `AppState.presenceDetectionAvailable` is currently `false` everywhere
-and reminders always sound. Settings → Device says so out loud, on purpose.
+The decision logic is Dart and tested. The Windows reader is implemented
+(`GetLastInputInfo` in `windows/runner/flutter_window.cpp`); the Linux reader is
+not written yet, so on Linux `presenceDetectionAvailable` stays `false` and
+reminders always sound. Settings → Device says which of the two you are on, on
+purpose.
 
-| Platform | Planned reader | Status |
+| Platform | Reader | Status |
 | --- | --- | --- |
-| Windows | `GetLastInputInfo` | not implemented |
+| Windows | `GetLastInputInfo`, answered over `standup/presence` | implemented; **runtime unverified** here, CI only compiles it |
 | Linux (X11) | `XScreenSaverQueryInfo` | not implemented |
 | Linux (Wayland) | no portable idle API | likely never; documented as unsupported |
 | Android | interactive/`PowerManager` state | not implemented |
 | macOS / Web | — | not planned |
 
-When a reader lands it answers over the `standup/presence` method channel
-(`getIdleTime` → milliseconds, or `null`), which `PlatformIdleTimeSource`
-already speaks. The threshold, hysteresis and clock-jump handling live in
-`core/presence.dart` and need no platform-specific tests.
+`PlatformIdleTimeSource.isSupported` short-circuits to `null` on every other
+platform, so a mobile build never pays for a platform round-trip every polling
+interval only to learn nothing is registered. The threshold, hysteresis and
+clock-jump handling all live in `core/presence.dart` and need no
+platform-specific tests; a reader only has to answer milliseconds.
 
 Nothing read here is uploaded: see the local-only boundary in
 `docs/ARCHITECTURE.md`.

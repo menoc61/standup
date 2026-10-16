@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:standup_app/core/app_cadence.dart';
@@ -122,64 +124,89 @@ void main() {
       expect(await source.currentIdleTime(), isNull);
     });
 
+    test('a platform without a native reader never calls the channel', () async {
+      // No mock handler is registered here on purpose: if the source tried the
+      // channel, this test would fail rather than silently return null.
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      try {
+        expect(PlatformIdleTimeSource.isSupported, isFalse);
+        const source = PlatformIdleTimeSource();
+        expect(await source.currentIdleTime(), isNull);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
     testWidgets('the platform source degrades to null when the plugin is '
         'missing', (tester) async {
-      // Simulates the state of every platform until the presence channel is
-      // built: the engine answers that no implementation is registered. A
+      // Simulates the state of a desktop build before its native reader exists:
+      // the engine answers that no implementation is registered. A
       // MissingPluginException must not escape into the 1 Hz ticker.
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(const MethodChannel('standup/presence'), (
-            call,
-          ) async {
-            throw MissingPluginException('no presence implementation');
-          });
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      try {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(const MethodChannel('standup/presence'), (
+              call,
+            ) async {
+              throw MissingPluginException('no presence implementation');
+            });
 
-      const source = PlatformIdleTimeSource();
-      expect(await source.currentIdleTime(), isNull);
-
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-            const MethodChannel('standup/presence'),
-            null,
-          );
+        const source = PlatformIdleTimeSource();
+        expect(await source.currentIdleTime(), isNull);
+      } finally {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('standup/presence'),
+              null,
+            );
+        debugDefaultTargetPlatformOverride = null;
+      }
     });
 
     testWidgets('the platform source reads milliseconds from the channel', (
       tester,
     ) async {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(const MethodChannel('standup/presence'), (
-            call,
-          ) async {
-            expect(call.method, 'getIdleTime');
-            return 90000;
-          });
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      try {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(const MethodChannel('standup/presence'), (
+              call,
+            ) async {
+              expect(call.method, 'getIdleTime');
+              return 90000;
+            });
 
-      const source = PlatformIdleTimeSource();
-      expect(await source.currentIdleTime(), const Duration(seconds: 90));
-
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-            const MethodChannel('standup/presence'),
-            null,
-          );
+        const source = PlatformIdleTimeSource();
+        expect(await source.currentIdleTime(), const Duration(seconds: 90));
+      } finally {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('standup/presence'),
+              null,
+            );
+        debugDefaultTargetPlatformOverride = null;
+      }
     });
 
     testWidgets('a negative reading is treated as unknown', (tester) async {
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-            const MethodChannel('standup/presence'),
-            (call) async => -1,
-          );
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      try {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('standup/presence'),
+              (call) async => -1,
+            );
 
-      const source = PlatformIdleTimeSource();
-      expect(await source.currentIdleTime(), isNull);
-
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-            const MethodChannel('standup/presence'),
-            null,
-          );
+        const source = PlatformIdleTimeSource();
+        expect(await source.currentIdleTime(), isNull);
+      } finally {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('standup/presence'),
+              null,
+            );
+        debugDefaultTargetPlatformOverride = null;
+      }
     });
   });
 }

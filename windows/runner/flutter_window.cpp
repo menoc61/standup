@@ -1,8 +1,59 @@
 #include "flutter_window.h"
 
+#include <flutter/method_channel.h>
+#include <flutter/standard_method_codec.h>
+#include <windows.h>
+
+#include <cstdint>
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
+
+namespace {
+
+// Builds the presence channel wired to Win32's idle counter.
+//
+// `GetLastInputInfo` reports the tick count of the last keyboard or mouse
+// input, so the idle time is the difference to the current tick count. Both
+// values are DWORDs that wrap every ~49.7 days; subtracting in DWORD space
+// makes the wrap cancel out, which is why the result is taken as unsigned and
+// only then widened.
+//
+// The caller owns the returned channel: destroying it removes the handler.
+std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+CreatePresenceChannel(flutter::FlutterEngine* engine) {
+  auto channel = std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+      engine->messenger(), "standup/presence",
+      &flutter::StandardMethodCodec::GetInstance());
+
+  channel->SetMethodCallHandler(
+      [](const flutter::MethodCall<flutter::EncodableValue>& call,
+         std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+             result) {
+        if (call.method_name() != "getIdleTime") {
+          result->NotImplemented();
+          return;
+        }
+
+        LASTINPUTINFO last_input = {};
+        last_input.cbSize = sizeof(LASTINPUTINFO);
+        if (!GetLastInputInfo(&last_input)) {
+          // The API can fail during early logon or session transitions. Report
+          // "unknown" rather than zero: a fabricated zero would claim the user
+          // is present, and the Dart side treats a null as no information.
+          result->Success(flutter::EncodableValue());
+          return;
+        }
+
+        const DWORD idle_milliseconds = GetTickCount() - last_input.dwTime;
+        result->Success(
+            flutter::EncodableValue(static_cast<int64_t>(idle_milliseconds)));
+      });
+
+  return channel;
+}
+
+}  // namespace
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -25,6 +76,7 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  presence_channel_ = CreatePresenceChannel(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {

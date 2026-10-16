@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/services.dart';
 
 /// Port for "how long has the machine been untouched".
@@ -30,13 +32,26 @@ class UnsupportedIdleTimeSource implements IdleTimeSource {
 /// Kept separate from the service that owns it so a widget test can inject a
 /// fake without a platform handler. Any platform exception degrades to `null`
 /// (unknown) rather than propagating into the 1 Hz ticker.
+///
+/// The desktop check happens before the channel call, so a mobile or web build
+/// does not pay for a platform round-trip every polling interval only to be told
+/// no implementation is registered.
 class PlatformIdleTimeSource implements IdleTimeSource {
   static const MethodChannel _channel = MethodChannel('standup/presence');
 
   const PlatformIdleTimeSource();
 
+  /// Whether a native reader exists. Only the two priority desktop platforms
+  /// have one (`windows/runner/flutter_window.cpp`, and the Linux runner once it
+  /// is written); everywhere else answers `null` without a channel call.
+  static bool get isSupported =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux);
+
   @override
   Future<Duration?> currentIdleTime() async {
+    if (!isSupported) return null;
     try {
       final milliseconds = await _channel.invokeMethod<int>('getIdleTime');
       if (milliseconds == null || milliseconds < 0) return null;

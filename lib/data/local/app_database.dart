@@ -58,6 +58,8 @@ class UserPreferencesTable extends Table {
       boolean().withDefault(const Constant(true))();
   IntColumn get preludeMinutes =>
       integer().withDefault(const Constant(AppCadence.defaultPreludeMinutes))();
+  BoolColumn get breakBlockingEnabled =>
+      boolean().withDefault(const Constant(false))();
   TextColumn get workDays => text().withDefault(const Constant('1,2,3,4,5'))();
   IntColumn get workStartMinute =>
       integer().withDefault(const Constant(WorkSchedule.defaultStartMinute))();
@@ -128,7 +130,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -208,6 +210,13 @@ class AppDatabase extends _$AppDatabase {
         );
         await customStatement(
           'ALTER TABLE user_preferences_table ADD COLUMN prelude_minutes INTEGER NOT NULL DEFAULT 5',
+        );
+      }
+      if (from < 9) {
+        // Full-screen break blocking. Defaults to 0 so no existing user has
+        // their screen taken over by an upgrade they did not ask for.
+        await customStatement(
+          'ALTER TABLE user_preferences_table ADD COLUMN break_blocking_enabled INTEGER NOT NULL DEFAULT 0',
         );
       }
     },

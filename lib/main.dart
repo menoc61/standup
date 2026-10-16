@@ -16,6 +16,7 @@ import 'package:standup_app/services/notification_service.dart';
 import 'package:standup_app/ui/screens/main_shell.dart';
 import 'package:standup_app/ui/screens/onboarding/onboarding_screen.dart';
 import 'package:standup_app/ui/screens/splash_screen.dart';
+import 'package:standup_app/ui/widgets/break_block.dart';
 import 'package:standup_app/ui/widgets/prelude_alert.dart';
 
 void main() async {
@@ -75,6 +76,15 @@ class StandUpApp extends StatefulWidget {
 class _StandUpAppState extends State<StandUpApp> with WidgetsBindingObserver {
   bool _splashCompleted = false;
   bool _forceOnboarding = false;
+
+  /// Whether the user is actually working through the app, as opposed to being
+  /// on the splash or in onboarding. The heads-up banner and the forced-break
+  /// cover both gate on this: interrupting someone who has not yet set the app
+  /// up is noise, and covering the setup flow would be hostile.
+  bool get _inAppSession =>
+      _splashCompleted &&
+      widget.appState.preferences.onboardingCompleted &&
+      !_forceOnboarding;
 
   @override
   void initState() {
@@ -170,15 +180,19 @@ class _StandUpAppState extends State<StandUpApp> with WidgetsBindingObserver {
           themeMode: _resolveThemeMode(prefs.themeMode),
           theme: lightTheme,
           darkTheme: darkTheme,
+          // Both the heads-up banner and the forced-break cover are mounted here
+          // so they sit above every route. Order matters: the banner is painted
+          // first, the cover last, so when both would apply the cover wins.
           builder: (context, child) => PreludeAlert(
             appState: widget.appState,
-            // The warning only makes sense once the user is actually working
-            // through the app, not while splash or onboarding is on screen.
-            active:
-                _splashCompleted &&
-                prefs.onboardingCompleted &&
-                !_forceOnboarding,
-            child: child ?? const SizedBox.shrink(),
+            // Neither the warning nor the cover makes sense while splash or
+            // onboarding is on screen: there is no work to interrupt yet.
+            active: _inAppSession,
+            child: BreakBlockOverlay(
+              appState: widget.appState,
+              active: _inAppSession,
+              child: child ?? const SizedBox.shrink(),
+            ),
           ),
           home: AnimatedSwitcher(
             duration: const Duration(milliseconds: 420),

@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' show OAuthProvider;
 import 'package:uuid/uuid.dart';
 import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/core/break_block.dart';
 import 'package:standup_app/core/presence.dart';
 import 'package:standup_app/data/local/local_repository.dart';
 import 'package:standup_app/data/local/widget_snapshot.dart';
@@ -348,6 +349,24 @@ class AppState extends ChangeNotifier {
 
   /// How long the user has been away as of now, or zero while present.
   Duration get timeAway => _presence.awayDuration(DateTime.now());
+
+  /// Whether the forced-break screen should be covering the app right now.
+  ///
+  /// Delegates to the pure rule in `core/break_block.dart` so the decision can
+  /// be tested without constructing an `AppState`, and so the screen and the
+  /// timer can never disagree about when the block is due.
+  bool get isBreakBlockActive {
+    final window = activeWindow;
+    return shouldBlockBreak(
+      blockingEnabled: preferences.breakBlockingEnabled,
+      userAway: isUserAway,
+      windowOpen: window != null,
+      alreadyCompleted:
+          window != null &&
+          _actedWindows.contains(window.end.millisecondsSinceEpoch),
+      breakInProgress: _isBreakActive,
+    );
+  }
 
   WindowSpan? _nextEligibleWindow(DateTime now) {
     var cursor = now;
@@ -1090,6 +1109,7 @@ class AppState extends ChangeNotifier {
     bool? enforceActionWindow,
     bool? preludeEnabled,
     int? preludeMinutes,
+    bool? breakBlockingEnabled,
     String? workDays,
     int? workStartMinute,
     int? workEndMinute,
@@ -1105,6 +1125,16 @@ class AppState extends ChangeNotifier {
         endMinute: workEndMinute ?? preferences.workEndMinute,
       );
     }
+    // Enabling the forced break without a heads-up would cover the screen with
+    // no warning at all. The prelude toggle sits directly above it in Settings,
+    // so turning the block on quietly re-arms the warning instead of trapping
+    // the user behind a screen they never saw coming.
+    final effectivePreludeEnabled = breakBlockingEnabled == true
+        ? true
+        : preludeEnabled;
+    final preludeChanged =
+        effectivePreludeEnabled != null || preludeMinutes != null;
+
     _preferences = preferences.copyWith(
       themeMode: themeMode,
       colorSystem: colorSystem,
@@ -1120,8 +1150,9 @@ class AppState extends ChangeNotifier {
       streakGoal: streakGoal,
       actionWindowMinutes: actionWindowMinutes,
       enforceActionWindow: enforceActionWindow,
-      preludeEnabled: preludeEnabled,
+      preludeEnabled: effectivePreludeEnabled,
       preludeMinutes: preludeMinutes,
+      breakBlockingEnabled: breakBlockingEnabled,
       workDays: workDays,
       workStartMinute: workStartMinute,
       workEndMinute: workEndMinute,
@@ -1192,7 +1223,7 @@ class AppState extends ChangeNotifier {
     // The prelude is in-app everywhere and an OS notification on desktop, so the
     // queue has to be rebuilt there too. Re-arm the one-shot cue, but never
     // replay a warning for the window already showing.
-    if (preludeEnabled != null || preludeMinutes != null) {
+    if (preludeChanged) {
       _preludeAlertPlayed = isPreludeOpen;
       await refreshReminderQueue();
     }

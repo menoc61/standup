@@ -1755,6 +1755,43 @@ class _PreludeSection extends StatelessWidget {
             ],
           ),
         ],
+        const Divider(height: AppSpace.section),
+        // The forced break is the only setting that takes over the screen, so it
+        // sits on its own, after the advisory warning it depends on: without a
+        // heads-up first, covering the screen would be a trap rather than a
+        // prompt.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    appString(context, 'Block the screen during the break'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: AppFontSize.small,
+                    ),
+                  ),
+                  Text(
+                    appString(
+                      context,
+                      'Cover the app until you stand up. The break still ends when the window closes.',
+                    ),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: prefs.breakBlockingEnabled,
+              activeThumbColor: accent,
+              onChanged: (val) =>
+                  appState.updatePreferences(breakBlockingEnabled: val),
+            ),
+          ],
+        ),
       ],
     );
   }

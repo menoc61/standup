@@ -138,6 +138,17 @@ already speaks. The threshold, hysteresis and clock-jump handling live in
 Nothing read here is uploaded: see the local-only boundary in
 `docs/ARCHITECTURE.md`.
 
+### The forced break is not an OS lock
+
+`BreakBlockOverlay` is a Flutter `ModalBarrier` plus a full-window `Material`.
+It is authoritative *inside* the app — no tap, scroll or drag reaches the screen
+underneath — but it cannot stop the user switching to another application:
+Alt-Tab, Super, or a window manager shortcut all still work, and on Wayland a
+keep-above request is frequently ignored outright. Making the cover survive that
+needs the native keep-above/raise work (Windows `SetWindowPos`,
+`gtk_window_present_with_time`), which is **not built yet**. Until then the
+feature is deliberately documented as "covers the app", not "locks the screen".
+
 ### Reminder delivery on Windows
 
 Windows uses scheduled toast notifications, so a reminder can fire while the app

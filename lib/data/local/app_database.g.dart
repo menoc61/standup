@@ -745,6 +745,20 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     requiredDuringInsert: false,
     defaultValue: const Constant(AppCadence.defaultPreludeMinutes),
   );
+  static const VerificationMeta _breakBlockingEnabledMeta =
+      const VerificationMeta('breakBlockingEnabled');
+  @override
+  late final GeneratedColumn<bool> breakBlockingEnabled = GeneratedColumn<bool>(
+    'break_blocking_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("break_blocking_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _workDaysMeta = const VerificationMeta(
     'workDays',
   );
@@ -812,6 +826,7 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     enforceActionWindow,
     preludeEnabled,
     preludeMinutes,
+    breakBlockingEnabled,
     workDays,
     workStartMinute,
     workEndMinute,
@@ -968,6 +983,15 @@ class $UserPreferencesTableTable extends UserPreferencesTable
         ),
       );
     }
+    if (data.containsKey('break_blocking_enabled')) {
+      context.handle(
+        _breakBlockingEnabledMeta,
+        breakBlockingEnabled.isAcceptableOrUnknown(
+          data['break_blocking_enabled']!,
+          _breakBlockingEnabledMeta,
+        ),
+      );
+    }
     if (data.containsKey('work_days')) {
       context.handle(
         _workDaysMeta,
@@ -1078,6 +1102,10 @@ class $UserPreferencesTableTable extends UserPreferencesTable
         DriftSqlType.int,
         data['${effectivePrefix}prelude_minutes'],
       )!,
+      breakBlockingEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}break_blocking_enabled'],
+      )!,
       workDays: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}work_days'],
@@ -1122,6 +1150,7 @@ class UserPreferencesTableData extends DataClass
   final bool enforceActionWindow;
   final bool preludeEnabled;
   final int preludeMinutes;
+  final bool breakBlockingEnabled;
   final String workDays;
   final int workStartMinute;
   final int workEndMinute;
@@ -1144,6 +1173,7 @@ class UserPreferencesTableData extends DataClass
     required this.enforceActionWindow,
     required this.preludeEnabled,
     required this.preludeMinutes,
+    required this.breakBlockingEnabled,
     required this.workDays,
     required this.workStartMinute,
     required this.workEndMinute,
@@ -1171,6 +1201,7 @@ class UserPreferencesTableData extends DataClass
     map['enforce_action_window'] = Variable<bool>(enforceActionWindow);
     map['prelude_enabled'] = Variable<bool>(preludeEnabled);
     map['prelude_minutes'] = Variable<int>(preludeMinutes);
+    map['break_blocking_enabled'] = Variable<bool>(breakBlockingEnabled);
     map['work_days'] = Variable<String>(workDays);
     map['work_start_minute'] = Variable<int>(workStartMinute);
     map['work_end_minute'] = Variable<int>(workEndMinute);
@@ -1199,6 +1230,7 @@ class UserPreferencesTableData extends DataClass
       enforceActionWindow: Value(enforceActionWindow),
       preludeEnabled: Value(preludeEnabled),
       preludeMinutes: Value(preludeMinutes),
+      breakBlockingEnabled: Value(breakBlockingEnabled),
       workDays: Value(workDays),
       workStartMinute: Value(workStartMinute),
       workEndMinute: Value(workEndMinute),
@@ -1237,6 +1269,9 @@ class UserPreferencesTableData extends DataClass
       ),
       preludeEnabled: serializer.fromJson<bool>(json['preludeEnabled']),
       preludeMinutes: serializer.fromJson<int>(json['preludeMinutes']),
+      breakBlockingEnabled: serializer.fromJson<bool>(
+        json['breakBlockingEnabled'],
+      ),
       workDays: serializer.fromJson<String>(json['workDays']),
       workStartMinute: serializer.fromJson<int>(json['workStartMinute']),
       workEndMinute: serializer.fromJson<int>(json['workEndMinute']),
@@ -1264,6 +1299,7 @@ class UserPreferencesTableData extends DataClass
       'enforceActionWindow': serializer.toJson<bool>(enforceActionWindow),
       'preludeEnabled': serializer.toJson<bool>(preludeEnabled),
       'preludeMinutes': serializer.toJson<int>(preludeMinutes),
+      'breakBlockingEnabled': serializer.toJson<bool>(breakBlockingEnabled),
       'workDays': serializer.toJson<String>(workDays),
       'workStartMinute': serializer.toJson<int>(workStartMinute),
       'workEndMinute': serializer.toJson<int>(workEndMinute),
@@ -1289,6 +1325,7 @@ class UserPreferencesTableData extends DataClass
     bool? enforceActionWindow,
     bool? preludeEnabled,
     int? preludeMinutes,
+    bool? breakBlockingEnabled,
     String? workDays,
     int? workStartMinute,
     int? workEndMinute,
@@ -1311,6 +1348,7 @@ class UserPreferencesTableData extends DataClass
     enforceActionWindow: enforceActionWindow ?? this.enforceActionWindow,
     preludeEnabled: preludeEnabled ?? this.preludeEnabled,
     preludeMinutes: preludeMinutes ?? this.preludeMinutes,
+    breakBlockingEnabled: breakBlockingEnabled ?? this.breakBlockingEnabled,
     workDays: workDays ?? this.workDays,
     workStartMinute: workStartMinute ?? this.workStartMinute,
     workEndMinute: workEndMinute ?? this.workEndMinute,
@@ -1365,6 +1403,9 @@ class UserPreferencesTableData extends DataClass
       preludeMinutes: data.preludeMinutes.present
           ? data.preludeMinutes.value
           : this.preludeMinutes,
+      breakBlockingEnabled: data.breakBlockingEnabled.present
+          ? data.breakBlockingEnabled.value
+          : this.breakBlockingEnabled,
       workDays: data.workDays.present ? data.workDays.value : this.workDays,
       workStartMinute: data.workStartMinute.present
           ? data.workStartMinute.value
@@ -1396,6 +1437,7 @@ class UserPreferencesTableData extends DataClass
           ..write('enforceActionWindow: $enforceActionWindow, ')
           ..write('preludeEnabled: $preludeEnabled, ')
           ..write('preludeMinutes: $preludeMinutes, ')
+          ..write('breakBlockingEnabled: $breakBlockingEnabled, ')
           ..write('workDays: $workDays, ')
           ..write('workStartMinute: $workStartMinute, ')
           ..write('workEndMinute: $workEndMinute, ')
@@ -1423,6 +1465,7 @@ class UserPreferencesTableData extends DataClass
     enforceActionWindow,
     preludeEnabled,
     preludeMinutes,
+    breakBlockingEnabled,
     workDays,
     workStartMinute,
     workEndMinute,
@@ -1449,6 +1492,7 @@ class UserPreferencesTableData extends DataClass
           other.enforceActionWindow == this.enforceActionWindow &&
           other.preludeEnabled == this.preludeEnabled &&
           other.preludeMinutes == this.preludeMinutes &&
+          other.breakBlockingEnabled == this.breakBlockingEnabled &&
           other.workDays == this.workDays &&
           other.workStartMinute == this.workStartMinute &&
           other.workEndMinute == this.workEndMinute &&
@@ -1474,6 +1518,7 @@ class UserPreferencesTableCompanion
   final Value<bool> enforceActionWindow;
   final Value<bool> preludeEnabled;
   final Value<int> preludeMinutes;
+  final Value<bool> breakBlockingEnabled;
   final Value<String> workDays;
   final Value<int> workStartMinute;
   final Value<int> workEndMinute;
@@ -1497,6 +1542,7 @@ class UserPreferencesTableCompanion
     this.enforceActionWindow = const Value.absent(),
     this.preludeEnabled = const Value.absent(),
     this.preludeMinutes = const Value.absent(),
+    this.breakBlockingEnabled = const Value.absent(),
     this.workDays = const Value.absent(),
     this.workStartMinute = const Value.absent(),
     this.workEndMinute = const Value.absent(),
@@ -1521,6 +1567,7 @@ class UserPreferencesTableCompanion
     this.enforceActionWindow = const Value.absent(),
     this.preludeEnabled = const Value.absent(),
     this.preludeMinutes = const Value.absent(),
+    this.breakBlockingEnabled = const Value.absent(),
     this.workDays = const Value.absent(),
     this.workStartMinute = const Value.absent(),
     this.workEndMinute = const Value.absent(),
@@ -1546,6 +1593,7 @@ class UserPreferencesTableCompanion
     Expression<bool>? enforceActionWindow,
     Expression<bool>? preludeEnabled,
     Expression<int>? preludeMinutes,
+    Expression<bool>? breakBlockingEnabled,
     Expression<String>? workDays,
     Expression<int>? workStartMinute,
     Expression<int>? workEndMinute,
@@ -1574,6 +1622,8 @@ class UserPreferencesTableCompanion
         'enforce_action_window': enforceActionWindow,
       if (preludeEnabled != null) 'prelude_enabled': preludeEnabled,
       if (preludeMinutes != null) 'prelude_minutes': preludeMinutes,
+      if (breakBlockingEnabled != null)
+        'break_blocking_enabled': breakBlockingEnabled,
       if (workDays != null) 'work_days': workDays,
       if (workStartMinute != null) 'work_start_minute': workStartMinute,
       if (workEndMinute != null) 'work_end_minute': workEndMinute,
@@ -1600,6 +1650,7 @@ class UserPreferencesTableCompanion
     Value<bool>? enforceActionWindow,
     Value<bool>? preludeEnabled,
     Value<int>? preludeMinutes,
+    Value<bool>? breakBlockingEnabled,
     Value<String>? workDays,
     Value<int>? workStartMinute,
     Value<int>? workEndMinute,
@@ -1625,6 +1676,7 @@ class UserPreferencesTableCompanion
       enforceActionWindow: enforceActionWindow ?? this.enforceActionWindow,
       preludeEnabled: preludeEnabled ?? this.preludeEnabled,
       preludeMinutes: preludeMinutes ?? this.preludeMinutes,
+      breakBlockingEnabled: breakBlockingEnabled ?? this.breakBlockingEnabled,
       workDays: workDays ?? this.workDays,
       workStartMinute: workStartMinute ?? this.workStartMinute,
       workEndMinute: workEndMinute ?? this.workEndMinute,
@@ -1689,6 +1741,11 @@ class UserPreferencesTableCompanion
     if (preludeMinutes.present) {
       map['prelude_minutes'] = Variable<int>(preludeMinutes.value);
     }
+    if (breakBlockingEnabled.present) {
+      map['break_blocking_enabled'] = Variable<bool>(
+        breakBlockingEnabled.value,
+      );
+    }
     if (workDays.present) {
       map['work_days'] = Variable<String>(workDays.value);
     }
@@ -1727,6 +1784,7 @@ class UserPreferencesTableCompanion
           ..write('enforceActionWindow: $enforceActionWindow, ')
           ..write('preludeEnabled: $preludeEnabled, ')
           ..write('preludeMinutes: $preludeMinutes, ')
+          ..write('breakBlockingEnabled: $breakBlockingEnabled, ')
           ..write('workDays: $workDays, ')
           ..write('workStartMinute: $workStartMinute, ')
           ..write('workEndMinute: $workEndMinute, ')
@@ -3210,6 +3268,7 @@ typedef $$UserPreferencesTableTableCreateCompanionBuilder =
       Value<bool> enforceActionWindow,
       Value<bool> preludeEnabled,
       Value<int> preludeMinutes,
+      Value<bool> breakBlockingEnabled,
       Value<String> workDays,
       Value<int> workStartMinute,
       Value<int> workEndMinute,
@@ -3235,6 +3294,7 @@ typedef $$UserPreferencesTableTableUpdateCompanionBuilder =
       Value<bool> enforceActionWindow,
       Value<bool> preludeEnabled,
       Value<int> preludeMinutes,
+      Value<bool> breakBlockingEnabled,
       Value<String> workDays,
       Value<int> workStartMinute,
       Value<int> workEndMinute,
@@ -3333,6 +3393,11 @@ class $$UserPreferencesTableTableFilterComposer
 
   ColumnFilters<int> get preludeMinutes => $composableBuilder(
     column: $table.preludeMinutes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get breakBlockingEnabled => $composableBuilder(
+    column: $table.breakBlockingEnabled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3451,6 +3516,11 @@ class $$UserPreferencesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get breakBlockingEnabled => $composableBuilder(
+    column: $table.breakBlockingEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get workDays => $composableBuilder(
     column: $table.workDays,
     builder: (column) => ColumnOrderings(column),
@@ -3560,6 +3630,11 @@ class $$UserPreferencesTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get breakBlockingEnabled => $composableBuilder(
+    column: $table.breakBlockingEnabled,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get workDays =>
       $composableBuilder(column: $table.workDays, builder: (column) => column);
 
@@ -3637,6 +3712,7 @@ class $$UserPreferencesTableTableTableManager
                 Value<bool> enforceActionWindow = const Value.absent(),
                 Value<bool> preludeEnabled = const Value.absent(),
                 Value<int> preludeMinutes = const Value.absent(),
+                Value<bool> breakBlockingEnabled = const Value.absent(),
                 Value<String> workDays = const Value.absent(),
                 Value<int> workStartMinute = const Value.absent(),
                 Value<int> workEndMinute = const Value.absent(),
@@ -3660,6 +3736,7 @@ class $$UserPreferencesTableTableTableManager
                 enforceActionWindow: enforceActionWindow,
                 preludeEnabled: preludeEnabled,
                 preludeMinutes: preludeMinutes,
+                breakBlockingEnabled: breakBlockingEnabled,
                 workDays: workDays,
                 workStartMinute: workStartMinute,
                 workEndMinute: workEndMinute,
@@ -3685,6 +3762,7 @@ class $$UserPreferencesTableTableTableManager
                 Value<bool> enforceActionWindow = const Value.absent(),
                 Value<bool> preludeEnabled = const Value.absent(),
                 Value<int> preludeMinutes = const Value.absent(),
+                Value<bool> breakBlockingEnabled = const Value.absent(),
                 Value<String> workDays = const Value.absent(),
                 Value<int> workStartMinute = const Value.absent(),
                 Value<int> workEndMinute = const Value.absent(),
@@ -3708,6 +3786,7 @@ class $$UserPreferencesTableTableTableManager
                 enforceActionWindow: enforceActionWindow,
                 preludeEnabled: preludeEnabled,
                 preludeMinutes: preludeMinutes,
+                breakBlockingEnabled: breakBlockingEnabled,
                 workDays: workDays,
                 workStartMinute: workStartMinute,
                 workEndMinute: workEndMinute,

@@ -515,6 +515,14 @@ const Map<String, String> _french = {
   'Show a heads-up before each break so you can save your work.': 'Afficher un rappel avant chaque pause pour vous laisser le temps de sauvegarder.',
   'Heads-up': 'Préavis',
   'Minutes of warning before the break': 'Minutes de préavis avant la pause',
+  // Forced break
+  'Forced break': 'Pause forcée',
+  'Block the screen during the break': 'Bloquer l’écran pendant la pause',
+  'Cover the app until you stand up. The break still ends when the window closes.': 'Couvrir l’application jusqu’à ce que vous vous leviez. La pause se termine tout de même à la fermeture de la fenêtre.',
+  'Time to stand up': 'Debout !',
+  'Stand, stretch and breathe. This screen lifts when the break ends or when you log it.': 'Levez-vous, étirez-vous et respirez. Cet écran disparaît à la fin de la pause ou dès que vous l’enregistrez.',
+  'Unlocks in {time}': 'Déblocage dans {time}',
+  'I stood up': 'Je me suis levé·e',
   // Device profile
   'Device & app': 'Appareil et application',
   'This device': 'Cet appareil',

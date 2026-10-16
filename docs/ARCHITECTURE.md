@@ -266,6 +266,13 @@ query rather than an aggregation over raw logs. The legacy field name
   the tracker treats as "no information" and holds its previous state — the app
   must never chime at an empty chair *or* silence a present user by guessing.
   The away threshold is `AppCadence.defaultAwayThresholdMinutes`.
+- **The forced break is a rule, not a widget.** `shouldBlockBreak`
+  (`core/break_block.dart`) is a pure five-input veto: opt-in, present, inside the
+  window, not already logged, no stretch running. `AppState.isBreakBlockActive`
+  delegates to it and `ui/widgets/break_block.dart` only renders the answer.
+  It is an in-app `ModalBarrier` cover, **not** an OS lock — the native keep-above
+  work is what makes it survive Alt-Tab, and until that lands the block is honest
+  about covering only the app's own window.
 - **The guided stretch is bound to the window it started in.** A stretch that
   begins at the end of a window necessarily finishes after it, so its completion
   is honoured via `_breakWindowKey`. Without that binding the completion would be
@@ -346,6 +353,9 @@ stateDiagram-v2
     Active --> Active: guided stretch running
     Active --> Complete: user stands (inside window)
     Active --> Idle: snooze / skip<br/>(recomputes next window)
+    Active --> Blocked: forced break opted in<br/>shouldBlockBreak()
+    Blocked --> Complete: user stands
+    Blocked --> Idle: window closes
 
     Complete --> Idle: dedupe checked<br/>hasCompletedInWindow()
 
@@ -353,6 +363,12 @@ stateDiagram-v2
         A stand outside the window is
         refused, which is what makes the
         leaderboard hard to inflate.
+    end note
+
+    note right of Blocked
+        In-app cover only, and never
+        raised while the machine is
+        untouched.
     end note
 
     note right of Prelude

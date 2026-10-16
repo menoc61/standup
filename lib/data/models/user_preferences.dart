@@ -54,6 +54,11 @@ class UserPreferences {
   /// How many minutes before a window opens the prelude warning appears.
   final int preludeMinutes;
 
+  /// When true the break window covers the screen until it is completed or the
+  /// window closes. Off by default: this is the one setting that takes over the
+  /// screen, so it is opted into rather than switched on for the user.
+  final bool breakBlockingEnabled;
+
   /// Workdays as sorted comma-separated DateTime weekday numbers (1=Monday).
   final String workDays;
   final int workStartMinute;
@@ -85,6 +90,7 @@ class UserPreferences {
     this.enforceActionWindow = true,
     this.preludeEnabled = true,
     this.preludeMinutes = AppCadence.defaultPreludeMinutes,
+    this.breakBlockingEnabled = false,
     this.workDays = '1,2,3,4,5',
     this.workStartMinute = WorkSchedule.defaultStartMinute,
     this.workEndMinute = WorkSchedule.defaultEndMinute,
@@ -110,6 +116,7 @@ class UserPreferences {
     bool? enforceActionWindow,
     bool? preludeEnabled,
     int? preludeMinutes,
+    bool? breakBlockingEnabled,
     String? workDays,
     int? workStartMinute,
     int? workEndMinute,
@@ -134,6 +141,7 @@ class UserPreferences {
       enforceActionWindow: enforceActionWindow ?? this.enforceActionWindow,
       preludeEnabled: preludeEnabled ?? this.preludeEnabled,
       preludeMinutes: preludeMinutes ?? this.preludeMinutes,
+      breakBlockingEnabled: breakBlockingEnabled ?? this.breakBlockingEnabled,
       workDays: workDays ?? this.workDays,
       workStartMinute: workStartMinute ?? this.workStartMinute,
       workEndMinute: workEndMinute ?? this.workEndMinute,
@@ -160,6 +168,7 @@ class UserPreferences {
       'enforce_action_window': enforceActionWindow,
       'prelude_enabled': preludeEnabled,
       'prelude_minutes': preludeMinutes,
+      'break_blocking_enabled': breakBlockingEnabled,
       'work_days': workDays,
       'work_start_minute': workStartMinute,
       'work_end_minute': workEndMinute,
@@ -196,6 +205,7 @@ class UserPreferences {
       preludeEnabled: json['prelude_enabled'] as bool? ?? true,
       preludeMinutes:
           json['prelude_minutes'] as int? ?? AppCadence.defaultPreludeMinutes,
+      breakBlockingEnabled: json['break_blocking_enabled'] as bool? ?? false,
       workDays: workSchedule.storedDays,
       workStartMinute: workSchedule.startMinute,
       workEndMinute: workSchedule.endMinute,
@@ -223,6 +233,7 @@ class UserPreferences {
       enforceActionWindow: true,
       preludeEnabled: true,
       preludeMinutes: AppCadence.defaultPreludeMinutes,
+      breakBlockingEnabled: false,
     );
   }
 }

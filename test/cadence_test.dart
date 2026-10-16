@@ -36,6 +36,7 @@ void main() {
       expect(prefs.streakGoal, AppCadence.defaultDailyGoal);
       expect(prefs.preludeEnabled, isTrue);
       expect(prefs.preludeMinutes, AppCadence.defaultPreludeMinutes);
+      expect(prefs.breakBlockingEnabled, isFalse);
     });
 
     test('fromJson falls back to AppCadence for missing keys', () {
@@ -48,6 +49,7 @@ void main() {
       expect(prefs.streakGoal, AppCadence.defaultDailyGoal);
       expect(prefs.preludeEnabled, isTrue);
       expect(prefs.preludeMinutes, AppCadence.defaultPreludeMinutes);
+      expect(prefs.breakBlockingEnabled, isFalse);
     });
 
     test('defaultPreferences matches AppCadence', () {
@@ -57,6 +59,7 @@ void main() {
       expect(prefs.streakGoal, AppCadence.defaultDailyGoal);
       expect(prefs.preludeEnabled, isTrue);
       expect(prefs.preludeMinutes, AppCadence.defaultPreludeMinutes);
+      expect(prefs.breakBlockingEnabled, isFalse);
     });
   });
 
@@ -119,6 +122,18 @@ void main() {
         reason:
             'The v8 migration writes '
             'DEFAULT ${AppCadence.defaultPreludeMinutes} for prelude_minutes.',
+      );
+    });
+
+    test('break_blocking_enabled migrates in as opted out', () {
+      // A forced screen takeover must never arrive as a side effect of an
+      // upgrade, so the migration default is the interesting value here rather
+      // than the column default.
+      expect(
+        databaseSource,
+        contains(
+          'ADD COLUMN break_blocking_enabled INTEGER NOT NULL DEFAULT 0',
+        ),
       );
     });
   });

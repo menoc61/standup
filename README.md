@@ -66,6 +66,7 @@ server setup.
    - Snoozing advances to the *next* window rather than granting an immediate extra break, so snoozes cannot be accumulated to farm credit.
    - The window length and whether it is enforced at all are both configurable in **Settings → Reminder Cadence**.
    - A **prelude warning** announces each break a few minutes early (default five) with a dismissible in-app banner and a softer cue, so work can be saved before the break begins. On Windows and Linux it is also delivered as an OS notification, so the warning is visible while you are working in another app. It is advisory only — it never changes whether a break counts — and its lead time can be tuned or turned off in **Settings → Reminder Cadence**.
+   - An optional **forced break** covers the app for the duration of the break window, so the reminder cannot be dismissed by carrying on. It is off by default, lifts the moment the break is logged or the window closes, and is withheld entirely while the machine is untouched so it can never seize an empty desk. It is an in-app cover, not an operating-system lock: see the platform note in `docs/PLATFORM_SETUP.md`.
 
 1. **Progress & Competition**
    - XP per completed break, level curve, and a daily-goal ring.

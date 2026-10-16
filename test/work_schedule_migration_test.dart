@@ -89,6 +89,8 @@ void main() {
       // must receive the defaults without losing the values it already had.
       expect(migrated.preludeEnabled, isTrue);
       expect(migrated.preludeMinutes, AppCadence.defaultPreludeMinutes);
+      // The forced-break column arrives at v9 and must default to opted out.
+      expect(migrated.breakBlockingEnabled, isFalse);
 
       final edited = migrated.copyWith(
         aiGuidanceOptIn: true,
@@ -97,6 +99,7 @@ void main() {
         workEndMinute: 16 * 60 + 30,
         preludeEnabled: false,
         preludeMinutes: 10,
+        breakBlockingEnabled: true,
       );
       await repository.saveUserPreferences(edited);
       final reloaded = await repository.getUserPreferences('local_legacy');
@@ -105,6 +108,7 @@ void main() {
       // The prelude choice round-trips through the real schema, not just JSON.
       expect(reloaded?.preludeEnabled, isFalse);
       expect(reloaded?.preludeMinutes, 10);
+      expect(reloaded?.breakBlockingEnabled, isTrue);
 
       final indexes = await database
           .customSelect("SELECT name FROM sqlite_master WHERE type = 'index'")

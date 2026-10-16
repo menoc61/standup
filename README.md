@@ -122,10 +122,11 @@ server setup.
 
 6. **Organization Health Insights (Admin View)**
    - Materialized / PostgreSQL view aggregates across departments.
-   - Organization completion rate among recorded actions and active employee count.
+   - Organization completion rate among recorded actions and the count of contributing teammates — the number of opted-in people whose rows passed the server's checks and the five-person cohort floor, which is why the card says "contributing" rather than "enrolled".
+   - A two-week strip of one bar per measured day, with the newest day compared against the average of the others, so the rate has a direction rather than a single number. Days the server omitted (below the cohort floor) are absent rather than drawn as zero.
    - Department completion-rate leaderboard (Engineering, Product & Design, Marketing, Operations).
-   - Organization views show privacy-protected daily aggregates; individual skip-hour analysis is not available.
-   - **Strict Privacy RLS**: No personal timestamps or individual employee logs are exposed to administrators.
+   - Organization views show privacy-protected daily aggregates only. Peak skip-hour analysis is **not** available and no longer advertised: it would require uploading the hour of each individual action, which is exactly the timestamp the privacy boundary keeps on the device.
+   - **Strict Privacy RLS**: No personal timestamps or individual employee logs are exposed to administrators. The dashboard is reachable only by a workspace **admin**; a member sees why the row is disabled instead of a button that leads to a refused query.
 
 7. **Adaptive Multi-Platform Layout**
    - Automatically switches between bottom `NavigationBar` on mobile (<720px) and side `NavigationRail` on desktop/tablet (>=720px).

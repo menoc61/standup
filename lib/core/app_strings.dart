@@ -353,6 +353,16 @@ const Map<String, String> _french = {
   'It\'s time to stand up! Your body will thank you.':
       'C’est le moment de vous lever ! Votre corps vous remerciera.',
   'active members': 'membres actifs',
+  'contributing members': 'membres participants',
+  'Contributing Employees': 'Collaborateurs participants',
+  'Teammates with recorded activity':
+      'Collègues ayant une activité enregistrée',
+  'Participating days': 'Jours participants',
+  'One bar per measured day. Any day below five contributing teammates is omitted by the server.': 'Une barre par jour mesuré. Toute journée comptant moins de cinq collègues participants est omise par le serveur.',
+  'days shown': 'jours affichés',
+  'pts above the earlier average': 'pts au-dessus de la moyenne précédente',
+  'pts below the earlier average': 'pts en dessous de la moyenne précédente',
+  'Aggregate trends are visible to workspace admins only.': 'Les tendances agrégées ne sont visibles que par les administrateurs de l’espace de travail.',
   'stands completed': 'pauses debout terminées',
   'skips': 'rappels ignorés',
   'Workspace membership is optional. Your individual reminder history stays on this device.': 'L’adhésion à l’espace est facultative. Votre historique individuel reste sur cet appareil.',

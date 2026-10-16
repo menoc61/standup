@@ -288,7 +288,29 @@ class SupabaseService {
   // ---------------------------------------------------------------------------
   // Org Aggregates (Admin View)
   // ---------------------------------------------------------------------------
-  Future<OrgAnalytics> fetchOrganizationAnalytics(String orgId) async {
+  /// The newest daily aggregate for an organisation, or null when none is
+  /// visible. A thin wrapper over [fetchOrganizationTrend] so every caller sees
+  /// the same query, cohort rules and department rows.
+  Future<OrgAnalytics?> fetchOrganizationAnalytics(String orgId) async {
+    final trend = await fetchOrganizationTrend(orgId, days: 1);
+    return trend.isEmpty ? null : trend.first;
+  }
+
+  /// The most recent [days] daily aggregates for an organisation, newest first.
+  ///
+  /// One row per measured day, so the dashboard can show a trend rather than a
+  /// single number that says nothing about direction. The view already carries
+  /// one row per date and filters unauthorised callers, untrusted rows and
+  /// cohorts smaller than five, so asking for more days widens the window
+  /// without widening what an admin can see about any individual.
+  ///
+  /// Department rows are fetched for the newest day only: the screen shows one
+  /// leaderboard, and repeating that query per day would be [days] round trips
+  /// for a breakdown nobody reads historically.
+  Future<List<OrgAnalytics>> fetchOrganizationTrend(
+    String orgId, {
+    int days = 14,
+  }) async {
     if (!_isInitialized || client == null) {
       throw StateError('Supabase is not configured.');
     }
@@ -302,11 +324,13 @@ class SupabaseService {
           .select()
           .eq('organization_id', orgId)
           .order('date', ascending: false)
-          .limit(1)
-          .maybeSingle();
+          .limit(days);
 
-      if (response == null) throw StateError('No aggregate data is available.');
+      if (response.isEmpty) {
+        throw StateError('No aggregate data is available.');
+      }
 
+      final latestDate = response.first['date'];
       final orgResponse = await client!
           .from('organizations')
           .select('name')
@@ -318,16 +342,21 @@ class SupabaseService {
             'department, active_users, total_completed, total_skipped, adherence_rate',
           )
           .eq('organization_id', orgId)
-          .eq('date', response['date']);
+          .eq('date', latestDate);
 
-      return OrgAnalytics.fromJson({
-        ...response,
-        'organization_name': orgResponse?['name'] ?? 'Organization',
-        'departments': departmentRows,
-        // Skip times are intentionally not shared; reminder-level timestamps
-        // remain local to each employee.
-        'peak_skip_hours': const <dynamic>[],
-      });
+      return [
+        for (final row in response)
+          OrgAnalytics.fromJson({
+            ...row,
+            'organization_name': orgResponse?['name'] ?? 'Organization',
+            'departments': row['date'] == latestDate
+                ? departmentRows
+                : const <dynamic>[],
+            // Skip times are intentionally not shared; reminder-level timestamps
+            // remain local to each employee.
+            'peak_skip_hours': const <dynamic>[],
+          }),
+      ];
     } catch (e) {
       debugPrint('Error fetching organization analytics: $e');
     }

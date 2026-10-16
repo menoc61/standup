@@ -113,3 +113,60 @@ class HourlySkipMetric {
     return trimmed.isEmpty ? null : trimmed;
   }
 }
+
+/// The shape of a measured window, rather than of any single day in it.
+///
+/// ## Why this is a model and not a widget calculation
+///
+/// A dashboard that shows only the newest day cannot answer the question an
+/// organisation actually asks — "better or worse?" — and the arithmetic that
+/// answers it is the easiest thing in the screen to get subtly wrong: an
+/// average of one, a division by a window that is not full, a comparison
+/// against a period that does not exist. It lives here, pure, so the tests pin
+/// it rather than an eyeballed bar chart.
+class OrgTrendSummary {
+  /// How many measured days the window holds.
+  final int dayCount;
+
+  /// The newest day's completion rate.
+  final double latestRate;
+
+  /// The mean of every *other* day in the window, or null when there is only
+  /// one. Excluding the newest day is what makes [deltaPoints] a comparison
+  /// rather than a day's distance from a number it helped compute.
+  final double? earlierAverageRate;
+
+  /// How many points the newest day sits above that average; negative is below.
+  final double? deltaPoints;
+
+  const OrgTrendSummary({
+    required this.dayCount,
+    required this.latestRate,
+    this.earlierAverageRate,
+    this.deltaPoints,
+  });
+
+  /// One day is not a trend, so a single-day window reports no direction rather
+  /// than a delta of zero, which would read as "flat" when nothing was compared.
+  bool get hasDirection => deltaPoints != null;
+
+  factory OrgTrendSummary.of(List<OrgAnalytics> trendNewestFirst) {
+    if (trendNewestFirst.isEmpty) {
+      return const OrgTrendSummary(dayCount: 0, latestRate: 0);
+    }
+    final latestRate = trendNewestFirst.first.adherenceRate;
+    final earlier = trendNewestFirst.skip(1).toList();
+    if (earlier.isEmpty) {
+      return OrgTrendSummary(dayCount: 1, latestRate: latestRate);
+    }
+    final average =
+        earlier.fold<double>(0, (sum, day) => sum + day.adherenceRate) /
+        earlier.length;
+    return OrgTrendSummary(
+      dayCount: trendNewestFirst.length,
+      latestRate: latestRate,
+      earlierAverageRate: average,
+      deltaPoints: latestRate - average,
+    );
+  }
+}

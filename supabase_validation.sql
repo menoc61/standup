@@ -144,10 +144,17 @@ BEGIN
 
     -- Only ever move counters forward. A retry or a tampered client replaying an
     -- older payload must never erase history.
+    --
+    -- `synced_to_cloud` used to be listed here, but no schema script ever
+    -- created it: the column existed only in this statement, so applying this
+    -- file to a database built from `supabase_schema.sql` produced an RPC that
+    -- failed at call time, on the first sync, with "column does not exist". A
+    -- server row written through this function is synced by construction, so the
+    -- column was carrying no information and is gone.
     INSERT INTO public.analytics_daily AS a (
         id, user_id, date, reminders_sent, reminders_completed,
-        reminders_snoozed, reminders_skipped, total_stand_minutes,
-        organization_id, synced_to_cloud
+        reminders_snoozed, reminders_skipped, total_stand_time,
+        organization_id
     )
     VALUES (
         gen_random_uuid(),
@@ -158,17 +165,18 @@ BEGIN
         GREATEST(p_reminders_snoozed, 0),
         GREATEST(p_reminders_skipped, 0),
         GREATEST(p_total_stand_minutes, 0),
-        v_org_id,
-        true
+        v_org_id
     )
     ON CONFLICT (user_id, date) DO UPDATE
     SET reminders_sent      = GREATEST(a.reminders_sent, EXCLUDED.reminders_sent),
         reminders_completed = GREATEST(a.reminders_completed, EXCLUDED.reminders_completed),
         reminders_snoozed   = GREATEST(a.reminders_snoozed, EXCLUDED.reminders_snoozed),
         reminders_skipped   = GREATEST(a.reminders_skipped, EXCLUDED.reminders_skipped),
-        total_stand_minutes = GREATEST(a.total_stand_minutes, EXCLUDED.total_stand_minutes),
+        -- `total_stand_time` is the base column; the aggregate views alias it to
+        -- `total_stand_minutes`. This clause used the alias against the table and
+        -- would have failed on the first sync of a fresh project.
+        total_stand_time    = GREATEST(a.total_stand_time, EXCLUDED.total_stand_time),
         organization_id     = COALESCE(EXCLUDED.organization_id, a.organization_id),
-        synced_to_cloud     = true,
         revision            = a.revision + 1,
         -- Trust is sticky: once a row is distrusted it stays untrusted so it
         -- cannot be laundered back in by a later clean-looking write.
@@ -238,7 +246,7 @@ SELECT
     COALESCE(SUM(a.reminders_completed), 0)::INTEGER AS total_completed,
     COALESCE(SUM(a.reminders_snoozed), 0)::INTEGER   AS total_snoozed,
     COALESCE(SUM(a.reminders_skipped), 0)::INTEGER   AS total_skipped,
-    COALESCE(SUM(a.total_stand_minutes), 0)::INTEGER AS total_stand_minutes,
+    COALESCE(SUM(a.total_stand_time), 0)::INTEGER AS total_stand_minutes,
     CASE
         WHEN COALESCE(SUM(a.reminders_sent), 0) = 0 THEN 0
         ELSE ROUND(

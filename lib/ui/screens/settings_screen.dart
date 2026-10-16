@@ -1214,21 +1214,41 @@ class SettingsScreen extends StatelessWidget {
                                 ),
                                 style: theme.textTheme.bodySmall,
                               ),
+                              // A member of a workspace who is not an admin used
+                              // to get a button that led to a query the RLS
+                              // policy refuses. Saying why is the honest
+                              // alternative to an "Open" that fails.
+                              if (user?.organizationId != null &&
+                                  user?.isAdmin != true) ...[
+                                const SizedBox(height: AppSpace.xxs),
+                                Text(
+                                  appString(
+                                    context,
+                                    'Aggregate trends are visible to workspace admins only.',
+                                  ),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
-                        // Disabled rather than hidden when no workspace is linked:
-                        // the row keeps its position instead of shifting under
-                        // the user's finger once an invite code is applied.
+                        // Enabled only for a workspace admin. Disabled rather
+                        // than hidden when no workspace is linked: the row keeps
+                        // its position instead of shifting under the user's
+                        // finger once an invite code is applied.
                         TextButton(
-                          onPressed: user?.organizationId == null
-                              ? null
-                              : () => Navigator.of(context).push(
+                          onPressed:
+                              user?.isAdmin == true &&
+                                  user?.organizationId != null
+                              ? () => Navigator.of(context).push(
                                   MaterialPageRoute<void>(
                                     builder: (_) =>
                                         OrgAdminScreen(appState: appState),
                                   ),
-                                ),
+                                )
+                              : null,
                           child: Text(appString(context, 'Open')),
                         ),
                       ],

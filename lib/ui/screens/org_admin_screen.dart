@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:standup_app/core/app_colors.dart';
 import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
+import 'package:standup_app/data/models/org_analytics.dart';
 import 'package:standup_app/ui/layout/adaptive.dart';
 import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/ui/widgets/glass_card.dart';
@@ -57,7 +58,13 @@ class OrgAdminScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => appState.triggerCloudSync(),
+            // Push first, then read: the local day's counters may not have
+            // reached the server yet, and a refresh that only re-read the
+            // aggregates would show the user their own action as missing.
+            onPressed: () async {
+              await appState.triggerCloudSync();
+              await appState.refreshOrgAnalytics();
+            },
             tooltip: appString(context, 'Refresh Org Aggregates'),
           ),
         ],
@@ -184,9 +191,16 @@ class OrgAdminScreen extends StatelessWidget {
                   children: [
                     _buildStatCard(
                       context,
-                      title: appString(context, 'Active Employees'),
+                      title: appString(context, 'Contributing Employees'),
                       value: '${org.activeUsers}',
-                      subtitle: appString(context, 'Enrolled teammates'),
+                      // The view counts distinct contributors among rows that
+                      // passed the server's checks and the five-person cohort
+                      // floor. "Enrolled" would have claimed more than the
+                      // number can support.
+                      subtitle: appString(
+                        context,
+                        'Teammates with recorded activity',
+                      ),
                       icon: Icons.people_outline,
                       color: accent,
                     ),
@@ -225,6 +239,10 @@ class OrgAdminScreen extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: AppSpace.section),
+
+                // Trend over the measured days
+                _TrendSection(trend: appState.orgTrend, accent: accent),
                 const SizedBox(height: AppSpace.section),
 
                 // Department Leaderboard
@@ -310,7 +328,7 @@ class OrgAdminScreen extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  '${dept.activeUsers} ${appString(context, 'active members')}',
+                                  '${dept.activeUsers} ${appString(context, 'contributing members')}',
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     fontSize: AppFontSize.caption,
                                   ),
@@ -405,6 +423,129 @@ class OrgAdminScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The measured days, oldest to newest.
+///
+/// ## Why this is here
+///
+/// The stat cards answer "how are we doing?" with one day, which cannot say
+/// which way anything is moving: a rate of 78% is encouraging after a week at
+/// 60% and alarming after a week at 90%. The bars are the same cohort-protected,
+/// server-validated rows the cards use — the rest of the window rather than one
+/// row of it, so no new data is exposed and no new rule is needed.
+class _TrendSection extends StatelessWidget {
+  /// Newest first, the order the query returns.
+  final List<OrgAnalytics> trend;
+  final Color accent;
+
+  const _TrendSection({required this.trend, required this.accent});
+
+  /// The drawing height of the strip; the tallest bar fills it exactly.
+  static const double _stripHeight = 96;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (trend.isEmpty) return const SizedBox.shrink();
+
+    // Oldest first so the strip reads like a calendar.
+    final days = trend.reversed.toList();
+    final summary = OrgTrendSummary.of(trend);
+    final delta = summary.deltaPoints;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          appString(context, 'Participating days'),
+          style: theme.textTheme.titleMedium,
+        ),
+        const SizedBox(height: AppSpace.sm),
+        Text(
+          appString(
+            context,
+            'One bar per measured day. Any day below five contributing teammates is omitted by the server.',
+          ),
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: AppSpace.xl),
+        GlassCard(
+          padding: const EdgeInsets.all(AppSpace.xxl),
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          blur: 8,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: _stripHeight,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (var i = 0; i < days.length; i++)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                          child: Tooltip(
+                            message:
+                                '${days[i].date} · '
+                                '${days[i].adherenceRate.toStringAsFixed(1)}%',
+                            // A rate of zero must still be visible as a mark:
+                            // an empty slot reads as "no data" rather than as
+                            // "nobody stood up".
+                            child: Container(
+                              height:
+                                  (_stripHeight *
+                                          (days[i].adherenceRate / 100).clamp(
+                                            0.02,
+                                            1.0,
+                                          ))
+                                      .toDouble(),
+                              decoration: BoxDecoration(
+                                color: i == days.length - 1
+                                    ? accent
+                                    : accent.withValues(alpha: 0.45),
+                                borderRadius: BorderRadius.circular(
+                                  AppRadius.xs,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpace.lg),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${days.length} ${appString(context, 'days shown')}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                  if (delta != null)
+                    Text(
+                      delta >= 0
+                          ? '${delta.abs().toStringAsFixed(1)} '
+                                '${appString(context, 'pts above the earlier average')}'
+                          : '${delta.abs().toStringAsFixed(1)} '
+                                '${appString(context, 'pts below the earlier average')}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: delta >= 0
+                            ? AppColors.completed
+                            : AppColors.snoozed,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

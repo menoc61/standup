@@ -70,7 +70,7 @@ class AppState extends ChangeNotifier {
   DailyAnalytics _todayAnalytics = DailyAnalytics.empty('user_local', '');
   List<DailyAnalytics> _dailyHistory = [];
   OrgAnalytics? _orgAnalytics;
-
+  List<OrgAnalytics> _orgTrend = const [];
   DateTime? _nextReminderTime;
   DateTime? _timerStartTime;
   String? _analyticsDate;
@@ -166,6 +166,12 @@ class AppState extends ChangeNotifier {
   DailyAnalytics get todayAnalytics => _todayAnalytics;
   List<DailyAnalytics> get dailyHistory => _dailyHistory;
   OrgAnalytics? get orgAnalytics => _orgAnalytics;
+
+  /// The recent daily aggregates for the admin dashboard, newest first.
+  ///
+  /// Empty for anyone who is not an admin of a configured workspace, so the
+  /// screen can tell "no data yet" from "not allowed" without guessing.
+  List<OrgAnalytics> get orgTrend => _orgTrend;
   DateTime? get nextReminderTime => _nextReminderTime;
   Duration get remainingDuration => _remainingDuration;
   int get consecutiveSkips => _consecutiveSkips;
@@ -600,13 +606,7 @@ class AppState extends ChangeNotifier {
     if (_userProfile!.isAdmin &&
         _userProfile!.organizationId != null &&
         supabaseService.client?.auth.currentUser?.id == _userProfile!.id) {
-      try {
-        _orgAnalytics = await supabaseService.fetchOrganizationAnalytics(
-          _userProfile!.organizationId!,
-        );
-      } catch (_) {
-        _orgAnalytics = null;
-      }
+      await _loadOrgTrend();
     }
 
     // 5. Restore the absolute due time. Restarting the app must not restart a
@@ -632,6 +632,40 @@ class AppState extends ChangeNotifier {
     await syncWidget();
 
     notifyListeners();
+  }
+
+  /// Loads the aggregate trend the admin dashboard renders.
+  ///
+  /// Shared by `init` and [refreshOrgAnalytics] so the first paint and every
+  /// later refresh apply the same guards: an admin of a configured workspace
+  /// signed in as themselves, and *only* then a query. A failure clears the
+  /// trend rather than leaving stale numbers on screen under a "refresh failed"
+  /// banner — a dashboard that shows yesterday's totals as today's is worse than
+  /// an empty one.
+  Future<void> _loadOrgTrend() async {
+    final orgId = _userProfile?.organizationId;
+    if (orgId == null) {
+      _orgTrend = const [];
+      _orgAnalytics = null;
+      return;
+    }
+    try {
+      _orgTrend = await supabaseService.fetchOrganizationTrend(orgId);
+      _orgAnalytics = _orgTrend.isEmpty ? null : _orgTrend.first;
+    } catch (_) {
+      _orgTrend = const [];
+      _orgAnalytics = null;
+    }
+  }
+
+  /// Re-reads the aggregate trend on demand, for the dashboard's refresh action.
+  Future<void> refreshOrgAnalytics() async {
+    if (_userProfile?.isAdmin != true ||
+        supabaseService.client?.auth.currentUser?.id != _userProfile?.id) {
+      return;
+    }
+    await _loadOrgTrend();
+    if (!_disposed) notifyListeners();
   }
 
   void _tick() {

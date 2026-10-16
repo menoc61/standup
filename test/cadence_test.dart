@@ -34,6 +34,8 @@ void main() {
       );
       expect(prefs.actionWindowMinutes, AppCadence.defaultActionWindowMinutes);
       expect(prefs.streakGoal, AppCadence.defaultDailyGoal);
+      expect(prefs.preludeEnabled, isTrue);
+      expect(prefs.preludeMinutes, AppCadence.defaultPreludeMinutes);
     });
 
     test('fromJson falls back to AppCadence for missing keys', () {
@@ -44,6 +46,8 @@ void main() {
       expect(prefs.notificationFrequency, AppCadence.defaultCadenceMinutes);
       expect(prefs.actionWindowMinutes, AppCadence.defaultActionWindowMinutes);
       expect(prefs.streakGoal, AppCadence.defaultDailyGoal);
+      expect(prefs.preludeEnabled, isTrue);
+      expect(prefs.preludeMinutes, AppCadence.defaultPreludeMinutes);
     });
 
     test('defaultPreferences matches AppCadence', () {
@@ -51,6 +55,8 @@ void main() {
       expect(prefs.notificationFrequency, AppCadence.defaultCadenceMinutes);
       expect(prefs.actionWindowMinutes, AppCadence.defaultActionWindowMinutes);
       expect(prefs.streakGoal, AppCadence.defaultDailyGoal);
+      expect(prefs.preludeEnabled, isTrue);
+      expect(prefs.preludeMinutes, AppCadence.defaultPreludeMinutes);
     });
   });
 
@@ -96,9 +102,24 @@ void main() {
         'notificationFrequency => integer().withDefault(const Constant(60))',
         'streakGoal => integer().withDefault(const Constant(8))',
         'actionWindowMinutes => integer().withDefault(const Constant(5))',
+        'preludeMinutes => integer().withDefault(const Constant(5))',
       ]) {
         expect(databaseSource, isNot(contains(staleDefault)));
       }
+    });
+
+    test('prelude_minutes column default matches '
+        'AppCadence.defaultPreludeMinutes', () {
+      expect(
+        databaseSource,
+        contains(
+          'ADD COLUMN prelude_minutes INTEGER NOT NULL '
+          'DEFAULT ${AppCadence.defaultPreludeMinutes}',
+        ),
+        reason:
+            'The v8 migration writes '
+            'DEFAULT ${AppCadence.defaultPreludeMinutes} for prelude_minutes.',
+      );
     });
   });
 
@@ -126,11 +147,19 @@ void main() {
       );
     });
 
+    test('preludeOptions contains defaultPreludeMinutes', () {
+      expect(
+        AppCadence.preludeOptions,
+        contains(AppCadence.defaultPreludeMinutes),
+      );
+    });
+
     test('options are strictly ascending', () {
       for (final list in [
         AppCadence.cadenceOptions,
         AppCadence.dailyGoalOptions,
         AppCadence.actionWindowOptions,
+        AppCadence.preludeOptions,
       ]) {
         for (var i = 1; i < list.length; i++) {
           expect(
@@ -190,6 +219,28 @@ void main() {
         );
       }
     });
+
+    test('resolvePrelude bounds the warning to the cadence', () {
+      expect(
+        AppCadence.resolvePrelude(10, 60),
+        10,
+        reason: 'a prelude shorter than the cadence survives',
+      );
+      expect(
+        AppCadence.resolvePrelude(90, 60),
+        60,
+        reason: 'a prelude longer than the cadence is clamped to it',
+      );
+      expect(
+        AppCadence.resolvePrelude(0, 60),
+        AppCadence.defaultPreludeMinutes,
+        reason: 'non-positive input falls back to the default',
+      );
+      expect(
+        AppCadence.resolvePrelude(-5, 60),
+        AppCadence.defaultPreludeMinutes,
+      );
+    });
   });
 
   group('scheduling', () {
@@ -205,6 +256,21 @@ void main() {
           AppCadence.reminderNotificationIdBase +
           AppCadence.scheduledReminderQueueSize;
       expect(last, lessThan(4242), reason: '4242 is the live countdown id');
+    });
+
+    test('the prelude id range does not overlap the reminder range', () {
+      final reminderEnd =
+          AppCadence.reminderNotificationIdBase +
+          AppCadence.scheduledReminderQueueSize;
+      expect(
+        AppCadence.preludeNotificationIdBase,
+        greaterThanOrEqualTo(reminderEnd),
+        reason: 'the two series must be cancellable independently',
+      );
+      final preludeEnd =
+          AppCadence.preludeNotificationIdBase +
+          AppCadence.scheduledReminderQueueSize;
+      expect(preludeEnd, lessThan(4242));
     });
 
     test('guided stretch divides evenly into steps', () {

@@ -94,6 +94,31 @@ void main() {
       );
     });
 
+    test('every appStringArgs pattern in the UI is translated', () {
+      // `appStringArgs` looked up its pattern the same way `appString` does, but
+      // nothing checked it: a pattern with no dictionary entry silently falls
+      // back to English in French mode. This closes that gap.
+      final missing = <String>[];
+      final pattern = RegExp(
+        r"""appStringArgs\(\s*[\w.]+\s*,\s*'((?:[^'\\]|\\.)*)'""",
+      );
+      for (final file in dartFilesIn('lib')) {
+        final source = file.readAsStringSync();
+        for (final match in pattern.allMatches(source)) {
+          final key = match.group(1)!.replaceAll(r"\'", "'");
+          if (!hasFrenchTranslation(key)) missing.add(key);
+        }
+      }
+      expect(
+        missing,
+        isEmpty,
+        reason:
+            'These sentence patterns are shown in French mode but have no '
+            'translation. Add each one to _french in lib/core/app_strings.dart:\n'
+            '${missing.map((k) => '  - "$k"').join('\n')}',
+      );
+    });
+
     test('no appString key carries an interpolation', () {
       // `appString(context, '$n min')` looks up the already-substituted string,
       // which can never be a dictionary key, so it silently falls back to

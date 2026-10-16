@@ -53,6 +53,14 @@ abstract final class AppCadence {
   /// The workday the daily-progress figures are measured against.
   static const int workdayMinutes = 8 * 60;
 
+  /// How long before a window opens the prelude warning appears.
+  ///
+  /// The prelude is the "get ready to stop" notice: it fires this many minutes
+  /// before the actionable window so the user can save their work before the
+  /// break begins. Unlike the action window it is purely advisory — it never
+  /// changes whether a break counts, only whether the app warns first.
+  static const int defaultPreludeMinutes = 5;
+
   // ── Bounds ─────────────────────────────────────────────────────────────────
 
   static const int minCadenceMinutes = 1;
@@ -79,6 +87,21 @@ abstract final class AppCadence {
     return requested > safeCadence ? safeCadence : requested;
   }
 
+  /// Resolves the effective prelude length against the cadence.
+  ///
+  /// The prelude sits in the gap before a window opens, so it can never be
+  /// longer than the cadence it precedes. Invalid or non-positive input falls
+  /// back to [defaultPreludeMinutes], bounded by the cadence.
+  static int resolvePrelude(int requested, int cadence) {
+    final safeCadence = clampCadence(cadence);
+    if (requested <= 0) {
+      return safeCadence < defaultPreludeMinutes
+          ? safeCadence
+          : defaultPreludeMinutes;
+    }
+    return requested > safeCadence ? safeCadence : requested;
+  }
+
   // ── The option sets the UI offers ──────────────────────────────────────────
   //
   // Declared once so the settings screen, the onboarding picker and the widget
@@ -99,6 +122,9 @@ abstract final class AppCadence {
   /// the defect backlog.
   static const List<int> actionWindowOptions = [3, 5, 10, 15];
 
+  /// Prelude-warning lengths, in minutes.
+  static const List<int> preludeOptions = [1, 2, 5, 10];
+
   // ── Reminder scheduling ────────────────────────────────────────────────────
 
   /// How many upcoming reminders the OS queue holds.
@@ -113,6 +139,14 @@ abstract final class AppCadence {
   /// A fixed base, because the ids must be stable across launches to be
   /// cancellable: a reminder at index 3 is always id 104.
   static const int reminderNotificationIdBase = 101;
+
+  /// The lowest notification id used for the prelude series.
+  ///
+  /// Offset clear of the reminder series so the two are cancelled independently.
+  /// Only the desktop queue uses this range: the mobile outstanding-request
+  /// budget is spent entirely on the actionable reminders, and the in-app banner
+  /// already covers the foreground case everywhere.
+  static const int preludeNotificationIdBase = 201;
 
   // ── Guided stretch ─────────────────────────────────────────────────────────
 

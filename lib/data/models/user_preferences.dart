@@ -47,6 +47,13 @@ class UserPreferences {
   /// accepted at any time. Useful for pilots that need a softer rule.
   final bool enforceActionWindow;
 
+  /// When true the app warns the user [preludeMinutes] before each break window
+  /// opens, so work can be saved before the break begins.
+  final bool preludeEnabled;
+
+  /// How many minutes before a window opens the prelude warning appears.
+  final int preludeMinutes;
+
   /// Workdays as sorted comma-separated DateTime weekday numbers (1=Monday).
   final String workDays;
   final int workStartMinute;
@@ -76,6 +83,8 @@ class UserPreferences {
     this.streakGoal = 8,
     this.actionWindowMinutes = 5,
     this.enforceActionWindow = true,
+    this.preludeEnabled = true,
+    this.preludeMinutes = AppCadence.defaultPreludeMinutes,
     this.workDays = '1,2,3,4,5',
     this.workStartMinute = WorkSchedule.defaultStartMinute,
     this.workEndMinute = WorkSchedule.defaultEndMinute,
@@ -99,6 +108,8 @@ class UserPreferences {
     int? streakGoal,
     int? actionWindowMinutes,
     bool? enforceActionWindow,
+    bool? preludeEnabled,
+    int? preludeMinutes,
     String? workDays,
     int? workStartMinute,
     int? workEndMinute,
@@ -121,6 +132,8 @@ class UserPreferences {
       streakGoal: streakGoal ?? this.streakGoal,
       actionWindowMinutes: actionWindowMinutes ?? this.actionWindowMinutes,
       enforceActionWindow: enforceActionWindow ?? this.enforceActionWindow,
+      preludeEnabled: preludeEnabled ?? this.preludeEnabled,
+      preludeMinutes: preludeMinutes ?? this.preludeMinutes,
       workDays: workDays ?? this.workDays,
       workStartMinute: workStartMinute ?? this.workStartMinute,
       workEndMinute: workEndMinute ?? this.workEndMinute,
@@ -145,6 +158,8 @@ class UserPreferences {
       'streak_goal': streakGoal,
       'action_window_minutes': actionWindowMinutes,
       'enforce_action_window': enforceActionWindow,
+      'prelude_enabled': preludeEnabled,
+      'prelude_minutes': preludeMinutes,
       'work_days': workDays,
       'work_start_minute': workStartMinute,
       'work_end_minute': workEndMinute,
@@ -178,6 +193,9 @@ class UserPreferences {
           json['action_window_minutes'] as int? ??
           AppCadence.defaultActionWindowMinutes,
       enforceActionWindow: json['enforce_action_window'] as bool? ?? true,
+      preludeEnabled: json['prelude_enabled'] as bool? ?? true,
+      preludeMinutes:
+          json['prelude_minutes'] as int? ?? AppCadence.defaultPreludeMinutes,
       workDays: workSchedule.storedDays,
       workStartMinute: workSchedule.startMinute,
       workEndMinute: workSchedule.endMinute,
@@ -203,6 +221,8 @@ class UserPreferences {
       streakGoal: AppCadence.defaultDailyGoal,
       actionWindowMinutes: AppCadence.defaultActionWindowMinutes,
       enforceActionWindow: true,
+      preludeEnabled: true,
+      preludeMinutes: AppCadence.defaultPreludeMinutes,
     );
   }
 }

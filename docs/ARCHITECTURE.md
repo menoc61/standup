@@ -253,6 +253,12 @@ query rather than an aggregation over raw logs. The legacy field name
 - **A break only counts inside its window.** `StandWindow` derives the window
   from local time (`HH:55`–`HH:00` by default). A `complete` outside the window
   is refused, which is what makes the leaderboard resistant to inflation.
+- **The prelude is advisory and never changes the rule.** `StandWindow.preludeWindow`
+  returns the `preludeMinutes` immediately before an upcoming window; `AppState`
+  exposes it as `preludeWindow`/`isPreludeOpen` and the banner in
+  `ui/widgets/prelude_alert.dart` renders it. Because the prelude ends exactly
+  where the window begins, the two are never open at the same instant, and the
+  counting gate is untouched.
 - **The guided stretch is bound to the window it started in.** A stretch that
   begins at the end of a window necessarily finishes after it, so its completion
   is honoured via `_breakWindowKey`. Without that binding the completion would be
@@ -326,6 +332,9 @@ stateDiagram-v2
         countdown --> countdown: sync accent + language
     }
 
+    Waiting --> Prelude: clock enters prelude<br/>(advisory only)
+    Prelude --> Prelude: banner + softer cue
+    Prelude --> Active: clock enters window
     Waiting --> Active: clock enters window
     Active --> Active: guided stretch running
     Active --> Complete: user stands (inside window)
@@ -337,6 +346,12 @@ stateDiagram-v2
         A stand outside the window is
         refused, which is what makes the
         leaderboard hard to inflate.
+    end note
+
+    note right of Prelude
+        Advisory only: it warns, it does
+        not count, and it never changes
+        whether a break is accepted.
     end note
 
     note right of Complete

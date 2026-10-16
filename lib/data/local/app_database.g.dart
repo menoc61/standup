@@ -718,6 +718,33 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _preludeEnabledMeta = const VerificationMeta(
+    'preludeEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> preludeEnabled = GeneratedColumn<bool>(
+    'prelude_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("prelude_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _preludeMinutesMeta = const VerificationMeta(
+    'preludeMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> preludeMinutes = GeneratedColumn<int>(
+    'prelude_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(AppCadence.defaultPreludeMinutes),
+  );
   static const VerificationMeta _workDaysMeta = const VerificationMeta(
     'workDays',
   );
@@ -783,6 +810,8 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     streakGoal,
     actionWindowMinutes,
     enforceActionWindow,
+    preludeEnabled,
+    preludeMinutes,
     workDays,
     workStartMinute,
     workEndMinute,
@@ -921,6 +950,24 @@ class $UserPreferencesTableTable extends UserPreferencesTable
         ),
       );
     }
+    if (data.containsKey('prelude_enabled')) {
+      context.handle(
+        _preludeEnabledMeta,
+        preludeEnabled.isAcceptableOrUnknown(
+          data['prelude_enabled']!,
+          _preludeEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('prelude_minutes')) {
+      context.handle(
+        _preludeMinutesMeta,
+        preludeMinutes.isAcceptableOrUnknown(
+          data['prelude_minutes']!,
+          _preludeMinutesMeta,
+        ),
+      );
+    }
     if (data.containsKey('work_days')) {
       context.handle(
         _workDaysMeta,
@@ -1023,6 +1070,14 @@ class $UserPreferencesTableTable extends UserPreferencesTable
         DriftSqlType.bool,
         data['${effectivePrefix}enforce_action_window'],
       )!,
+      preludeEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}prelude_enabled'],
+      )!,
+      preludeMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}prelude_minutes'],
+      )!,
       workDays: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}work_days'],
@@ -1065,6 +1120,8 @@ class UserPreferencesTableData extends DataClass
   final int streakGoal;
   final int actionWindowMinutes;
   final bool enforceActionWindow;
+  final bool preludeEnabled;
+  final int preludeMinutes;
   final String workDays;
   final int workStartMinute;
   final int workEndMinute;
@@ -1085,6 +1142,8 @@ class UserPreferencesTableData extends DataClass
     required this.streakGoal,
     required this.actionWindowMinutes,
     required this.enforceActionWindow,
+    required this.preludeEnabled,
+    required this.preludeMinutes,
     required this.workDays,
     required this.workStartMinute,
     required this.workEndMinute,
@@ -1110,6 +1169,8 @@ class UserPreferencesTableData extends DataClass
     map['streak_goal'] = Variable<int>(streakGoal);
     map['action_window_minutes'] = Variable<int>(actionWindowMinutes);
     map['enforce_action_window'] = Variable<bool>(enforceActionWindow);
+    map['prelude_enabled'] = Variable<bool>(preludeEnabled);
+    map['prelude_minutes'] = Variable<int>(preludeMinutes);
     map['work_days'] = Variable<String>(workDays);
     map['work_start_minute'] = Variable<int>(workStartMinute);
     map['work_end_minute'] = Variable<int>(workEndMinute);
@@ -1136,6 +1197,8 @@ class UserPreferencesTableData extends DataClass
       streakGoal: Value(streakGoal),
       actionWindowMinutes: Value(actionWindowMinutes),
       enforceActionWindow: Value(enforceActionWindow),
+      preludeEnabled: Value(preludeEnabled),
+      preludeMinutes: Value(preludeMinutes),
       workDays: Value(workDays),
       workStartMinute: Value(workStartMinute),
       workEndMinute: Value(workEndMinute),
@@ -1172,6 +1235,8 @@ class UserPreferencesTableData extends DataClass
       enforceActionWindow: serializer.fromJson<bool>(
         json['enforceActionWindow'],
       ),
+      preludeEnabled: serializer.fromJson<bool>(json['preludeEnabled']),
+      preludeMinutes: serializer.fromJson<int>(json['preludeMinutes']),
       workDays: serializer.fromJson<String>(json['workDays']),
       workStartMinute: serializer.fromJson<int>(json['workStartMinute']),
       workEndMinute: serializer.fromJson<int>(json['workEndMinute']),
@@ -1197,6 +1262,8 @@ class UserPreferencesTableData extends DataClass
       'streakGoal': serializer.toJson<int>(streakGoal),
       'actionWindowMinutes': serializer.toJson<int>(actionWindowMinutes),
       'enforceActionWindow': serializer.toJson<bool>(enforceActionWindow),
+      'preludeEnabled': serializer.toJson<bool>(preludeEnabled),
+      'preludeMinutes': serializer.toJson<int>(preludeMinutes),
       'workDays': serializer.toJson<String>(workDays),
       'workStartMinute': serializer.toJson<int>(workStartMinute),
       'workEndMinute': serializer.toJson<int>(workEndMinute),
@@ -1220,6 +1287,8 @@ class UserPreferencesTableData extends DataClass
     int? streakGoal,
     int? actionWindowMinutes,
     bool? enforceActionWindow,
+    bool? preludeEnabled,
+    int? preludeMinutes,
     String? workDays,
     int? workStartMinute,
     int? workEndMinute,
@@ -1240,6 +1309,8 @@ class UserPreferencesTableData extends DataClass
     streakGoal: streakGoal ?? this.streakGoal,
     actionWindowMinutes: actionWindowMinutes ?? this.actionWindowMinutes,
     enforceActionWindow: enforceActionWindow ?? this.enforceActionWindow,
+    preludeEnabled: preludeEnabled ?? this.preludeEnabled,
+    preludeMinutes: preludeMinutes ?? this.preludeMinutes,
     workDays: workDays ?? this.workDays,
     workStartMinute: workStartMinute ?? this.workStartMinute,
     workEndMinute: workEndMinute ?? this.workEndMinute,
@@ -1288,6 +1359,12 @@ class UserPreferencesTableData extends DataClass
       enforceActionWindow: data.enforceActionWindow.present
           ? data.enforceActionWindow.value
           : this.enforceActionWindow,
+      preludeEnabled: data.preludeEnabled.present
+          ? data.preludeEnabled.value
+          : this.preludeEnabled,
+      preludeMinutes: data.preludeMinutes.present
+          ? data.preludeMinutes.value
+          : this.preludeMinutes,
       workDays: data.workDays.present ? data.workDays.value : this.workDays,
       workStartMinute: data.workStartMinute.present
           ? data.workStartMinute.value
@@ -1317,6 +1394,8 @@ class UserPreferencesTableData extends DataClass
           ..write('streakGoal: $streakGoal, ')
           ..write('actionWindowMinutes: $actionWindowMinutes, ')
           ..write('enforceActionWindow: $enforceActionWindow, ')
+          ..write('preludeEnabled: $preludeEnabled, ')
+          ..write('preludeMinutes: $preludeMinutes, ')
           ..write('workDays: $workDays, ')
           ..write('workStartMinute: $workStartMinute, ')
           ..write('workEndMinute: $workEndMinute, ')
@@ -1326,7 +1405,7 @@ class UserPreferencesTableData extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     userId,
     themeMode,
@@ -1342,11 +1421,13 @@ class UserPreferencesTableData extends DataClass
     streakGoal,
     actionWindowMinutes,
     enforceActionWindow,
+    preludeEnabled,
+    preludeMinutes,
     workDays,
     workStartMinute,
     workEndMinute,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1366,6 +1447,8 @@ class UserPreferencesTableData extends DataClass
           other.streakGoal == this.streakGoal &&
           other.actionWindowMinutes == this.actionWindowMinutes &&
           other.enforceActionWindow == this.enforceActionWindow &&
+          other.preludeEnabled == this.preludeEnabled &&
+          other.preludeMinutes == this.preludeMinutes &&
           other.workDays == this.workDays &&
           other.workStartMinute == this.workStartMinute &&
           other.workEndMinute == this.workEndMinute &&
@@ -1389,6 +1472,8 @@ class UserPreferencesTableCompanion
   final Value<int> streakGoal;
   final Value<int> actionWindowMinutes;
   final Value<bool> enforceActionWindow;
+  final Value<bool> preludeEnabled;
+  final Value<int> preludeMinutes;
   final Value<String> workDays;
   final Value<int> workStartMinute;
   final Value<int> workEndMinute;
@@ -1410,6 +1495,8 @@ class UserPreferencesTableCompanion
     this.streakGoal = const Value.absent(),
     this.actionWindowMinutes = const Value.absent(),
     this.enforceActionWindow = const Value.absent(),
+    this.preludeEnabled = const Value.absent(),
+    this.preludeMinutes = const Value.absent(),
     this.workDays = const Value.absent(),
     this.workStartMinute = const Value.absent(),
     this.workEndMinute = const Value.absent(),
@@ -1432,6 +1519,8 @@ class UserPreferencesTableCompanion
     this.streakGoal = const Value.absent(),
     this.actionWindowMinutes = const Value.absent(),
     this.enforceActionWindow = const Value.absent(),
+    this.preludeEnabled = const Value.absent(),
+    this.preludeMinutes = const Value.absent(),
     this.workDays = const Value.absent(),
     this.workStartMinute = const Value.absent(),
     this.workEndMinute = const Value.absent(),
@@ -1455,6 +1544,8 @@ class UserPreferencesTableCompanion
     Expression<int>? streakGoal,
     Expression<int>? actionWindowMinutes,
     Expression<bool>? enforceActionWindow,
+    Expression<bool>? preludeEnabled,
+    Expression<int>? preludeMinutes,
     Expression<String>? workDays,
     Expression<int>? workStartMinute,
     Expression<int>? workEndMinute,
@@ -1481,6 +1572,8 @@ class UserPreferencesTableCompanion
         'action_window_minutes': actionWindowMinutes,
       if (enforceActionWindow != null)
         'enforce_action_window': enforceActionWindow,
+      if (preludeEnabled != null) 'prelude_enabled': preludeEnabled,
+      if (preludeMinutes != null) 'prelude_minutes': preludeMinutes,
       if (workDays != null) 'work_days': workDays,
       if (workStartMinute != null) 'work_start_minute': workStartMinute,
       if (workEndMinute != null) 'work_end_minute': workEndMinute,
@@ -1505,6 +1598,8 @@ class UserPreferencesTableCompanion
     Value<int>? streakGoal,
     Value<int>? actionWindowMinutes,
     Value<bool>? enforceActionWindow,
+    Value<bool>? preludeEnabled,
+    Value<int>? preludeMinutes,
     Value<String>? workDays,
     Value<int>? workStartMinute,
     Value<int>? workEndMinute,
@@ -1528,6 +1623,8 @@ class UserPreferencesTableCompanion
       streakGoal: streakGoal ?? this.streakGoal,
       actionWindowMinutes: actionWindowMinutes ?? this.actionWindowMinutes,
       enforceActionWindow: enforceActionWindow ?? this.enforceActionWindow,
+      preludeEnabled: preludeEnabled ?? this.preludeEnabled,
+      preludeMinutes: preludeMinutes ?? this.preludeMinutes,
       workDays: workDays ?? this.workDays,
       workStartMinute: workStartMinute ?? this.workStartMinute,
       workEndMinute: workEndMinute ?? this.workEndMinute,
@@ -1586,6 +1683,12 @@ class UserPreferencesTableCompanion
     if (enforceActionWindow.present) {
       map['enforce_action_window'] = Variable<bool>(enforceActionWindow.value);
     }
+    if (preludeEnabled.present) {
+      map['prelude_enabled'] = Variable<bool>(preludeEnabled.value);
+    }
+    if (preludeMinutes.present) {
+      map['prelude_minutes'] = Variable<int>(preludeMinutes.value);
+    }
     if (workDays.present) {
       map['work_days'] = Variable<String>(workDays.value);
     }
@@ -1622,6 +1725,8 @@ class UserPreferencesTableCompanion
           ..write('streakGoal: $streakGoal, ')
           ..write('actionWindowMinutes: $actionWindowMinutes, ')
           ..write('enforceActionWindow: $enforceActionWindow, ')
+          ..write('preludeEnabled: $preludeEnabled, ')
+          ..write('preludeMinutes: $preludeMinutes, ')
           ..write('workDays: $workDays, ')
           ..write('workStartMinute: $workStartMinute, ')
           ..write('workEndMinute: $workEndMinute, ')
@@ -3103,6 +3208,8 @@ typedef $$UserPreferencesTableTableCreateCompanionBuilder =
       Value<int> streakGoal,
       Value<int> actionWindowMinutes,
       Value<bool> enforceActionWindow,
+      Value<bool> preludeEnabled,
+      Value<int> preludeMinutes,
       Value<String> workDays,
       Value<int> workStartMinute,
       Value<int> workEndMinute,
@@ -3126,6 +3233,8 @@ typedef $$UserPreferencesTableTableUpdateCompanionBuilder =
       Value<int> streakGoal,
       Value<int> actionWindowMinutes,
       Value<bool> enforceActionWindow,
+      Value<bool> preludeEnabled,
+      Value<int> preludeMinutes,
       Value<String> workDays,
       Value<int> workStartMinute,
       Value<int> workEndMinute,
@@ -3214,6 +3323,16 @@ class $$UserPreferencesTableTableFilterComposer
 
   ColumnFilters<bool> get enforceActionWindow => $composableBuilder(
     column: $table.enforceActionWindow,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get preludeEnabled => $composableBuilder(
+    column: $table.preludeEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get preludeMinutes => $composableBuilder(
+    column: $table.preludeMinutes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3322,6 +3441,16 @@ class $$UserPreferencesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get preludeEnabled => $composableBuilder(
+    column: $table.preludeEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get preludeMinutes => $composableBuilder(
+    column: $table.preludeMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get workDays => $composableBuilder(
     column: $table.workDays,
     builder: (column) => ColumnOrderings(column),
@@ -3421,6 +3550,16 @@ class $$UserPreferencesTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get preludeEnabled => $composableBuilder(
+    column: $table.preludeEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get preludeMinutes => $composableBuilder(
+    column: $table.preludeMinutes,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get workDays =>
       $composableBuilder(column: $table.workDays, builder: (column) => column);
 
@@ -3496,6 +3635,8 @@ class $$UserPreferencesTableTableTableManager
                 Value<int> streakGoal = const Value.absent(),
                 Value<int> actionWindowMinutes = const Value.absent(),
                 Value<bool> enforceActionWindow = const Value.absent(),
+                Value<bool> preludeEnabled = const Value.absent(),
+                Value<int> preludeMinutes = const Value.absent(),
                 Value<String> workDays = const Value.absent(),
                 Value<int> workStartMinute = const Value.absent(),
                 Value<int> workEndMinute = const Value.absent(),
@@ -3517,6 +3658,8 @@ class $$UserPreferencesTableTableTableManager
                 streakGoal: streakGoal,
                 actionWindowMinutes: actionWindowMinutes,
                 enforceActionWindow: enforceActionWindow,
+                preludeEnabled: preludeEnabled,
+                preludeMinutes: preludeMinutes,
                 workDays: workDays,
                 workStartMinute: workStartMinute,
                 workEndMinute: workEndMinute,
@@ -3540,6 +3683,8 @@ class $$UserPreferencesTableTableTableManager
                 Value<int> streakGoal = const Value.absent(),
                 Value<int> actionWindowMinutes = const Value.absent(),
                 Value<bool> enforceActionWindow = const Value.absent(),
+                Value<bool> preludeEnabled = const Value.absent(),
+                Value<int> preludeMinutes = const Value.absent(),
                 Value<String> workDays = const Value.absent(),
                 Value<int> workStartMinute = const Value.absent(),
                 Value<int> workEndMinute = const Value.absent(),
@@ -3561,6 +3706,8 @@ class $$UserPreferencesTableTableTableManager
                 streakGoal: streakGoal,
                 actionWindowMinutes: actionWindowMinutes,
                 enforceActionWindow: enforceActionWindow,
+                preludeEnabled: preludeEnabled,
+                preludeMinutes: preludeMinutes,
                 workDays: workDays,
                 workStartMinute: workStartMinute,
                 workEndMinute: workEndMinute,

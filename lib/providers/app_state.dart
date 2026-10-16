@@ -68,6 +68,7 @@ class AppState extends ChangeNotifier {
   int _consecutiveSkips = 0;
   bool _isBreakActive = false;
   bool _reminderAlertPlayed = false;
+  bool _preludeAlertPlayed = false;
   int _activeBreakStep = 0;
   int _breakSecondsRemaining = AppCadence.guidedStretchSeconds;
   Timer? _breakTimer;
@@ -284,6 +285,35 @@ class AppState extends ChangeNotifier {
     return candidate;
   }
 
+  /// The advisory prelude currently open, or null when none is.
+  ///
+  /// The prelude is derived from the next *eligible* window — one the work
+  /// schedule actually allows — so a weekday-only user is never warned before a
+  /// weekend window that would not have been offered anyway. It is also
+  /// suppressed while a window is open: at the instant the window begins the
+  /// prelude is over, which is what keeps "get ready" from racing "go".
+  ///
+  /// Purely presentational. It never changes whether a break counts.
+  WindowSpan? get preludeWindow {
+    if (!preferences.preludeEnabled) return null;
+    final now = DateTime.now();
+    if (activeWindow != null) return null;
+    final upcoming = _nextEligibleWindow(now);
+    if (upcoming == null) return null;
+    final minutes = AppCadence.resolvePrelude(
+      preferences.preludeMinutes,
+      _cadenceMinutes,
+    );
+    final candidate = WindowSpan(
+      upcoming.start.subtract(Duration(minutes: minutes)),
+      upcoming.start,
+    );
+    return candidate.contains(now) ? candidate : null;
+  }
+
+  /// Whether the advisory prelude before an upcoming break is currently open.
+  bool get isPreludeOpen => preludeWindow != null;
+
   WindowSpan? _nextEligibleWindow(DateTime now) {
     var cursor = now;
     final lookAheadWindows = 7 * 24 * 60 ~/ _cadenceMinutes + 4;
@@ -487,6 +517,16 @@ class AppState extends ChangeNotifier {
       if (!isInQuietHours) unawaited(audioService.playChime());
     }
 
+    // The prelude is the "get ready to stop" warning that precedes the window.
+    // It plays a distinct, softer cue so it can never be mistaken for the
+    // invitation to stand, which still belongs to the moment the window opens.
+    // The flag is reset when the next window is scheduled, so each window warns
+    // exactly once.
+    if (isPreludeOpen && !_isBreakActive && !_preludeAlertPlayed) {
+      _preludeAlertPlayed = true;
+      if (!isInQuietHours) unawaited(audioService.playNudge());
+    }
+
     // When the boundary passes, roll forward to the following window.
     if (now.isAfter(_nextReminderTime ?? now)) {
       unawaited(_scheduleNextInterval(minutes: _cadenceMinutes));
@@ -539,6 +579,7 @@ class AppState extends ChangeNotifier {
   /// granting a free extra break.
   Future<void> _scheduleNextInterval({required int minutes}) async {
     _reminderAlertPlayed = false;
+    _preludeAlertPlayed = false;
     final now = DateTime.now();
     final safeMinutes = AppCadence.clampCadence(minutes);
     final active = activeWindow;
@@ -599,6 +640,8 @@ class AppState extends ChangeNotifier {
     // Suppress the chime if we are already inside a window that opened while
     // the app was closed, otherwise reopening mid-window would nag.
     _reminderAlertPlayed = active != null;
+    // Same for the prelude: reopening already inside it must not replay the cue.
+    _preludeAlertPlayed = isPreludeOpen;
 
     await _persistReminderInterval();
     await _scheduleReminderQueue(_nextReminderTime!);
@@ -631,6 +674,12 @@ class AppState extends ChangeNotifier {
           : 'Take a 5-minute break to stretch, breathe, and move.',
       quietHours: preferences.quietHours,
       actionWindowMinutes: _actionWindowMinutes,
+      preludeMinutes: preferences.preludeEnabled
+          ? AppCadence.resolvePrelude(
+              preferences.preludeMinutes,
+              _cadenceMinutes,
+            )
+          : 0,
       workDays: preferences.workDays,
       workStartMinute: preferences.workStartMinute,
       workEndMinute: preferences.workEndMinute,
@@ -970,6 +1019,8 @@ class AppState extends ChangeNotifier {
     int? streakGoal,
     int? actionWindowMinutes,
     bool? enforceActionWindow,
+    bool? preludeEnabled,
+    int? preludeMinutes,
     String? workDays,
     int? workStartMinute,
     int? workEndMinute,
@@ -1000,6 +1051,8 @@ class AppState extends ChangeNotifier {
       streakGoal: streakGoal,
       actionWindowMinutes: actionWindowMinutes,
       enforceActionWindow: enforceActionWindow,
+      preludeEnabled: preludeEnabled,
+      preludeMinutes: preludeMinutes,
       workDays: workDays,
       workStartMinute: workStartMinute,
       workEndMinute: workEndMinute,
@@ -1065,6 +1118,14 @@ class AppState extends ChangeNotifier {
     // queue to be rebuilt, because it decides which instants are scheduled.
     if (actionWindowMinutes != null || enforceActionWindow != null) {
       await _scheduleNextInterval(minutes: _cadenceMinutes);
+    }
+
+    // The prelude is in-app everywhere and an OS notification on desktop, so the
+    // queue has to be rebuilt there too. Re-arm the one-shot cue, but never
+    // replay a warning for the window already showing.
+    if (preludeEnabled != null || preludeMinutes != null) {
+      _preludeAlertPlayed = isPreludeOpen;
+      await refreshReminderQueue();
     }
 
     if (selectedSound != null) {

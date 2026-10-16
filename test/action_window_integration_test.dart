@@ -83,6 +83,84 @@ void main() {
     });
   });
 
+  group('Prelude warning precedes the window', () {
+    test('the default warning covers the five minutes before the hour', () {
+      final warned = <int>[];
+      final open = <int>[];
+      for (var minute = 0; minute < 60; minute++) {
+        final now = DateTime(2026, 3, 10, 14, minute);
+        if (StandWindow.isInPrelude(now: now, cadenceMinutes: 60)) {
+          warned.add(minute);
+        }
+        if (StandWindow.isActionable(now: now, cadenceMinutes: 60)) {
+          open.add(minute);
+        }
+      }
+      expect(warned, [50, 51, 52, 53, 54]);
+      expect(open, [55, 56, 57, 58, 59]);
+    });
+
+    test('the warning ends exactly where the window begins', () {
+      final prelude = StandWindow.preludeWindow(
+        now: DateTime(2026, 3, 10, 14, 52),
+      );
+      final window = StandWindow.activeWindow(
+        now: DateTime(2026, 3, 10, 14, 57),
+      );
+      expect(prelude, isNotNull);
+      expect(window, isNotNull);
+      expect(
+        prelude!.end,
+        window!.start,
+        reason: 'the banner must count down to the instant the break opens',
+      );
+    });
+
+    test('the warning and the window are never both open', () {
+      for (var minute = 0; minute < 60; minute++) {
+        final now = DateTime(2026, 3, 10, 14, minute);
+        final warned = StandWindow.isInPrelude(now: now, cadenceMinutes: 60);
+        final open = StandWindow.isActionable(now: now, cadenceMinutes: 60);
+        expect(
+          warned && open,
+          isFalse,
+          reason: 'minute $minute must not be both warning and break',
+        );
+      }
+    });
+
+    test('a longer warning starts proportionally earlier', () {
+      final warned = <int>[];
+      for (var minute = 0; minute < 60; minute++) {
+        final now = DateTime(2026, 3, 10, 14, minute);
+        if (StandWindow.isInPrelude(
+          now: now,
+          cadenceMinutes: 60,
+          preludeMinutes: 10,
+        )) {
+          warned.add(minute);
+        }
+      }
+      expect(warned.first, 45);
+      expect(warned.last, 54);
+    });
+
+    test('a non-positive warning is treated as disabled', () {
+      expect(
+        StandWindow.isInPrelude(
+          now: DateTime(2026, 3, 10, 14, 52),
+          cadenceMinutes: 60,
+          preludeMinutes: 0,
+        ),
+        isFalse,
+      );
+    });
+
+    test('no warning fires at the very top of the hour', () {
+      expect(StandWindow.preludeWindow(now: DateTime(2026, 3, 10, 14)), isNull);
+    });
+  });
+
   group('XP is bounded by what the windows allow', () {
     test('one break per window caps a day at 24 breaks', () {
       // 24 windows at 10 XP each is the theoretical daily maximum.

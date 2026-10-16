@@ -506,6 +506,15 @@ const Map<String, String> _french = {
   'Window length': 'Durée de la fenêtre',
   'Open this many minutes before the hour ends':
       'Ouvrir ce nombre de minutes avant la fin de l’heure',
+  // Prelude warning
+  'Break in {time}': 'Pause dans {time}',
+  'Wrap up what you are doing and get ready to stand.':
+      'Terminez ce que vous faites et préparez-vous à vous lever.',
+  'Got it': 'Compris',
+  'Warn before the break': 'Prévenir avant la pause',
+  'Show a heads-up before each break so you can save your work.': 'Afficher un rappel avant chaque pause pour vous laisser le temps de sauvegarder.',
+  'Heads-up': 'Préavis',
+  'Minutes of warning before the break': 'Minutes de préavis avant la pause',
   // Device profile
   'Device & app': 'Appareil et application',
   'This device': 'Cet appareil',

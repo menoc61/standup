@@ -54,6 +54,10 @@ class UserPreferencesTable extends Table {
   )();
   BoolColumn get enforceActionWindow =>
       boolean().withDefault(const Constant(true))();
+  BoolColumn get preludeEnabled =>
+      boolean().withDefault(const Constant(true))();
+  IntColumn get preludeMinutes =>
+      integer().withDefault(const Constant(AppCadence.defaultPreludeMinutes))();
   TextColumn get workDays => text().withDefault(const Constant('1,2,3,4,5'))();
   IntColumn get workStartMinute =>
       integer().withDefault(const Constant(WorkSchedule.defaultStartMinute))();
@@ -124,7 +128,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -192,6 +196,18 @@ class AppDatabase extends _$AppDatabase {
         // local-only until they enable it in Settings.
         await customStatement(
           'ALTER TABLE user_preferences_table ADD COLUMN ai_guidance_opt_in INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+      if (from < 8) {
+        // The prelude warning: a "get ready to stop" notice that fires before
+        // each window opens. It is advisory only and does not change whether a
+        // break counts, so every existing user keeps the same counting rule and
+        // simply gains the warning.
+        await customStatement(
+          'ALTER TABLE user_preferences_table ADD COLUMN prelude_enabled INTEGER NOT NULL DEFAULT 1',
+        );
+        await customStatement(
+          'ALTER TABLE user_preferences_table ADD COLUMN prelude_minutes INTEGER NOT NULL DEFAULT 5',
         );
       }
     },

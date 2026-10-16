@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/core/app_identity.dart';
 import 'package:standup_app/data/models/stand_window.dart';
 import 'package:standup_app/data/models/work_schedule.dart';
@@ -48,6 +49,37 @@ List<DateTime> reminderTimesForSchedule({
     );
   }
   return reminders;
+}
+
+/// The instants a prelude notification should fire, one per queued reminder.
+///
+/// Pure, so the desktop warning schedule can be tested without a platform
+/// notification plugin. A prelude is dropped when it would fire in the past (a
+/// reminder scheduled less than [preludeMinutes] from now — a warning that
+/// arrives *after* the break has started is worse than no warning), when it
+/// falls inside quiet hours, or when it falls outside [schedule]. The in-app cue
+/// applies the same quiet-hours rule, so the two never disagree about silence.
+@visibleForTesting
+List<DateTime> preludeTimesForReminders({
+  required List<DateTime> reminders,
+  required int preludeMinutes,
+  required DateTime now,
+  WorkSchedule? schedule,
+  String? quietHours,
+}) {
+  if (preludeMinutes <= 0) return const [];
+  final offset = Duration(minutes: preludeMinutes);
+  final preludes = <DateTime>[];
+  for (final reminder in reminders) {
+    final prelude = reminder.subtract(offset);
+    if (!prelude.isAfter(now)) continue;
+    if (QuietHours.isQuietAt(quietHours, prelude)) continue;
+    if (schedule != null && !schedule.allowsWindow(prelude, reminder)) {
+      continue;
+    }
+    preludes.add(prelude);
+  }
+  return preludes;
 }
 
 class NotificationService {
@@ -345,6 +377,85 @@ class NotificationService {
     }
   }
 
+  /// Schedules the desktop "get ready to stop" warning.
+  ///
+  /// Deliberately a separate channel from the break reminder with no
+  /// stand-up actions: a prelude is a heads-up, not the invitation to log a
+  /// break, so offering "I stood up!" on it would muddle the rule the whole app
+  /// is built around.
+  Future<void> schedulePreludeNotification({
+    required int id,
+    required DateTime scheduledTime,
+    String? title,
+    String? body,
+  }) async {
+    final french = _languageCode == 'fr';
+    final effectiveTitle =
+        title ?? (french ? 'Pause dans 5 min' : 'Break in 5 min');
+    final effectiveBody =
+        body ??
+        (french
+            ? 'Terminez ce que vous faites et préparez-vous à vous lever.'
+            : 'Wrap up what you are doing and get ready to stand.');
+
+    final notificationDetails = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'standup_prelude_channel',
+        french ? 'Préavis de pause' : 'Break Heads-up',
+        channelDescription: french
+            ? 'Un rappel avant chaque pause pour sauvegarder votre travail'
+            : 'A heads-up before each break so you can save your work',
+        importance: Importance.defaultImportance,
+        priority: Priority.defaultPriority,
+        icon: androidSmallIcon,
+      ),
+      iOS: const DarwinNotificationDetails(
+        presentAlert: true,
+        presentSound: true,
+        categoryIdentifier: 'standup_prelude',
+      ),
+      macOS: const DarwinNotificationDetails(
+        presentAlert: true,
+        presentSound: true,
+        categoryIdentifier: 'standup_prelude',
+      ),
+      linux: const LinuxNotificationDetails(),
+      windows: const WindowsNotificationDetails(),
+    );
+
+    try {
+      if (defaultTargetPlatform == TargetPlatform.linux) {
+        // The Linux backend only supports immediate notifications, so keep a
+        // foreground timer and emit at the due time, exactly as the reminder
+        // series does.
+        _linuxTimers.remove(id)?.cancel();
+        final delay = scheduledTime.difference(DateTime.now());
+        _linuxTimers[id] = Timer(delay.isNegative ? Duration.zero : delay, () {
+          _linuxTimers.remove(id);
+          _plugin.show(
+            id: id,
+            title: effectiveTitle,
+            body: effectiveBody,
+            notificationDetails: notificationDetails,
+          );
+        });
+        return;
+      }
+
+      final tzTime = tz.TZDateTime.from(scheduledTime, tz.local);
+      await _plugin.zonedSchedule(
+        id: id,
+        title: effectiveTitle,
+        body: effectiveBody,
+        scheduledDate: tzTime,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+    } catch (e) {
+      debugPrint('Error scheduling prelude notification: $e');
+    }
+  }
+
   Future<void> showNudgeNotification({required int id, String? message}) async {
     final french = _languageCode == 'fr';
     final largeIcon = await _loadLargeIcon();
@@ -434,6 +545,7 @@ class NotificationService {
     required String body,
     String? quietHours,
     int actionWindowMinutes = 0,
+    int preludeMinutes = 0,
     String workDays = '1,2,3,4,5',
     int workStartMinute = 540,
     int workEndMinute = 1020,
@@ -446,6 +558,7 @@ class NotificationService {
         body: body,
         quietHours: quietHours,
         actionWindowMinutes: actionWindowMinutes,
+        preludeMinutes: preludeMinutes,
         workDays: workDays,
         workStartMinute: workStartMinute,
         workEndMinute: workEndMinute,
@@ -466,6 +579,7 @@ class NotificationService {
     required String body,
     String? quietHours,
     int actionWindowMinutes = 0,
+    int preludeMinutes = 0,
     String workDays = '1,2,3,4,5',
     int workStartMinute = 540,
     int workEndMinute = 1020,
@@ -478,8 +592,8 @@ class NotificationService {
       startMinute: workStartMinute,
       endMinute: workEndMinute,
     );
-    const firstId = 101;
-    const count = 48;
+    const firstId = AppCadence.reminderNotificationIdBase;
+    const count = AppCadence.scheduledReminderQueueSize;
     for (var i = 0; i < count; i++) {
       await cancelReminder(firstId + i);
     }
@@ -509,7 +623,43 @@ class NotificationService {
         body: body,
       );
     }
+
+    // The prelude queue is desktop-only. Mobile spends its entire outstanding
+    // request budget on the actionable reminders, and the in-app banner already
+    // warns the foreground user on every platform.
+    const preludeFirstId = AppCadence.preludeNotificationIdBase;
+    for (var i = 0; i < count; i++) {
+      await cancelReminder(preludeFirstId + i);
+    }
+    if (!_supportsPreludeQueue) return;
+
+    final preludes = preludeTimesForReminders(
+      reminders: reminders,
+      preludeMinutes: preludeMinutes,
+      now: DateTime.now(),
+      schedule: workSchedule,
+      quietHours: quietHours,
+    );
+    for (var i = 0; i < preludes.length; i++) {
+      await schedulePreludeNotification(
+        id: preludeFirstId + i,
+        scheduledTime: preludes[i],
+        title: _languageCode == 'fr'
+            ? 'Pause dans $preludeMinutes min'
+            : 'Break in $preludeMinutes min',
+      );
+    }
   }
+
+  /// Whether this platform runs the prelude notification queue.
+  ///
+  /// Windows and Linux are the priority desktop platforms: the app must be
+  /// running for either queue to fire, and on mobile the OS request budget is
+  /// better spent on the reminders themselves.
+  bool get _supportsPreludeQueue =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux);
 
   Future<void> dispatchLaunchAction() async {
     try {

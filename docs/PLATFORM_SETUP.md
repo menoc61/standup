@@ -85,6 +85,24 @@ The GStreamer packages are required by `audioplayers_linux`. Omitting them makes
 the build fail inside CMake at `pkg_check_modules` with a confusing message
 about a package you were never told to install.
 
+### Reminder delivery on Linux
+
+`flutter_local_notifications` on Linux only supports *immediate* notifications,
+so `NotificationService` keeps a foreground timer per queued reminder and shows
+it at the due time (`_linuxTimers`). Two consequences:
+
+- The app must be **running** for a reminder or a prelude warning to appear. A
+  closed app has no timer to fire. This is the same limit the README records for
+  desktop.
+- The queue is therefore bounded by process memory rather than an OS request
+  budget, but the app still schedules the same fixed number of slots so the two
+  platforms behave alike.
+
+The prelude (the "get ready to stop" warning) is scheduled here as an OS
+notification in the `standup_prelude_channel`/`standup_prelude` series,
+offset five minutes before each reminder. It is desktop-only by design: see
+`NotificationService._supportsPreludeQueue`.
+
 ## Windows
 
 Requires Visual Studio 2022 with the **Desktop development with C++** workload.
@@ -97,6 +115,14 @@ The plain Visual Studio install is not enough; `flutter doctor` will tell you so
 
 CI builds this on the hosted `windows-latest` image, which already has the
 workload, so the job is not gated.
+
+### Reminder delivery on Windows
+
+Windows uses scheduled toast notifications, so a reminder can fire while the app
+is in the background. As on Linux, the prelude warning is scheduled as a
+separate desktop-only series offset before each reminder. Neither path has been
+verified on a real Windows host from this repository — the CI job only proves
+that the bundle *compiles*.
 
 ---
 

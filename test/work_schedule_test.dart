@@ -85,6 +85,79 @@ void main() {
       expect(reminders, [DateTime(2026, 10, 19, 9, 55)]);
     });
 
+    test('prelude times sit the configured lead time before each reminder', () {
+      final reminders = [
+        DateTime(2026, 10, 16, 16, 55),
+        DateTime(2026, 10, 16, 17, 55),
+      ];
+      final preludes = preludeTimesForReminders(
+        reminders: reminders,
+        preludeMinutes: 5,
+        now: DateTime(2026, 10, 16, 16),
+      );
+
+      expect(preludes, [
+        DateTime(2026, 10, 16, 16, 50),
+        DateTime(2026, 10, 16, 17, 50),
+      ]);
+    });
+
+    test(
+      'a prelude that would fire in the past is dropped, not fired late',
+      () {
+        // The next reminder is only two minutes away, so a five-minute warning
+        // could only be delivered after the break had begun.
+        final preludes = preludeTimesForReminders(
+          reminders: [DateTime(2026, 10, 16, 16, 2)],
+          preludeMinutes: 5,
+          now: DateTime(2026, 10, 16, 16),
+        );
+
+        expect(preludes, isEmpty);
+      },
+    );
+
+    test('a zero lead time disables the prelude queue entirely', () {
+      expect(
+        preludeTimesForReminders(
+          reminders: [DateTime(2026, 10, 16, 17)],
+          preludeMinutes: 0,
+          now: DateTime(2026, 10, 16, 16),
+        ),
+        isEmpty,
+      );
+    });
+
+    test('a prelude inside quiet hours is withheld like the in-app cue', () {
+      // The reminder sits at the quiet window's edge, but its warning would fall
+      // inside it. Silence must agree across the two channels.
+      final preludes = preludeTimesForReminders(
+        reminders: [DateTime(2026, 10, 16, 17)],
+        preludeMinutes: 5,
+        now: DateTime(2026, 10, 16, 15),
+        quietHours: '16:00-17:00',
+      );
+
+      expect(preludes, isEmpty);
+    });
+
+    test('a prelude outside the work schedule is withheld', () {
+      // The reminder lands inside the working day, but a five-minute warning
+      // would fire before it started.
+      final preludes = preludeTimesForReminders(
+        reminders: [DateTime(2026, 10, 16, 9)],
+        preludeMinutes: 5,
+        now: DateTime(2026, 10, 16, 7),
+        schedule: WorkSchedule(
+          days: {1, 2, 3, 4, 5},
+          startMinute: 9 * 60,
+          endMinute: 17 * 60,
+        ),
+      );
+
+      expect(preludes, isEmpty);
+    });
+
     test('roundtrips the persisted weekday list', () {
       final custom = WorkSchedule(days: {1, 3, 5, 7});
       expect(WorkSchedule.fromStored(days: custom.storedDays), custom);

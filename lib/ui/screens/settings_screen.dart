@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OAuthProvider;
+import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/core/app_colors.dart';
 import 'package:standup_app/core/app_identity.dart';
 import 'package:standup_app/core/app_spacing.dart';
@@ -1644,6 +1645,110 @@ class _ActionWindowSection extends StatelessWidget {
                 onChanged: (value) {
                   if (value != null) {
                     appState.updatePreferences(actionWindowMinutes: value);
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+        const Divider(height: AppSpace.section),
+        // The prelude is advisory and independent of the action-window rule:
+        // reminders still fire when the window opens even if the rule is off, so
+        // the warning stays useful in both modes.
+        _PreludeSection(appState: appState, accent: accent),
+      ],
+    );
+  }
+}
+
+/// The "get ready to stop" heads-up, exposed so the warning can be tuned or
+/// turned off without touching the counting rule.
+class _PreludeSection extends StatelessWidget {
+  final AppState appState;
+  final Color accent;
+
+  const _PreludeSection({required this.appState, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final prefs = appState.preferences;
+    // A hand-edited value outside the offered set would make the dropdown throw,
+    // so fall back to the default for display without rewriting storage.
+    final preludeValue =
+        AppCadence.preludeOptions.contains(prefs.preludeMinutes)
+        ? prefs.preludeMinutes
+        : AppCadence.defaultPreludeMinutes;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    appString(context, 'Warn before the break'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: AppFontSize.small,
+                    ),
+                  ),
+                  Text(
+                    appString(
+                      context,
+                      'Show a heads-up before each break so you can save your work.',
+                    ),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: prefs.preludeEnabled,
+              activeThumbColor: accent,
+              onChanged: (val) =>
+                  appState.updatePreferences(preludeEnabled: val),
+            ),
+          ],
+        ),
+        if (prefs.preludeEnabled) ...[
+          const SizedBox(height: AppSpace.xl),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      appString(context, 'Heads-up'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: AppFontSize.small,
+                      ),
+                    ),
+                    Text(
+                      appString(context, 'Minutes of warning before the break'),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              DropdownButton<int>(
+                value: preludeValue,
+                underline: const SizedBox.shrink(),
+                items: AppCadence.preludeOptions
+                    .map(
+                      (m) => DropdownMenuItem(value: m, child: Text('$m min')),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    appState.updatePreferences(preludeMinutes: value);
                   }
                 },
               ),

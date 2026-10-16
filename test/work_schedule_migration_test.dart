@@ -1,5 +1,6 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/data/local/app_database.dart';
 import 'package:standup_app/data/local/local_repository.dart';
 
@@ -84,17 +85,26 @@ void main() {
       expect(migrated.workStartMinute, 540);
       expect(migrated.workEndMinute, 1020);
       expect(migrated.aiGuidanceOptIn, isFalse);
+      // The prelude columns arrive at v8. A row written by any earlier schema
+      // must receive the defaults without losing the values it already had.
+      expect(migrated.preludeEnabled, isTrue);
+      expect(migrated.preludeMinutes, AppCadence.defaultPreludeMinutes);
 
       final edited = migrated.copyWith(
         aiGuidanceOptIn: true,
         workDays: '1,3,5',
         workStartMinute: 8 * 60 + 30,
         workEndMinute: 16 * 60 + 30,
+        preludeEnabled: false,
+        preludeMinutes: 10,
       );
       await repository.saveUserPreferences(edited);
       final reloaded = await repository.getUserPreferences('local_legacy');
       expect(reloaded?.workSchedule, edited.workSchedule);
       expect(reloaded?.aiGuidanceOptIn, isTrue);
+      // The prelude choice round-trips through the real schema, not just JSON.
+      expect(reloaded?.preludeEnabled, isFalse);
+      expect(reloaded?.preludeMinutes, 10);
 
       final indexes = await database
           .customSelect("SELECT name FROM sqlite_master WHERE type = 'index'")

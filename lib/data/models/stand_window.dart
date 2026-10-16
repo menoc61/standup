@@ -191,6 +191,50 @@ class StandWindow {
       ) !=
       null;
 
+  /// The advisory prelude that immediately precedes an upcoming [WindowSpan],
+  /// or null when [now] sits outside it.
+  ///
+  /// The prelude is the [preludeMinutes] directly before a window opens. It
+  /// never overlaps the actionable window itself: at the exact instant a window
+  /// opens the prelude is already over, which is what lets the UI warn and then
+  /// hand over to the break without a frame where both are true. Like
+  /// [activeWindow] it is a pure function of the injected time.
+  static WindowSpan? preludeWindow({
+    required DateTime now,
+    int actionWindowMinutes = defaultActionWindowMinutes,
+    int cadenceMinutes = defaultCadenceMinutes,
+    int preludeMinutes = AppCadence.defaultPreludeMinutes,
+  }) {
+    _validate(actionWindowMinutes, cadenceMinutes);
+    if (preludeMinutes <= 0) return null;
+    final upcoming = nextWindow(
+      now: now,
+      actionWindowMinutes: actionWindowMinutes,
+      cadenceMinutes: cadenceMinutes,
+    );
+    if (upcoming == null) return null;
+    final candidate = WindowSpan(
+      upcoming.start.subtract(Duration(minutes: preludeMinutes)),
+      upcoming.start,
+    );
+    return candidate.contains(now) ? candidate : null;
+  }
+
+  /// Whether [now] falls in the advisory prelude before an upcoming window.
+  static bool isInPrelude({
+    required DateTime now,
+    int actionWindowMinutes = defaultActionWindowMinutes,
+    int cadenceMinutes = defaultCadenceMinutes,
+    int preludeMinutes = AppCadence.defaultPreludeMinutes,
+  }) =>
+      preludeWindow(
+        now: now,
+        actionWindowMinutes: actionWindowMinutes,
+        cadenceMinutes: cadenceMinutes,
+        preludeMinutes: preludeMinutes,
+      ) !=
+      null;
+
   /// Whole windows that closed between [from] and [to]. Used to detect missed
   /// breaks without trusting a client-supplied counter, so a tampered database
   /// cannot inflate or deflate the total.

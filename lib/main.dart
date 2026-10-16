@@ -15,6 +15,7 @@ import 'package:standup_app/services/notification_service.dart';
 import 'package:standup_app/ui/screens/main_shell.dart';
 import 'package:standup_app/ui/screens/onboarding/onboarding_screen.dart';
 import 'package:standup_app/ui/screens/splash_screen.dart';
+import 'package:standup_app/ui/widgets/prelude_alert.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -165,6 +166,16 @@ class _StandUpAppState extends State<StandUpApp> with WidgetsBindingObserver {
           themeMode: _resolveThemeMode(prefs.themeMode),
           theme: lightTheme,
           darkTheme: darkTheme,
+          builder: (context, child) => PreludeAlert(
+            appState: widget.appState,
+            // The warning only makes sense once the user is actually working
+            // through the app, not while splash or onboarding is on screen.
+            active:
+                _splashCompleted &&
+                prefs.onboardingCompleted &&
+                !_forceOnboarding,
+            child: child ?? const SizedBox.shrink(),
+          ),
           home: AnimatedSwitcher(
             duration: const Duration(milliseconds: 420),
             switchInCurve: Curves.easeOutCubic,

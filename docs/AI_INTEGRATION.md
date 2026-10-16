@@ -33,9 +33,30 @@ consent, is stored locally, defaults off, and can be withdrawn in Settings.
 - The prompt requests only the fixed `GuidanceKind`/`GuidanceReason` JSON result.
   The server and client reject unknown values, invalid pairs, extra response
   keys, and free-form generated copy. App-owned French/English text is rendered.
+- **What a model can actually add here is judgement, not vocabulary.** Every
+  answer has to render as the app's own bilingual copy, so the accepted
+  `kind`/`reason` pairs are exactly the ones the local rule can also phrase —
+  `test/guidance_provider_test.dart` asserts that and fails if a reason is ever
+  accepted from a model that the local rule cannot produce. The local rule is a
+  priority-ordered if-chain that answers with the first branch that matches, so
+  it celebrates a day whose goal is met even when five snoozes sit behind it; a
+  model weighs the same facts together and may disagree. That disagreement, and
+  nothing wider, is the improvement being bought.
+- The employee's **feedback choice is persisted** locally
+  (`UserPreferences.guidanceFeedback`), so "these come too often" keeps steering
+  later sessions and survives a restart. It never leaves the device except as
+  the single structured field in an explicitly requested call.
 - If auth, connectivity, server configuration, or model output fails, the local
   deterministic rule result remains visible. No retry loop is used for a
   user-triggered suggestion.
+- **The Edge Function has no per-user request quota.** It is reachable by any
+  authenticated project user, and nothing in the function counts or rate-limits
+  calls, so an authenticated caller can spend the company endpoint's budget. The
+  upstream gateway's own quota is the only control today; a server-side cap
+  needs a table (none exists — there is no `audit_ai_requests` anywhere in the
+  SQL) plus a live project to verify it against, which this repository does not
+  have. Recorded as an open item in `docs/DEFECT_BACKLOG.md` rather than guessed
+  at.
 - Requests require a signed-in Supabase account and configured project
   credentials. Local guidance continues to work without an account or network.
 

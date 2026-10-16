@@ -8,7 +8,9 @@ export type GuidanceKind =
 export type GuidanceReason =
   | "goalProgress"
   | "repeatedSnoozes"
-  | "consistentActivity";
+  | "consistentActivity"
+  | "noActivityYet"
+  | "feedbackTooFrequent";
 
 export type GuidanceInput = {
   completed_today: number;
@@ -63,8 +65,9 @@ export function parseGuidanceResult(value: unknown): GuidanceResult | null {
 
   const validPair =
     (kind === "takeShortMovementBreak" &&
-      ["goalProgress", "repeatedSnoozes"].includes(reason)) ||
-    (kind === "adjustReminderCadence" && reason === "repeatedSnoozes") ||
+      ["goalProgress", "repeatedSnoozes", "noActivityYet"].includes(reason)) ||
+    (kind === "adjustReminderCadence" &&
+      ["repeatedSnoozes", "feedbackTooFrequent"].includes(reason)) ||
     (kind === "celebrate" &&
       ["goalProgress", "consistentActivity"].includes(reason));
   if (!validPair) return null;

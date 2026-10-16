@@ -1,3 +1,14 @@
+/// Initials the guidance seam: the value types it exchanges.
+///
+/// `GuidanceFeedback` is re-exported rather than declared here because it is
+/// persisted (see `data/models/guidance_feedback.dart`): the provider and the
+/// preferences row must agree on exactly one definition.
+library;
+
+import 'package:standup_app/data/models/guidance_feedback.dart';
+
+export 'package:standup_app/data/models/guidance_feedback.dart';
+
 /// Privacy-bounded seam for future personalized guidance providers.
 ///
 /// The request intentionally contains only coarse daily counters, a goal, a
@@ -17,14 +28,39 @@ abstract interface class GuidanceProvider {
 class LocalGuidanceProvider implements GuidanceProvider {
   const LocalGuidanceProvider();
 
+  /// The deterministic baseline, in priority order.
+  ///
+  /// ## What this is, and is not
+  ///
+  /// This is a short if-chain, not a judgement: it answers with the first
+  /// branch that matches, so a day with the goal already met but five snoozes
+  /// behind it is celebrated. An explicitly enabled model can weigh the same
+  /// facts together and disagree — which is the *only* thing a model can add
+  /// here, because the answer must be one of the app's own bilingual phrases
+  /// (see [GuidanceResult]). The model's ceiling is choice, not vocabulary, and
+  /// the docs say so rather than implying more.
+  ///
+  /// Every branch reads a fact the user can check against their own day:
+  /// today's counters, their goal, their cadence, and their own stated
+  /// feedback.
   GuidanceResult? evaluate(GuidanceInput input) {
-    if (input.feedback == GuidanceFeedback.suggestionsTooFrequent ||
-        input.completedToday < 0 ||
+    if (input.completedToday < 0 ||
         input.snoozedToday < 0 ||
         input.skippedToday < 0 ||
         input.dailyGoal <= 0 ||
         input.cadenceMinutes <= 0) {
       return null;
+    }
+
+    // The user said the suggestions are too frequent. Answering that with
+    // silence — which is what happened while the space had no such reason —
+    // left the complaint unaddressed; the honest reply is the cadence control
+    // the UI already points at.
+    if (input.feedback == GuidanceFeedback.suggestionsTooFrequent) {
+      return const GuidanceResult(
+        kind: GuidanceKind.adjustReminderCadence,
+        reason: GuidanceReason.feedbackTooFrequent,
+      );
     }
 
     if (input.completedToday >= input.dailyGoal) {
@@ -47,6 +83,18 @@ class LocalGuidanceProvider implements GuidanceProvider {
       return const GuidanceResult(
         kind: GuidanceKind.celebrate,
         reason: GuidanceReason.consistentActivity,
+      );
+    }
+
+    // A day with nothing on it at all is the one case the old rule answered
+    // with nothing, which is the moment a gentle first suggestion is worth
+    // most.
+    if (input.completedToday == 0 &&
+        input.snoozedToday == 0 &&
+        input.skippedToday == 0) {
+      return const GuidanceResult(
+        kind: GuidanceKind.takeShortMovementBreak,
+        reason: GuidanceReason.noActivityYet,
       );
     }
 
@@ -117,7 +165,8 @@ class GuidanceInput {
 }
 
 /// Explicit feedback categories keep preference signals structured and local.
-enum GuidanceFeedback { none, suggestionsHelpful, suggestionsTooFrequent }
+/// The values themselves live with the store: see
+/// `data/models/guidance_feedback.dart`, re-exported above.
 
 /// Typed result instead of arbitrary model-generated UI copy.
 ///
@@ -153,9 +202,11 @@ class GuidanceResult {
     final validPair = switch (kind) {
       GuidanceKind.takeShortMovementBreak =>
         reason == GuidanceReason.goalProgress ||
-            reason == GuidanceReason.repeatedSnoozes,
+            reason == GuidanceReason.repeatedSnoozes ||
+            reason == GuidanceReason.noActivityYet,
       GuidanceKind.adjustReminderCadence =>
-        reason == GuidanceReason.repeatedSnoozes,
+        reason == GuidanceReason.repeatedSnoozes ||
+            reason == GuidanceReason.feedbackTooFrequent,
       GuidanceKind.celebrate =>
         reason == GuidanceReason.goalProgress ||
             reason == GuidanceReason.consistentActivity,
@@ -174,4 +225,15 @@ class GuidanceResult {
 
 enum GuidanceKind { takeShortMovementBreak, adjustReminderCadence, celebrate }
 
-enum GuidanceReason { goalProgress, repeatedSnoozes, consistentActivity }
+/// Why the guidance was given. Every value must have bilingual copy in the
+/// widget that renders it, and [GuidanceResult.fromModelPayload] accepts only
+/// the pairs that make sense together — a model that answers with a reason the
+/// app cannot phrase, or a pair that contradicts itself, is rejected rather
+/// than rendered.
+enum GuidanceReason {
+  goalProgress,
+  repeatedSnoozes,
+  consistentActivity,
+  noActivityYet,
+  feedbackTooFrequent,
+}

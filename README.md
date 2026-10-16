@@ -54,7 +54,11 @@ Personal guidance uses deterministic local rules by default. An optional,
 separate consent in Settings can enable manually requested, company-hosted AI
 guidance through a Supabase Edge Function; see
 [`docs/AI_INTEGRATION.md`](docs/AI_INTEGRATION.md) for the data boundary and
-server setup.
+server setup. The optional model weighs the same coarse daily summary the local
+rule does and answers with the same fixed, app-owned phrases — it adds
+judgement, not new copy or new data — and the feedback an employee gives
+("helpful" / "too frequent") is stored locally so it keeps steering later
+sessions.
 
 ---
 

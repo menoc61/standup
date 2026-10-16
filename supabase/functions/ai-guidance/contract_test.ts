@@ -43,6 +43,23 @@ Deno.test("rejects out-of-range data and unrecognized model output", () => {
   if (parseGuidanceResult({ kind: "celebrate", reason: "repeatedSnoozes" }) !== null) {
     throw new Error("invalid kind/reason pair was accepted");
   }
+
+  // The pair that answers "these suggestions come too often" has to survive the
+  // contract, or the one user complaint the app can act on is unanswerable.
+  const tooFrequent = parseGuidanceResult({
+    kind: "adjustReminderCadence",
+    reason: "feedbackTooFrequent",
+  });
+  if (tooFrequent?.reason !== "feedbackTooFrequent") {
+    throw new Error("the too-frequent answer was rejected");
+  }
+  const fresh = parseGuidanceResult({
+    kind: "takeShortMovementBreak",
+    reason: "noActivityYet",
+  });
+  if (fresh?.reason !== "noActivityYet") {
+    throw new Error("the fresh-day answer was rejected");
+  }
 });
 
 Deno.test("parses only bounded JSON from a chat completion", () => {

@@ -147,7 +147,7 @@ const Map<String, String> _french = {
   'Contribute Statistics': 'Partager des statistiques',
   'Share anonymized daily counts with employer':
       'Partager des totaux quotidiens anonymisés avec l’employeur',
-  'When you ask, send daily counts, goal, cadence and feedback to the company AI. No names or event times.': 'À votre demande, les totaux du jour, l’objectif, le rythme et votre avis sont envoyés à l’IA de l’organisation. Aucun nom ni horaire d’événement n’est transmis.',
+  'When you ask, send daily counts, goal, cadence and feedback to the company AI. No names or event times. Your feedback choice is kept on this device and keeps guiding later sessions.': 'À votre demande, les totaux du jour, l’objectif, le rythme et votre avis sont envoyés à l’IA de l’organisation. Aucun nom ni horaire d’événement n’est transmis. Votre avis reste sur cet appareil et continue de guider les sessions suivantes.',
   'AI guidance is requested manually and requires a signed-in company account. Local guidance remains available when AI is off or unavailable.': 'Les conseils IA sont demandés manuellement avec un compte connecté de l’organisation. Les conseils locaux restent disponibles si l’IA est désactivée ou indisponible.',
   'Personal wellness guidance': 'Conseils de bien-être personnalisés',
   'Ask the company AI for one suggestion based on your daily summary.': 'Demandez une suggestion à l’IA de l’organisation à partir de votre résumé quotidien.',
@@ -363,6 +363,11 @@ const Map<String, String> _french = {
   'pts above the earlier average': 'pts au-dessus de la moyenne précédente',
   'pts below the earlier average': 'pts en dessous de la moyenne précédente',
   'Aggregate trends are visible to workspace admins only.': 'Les tendances agrégées ne sont visibles que par les administrateurs de l’espace de travail.',
+  // Guidance reasons
+  'No break is recorded yet today.':
+      'Aucune pause n’est encore enregistrée aujourd’hui.',
+  'You told us these suggestions come too often.':
+      'Vous nous avez indiqué que ces suggestions reviennent trop souvent.',
   'stands completed': 'pauses debout terminées',
   'skips': 'rappels ignorés',
   'Workspace membership is optional. Your individual reminder history stays on this device.': 'L’adhésion à l’espace est facultative. Votre historique individuel reste sur cet appareil.',

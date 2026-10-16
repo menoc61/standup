@@ -167,6 +167,18 @@ Typed model output is validated in the function and client before localized UI
 copy is shown. Setup and privacy details are in
 [`AI_INTEGRATION.md`](AI_INTEGRATION.md).
 
+The feedback choice is persisted (`user_preferences.guidance_feedback`, schema
+v10) rather than held in session memory, so "these suggestions come too often"
+keeps steering later sessions. It is a text column read back through
+`GuidanceFeedback.parse`, which maps an unrecognised value to `none` so a
+downgraded build can still open its own database.
+
+The accepted `kind`/`reason` pairs are deliberately the ones the local rule can
+also phrase: the answer must render as the app's own bilingual copy, so a model
+adds judgement (weighing today's facts against each other) rather than
+vocabulary. `test/guidance_provider_test.dart` asserts that equality, so a new
+reason is a change to *both* providers or to neither.
+
 ```mermaid
 flowchart TD
     START([App launch]) --> ENV{"SUPABASE_URL and<br/>key present?"}

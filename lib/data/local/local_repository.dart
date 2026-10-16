@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/data/local/app_database.dart';
 import 'package:standup_app/data/models/daily_analytics.dart';
+import 'package:standup_app/data/models/guidance_feedback.dart';
 import 'package:standup_app/data/models/reminder_log.dart';
 import 'package:standup_app/data/models/workday_metrics.dart';
 import 'package:standup_app/data/models/user_preferences.dart';
@@ -132,6 +133,7 @@ class LocalDatabaseRepository {
       preludeEnabled: row.preludeEnabled,
       preludeMinutes: row.preludeMinutes,
       breakBlockingEnabled: row.breakBlockingEnabled,
+      guidanceFeedback: GuidanceFeedback.parse(row.guidanceFeedback),
       workDays: row.workDays,
       workStartMinute: row.workStartMinute,
       workEndMinute: row.workEndMinute,
@@ -162,6 +164,7 @@ class LocalDatabaseRepository {
             preludeEnabled: Value(prefs.preludeEnabled),
             preludeMinutes: Value(prefs.preludeMinutes),
             breakBlockingEnabled: Value(prefs.breakBlockingEnabled),
+            guidanceFeedback: Value(prefs.guidanceFeedback.name),
             workDays: Value(prefs.workDays),
             workStartMinute: Value(prefs.workStartMinute),
             workEndMinute: Value(prefs.workEndMinute),

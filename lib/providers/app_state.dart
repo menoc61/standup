@@ -248,6 +248,13 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Records what the employee said about the guidance, and stores it.
+  ///
+  /// The write is deliberately fire-and-forget: the answer to "this suggestion
+  /// is wrong for me" must land on the next frame, and the value it steers is
+  /// read from the in-memory copy that has already changed. It survives the
+  /// session (see `UserPreferences.guidanceFeedback`) so the complaint keeps
+  /// working after a restart, which is the whole point of storing it.
   void recordGuidanceFeedback(GuidanceFeedback feedback) {
     if (_guidanceFeedback == feedback) return;
     _guidanceFeedback = feedback;
@@ -255,6 +262,7 @@ class AppState extends ChangeNotifier {
     _aiGuidanceUnavailableInput = null;
     _aiGuidanceUnavailableUserId = null;
     notifyListeners();
+    unawaited(updatePreferences(guidanceFeedback: feedback));
   }
 
   /// The captured device profile, or null before [captureDeviceProfile] runs.
@@ -579,6 +587,9 @@ class AppState extends ChangeNotifier {
     audioService.soundEnabled = _preferences!.soundEnabled;
     audioService.selectedSound = _preferences!.selectedSound;
     HapticsService.enabled = _preferences!.hapticsEnabled;
+    // The stored feedback steers the guidance rules for this session too, so it
+    // is loaded with the other preferences rather than left at its default.
+    _guidanceFeedback = _preferences!.guidanceFeedback;
 
     // 2b. Session registration. Read from the OS rather than stored, because the
     // user can remove the entry outside the app; a remembered flag would then
@@ -1293,6 +1304,7 @@ class AppState extends ChangeNotifier {
     bool? preludeEnabled,
     int? preludeMinutes,
     bool? breakBlockingEnabled,
+    GuidanceFeedback? guidanceFeedback,
     String? workDays,
     int? workStartMinute,
     int? workEndMinute,
@@ -1318,6 +1330,11 @@ class AppState extends ChangeNotifier {
     final preludeChanged =
         effectivePreludeEnabled != null || preludeMinutes != null;
 
+    // The in-memory feedback signal has to follow the stored one, or a write
+    // that lands later would be read back as a different answer than the one
+    // the rules are using in this session.
+    if (guidanceFeedback != null) _guidanceFeedback = guidanceFeedback;
+
     _preferences = preferences.copyWith(
       themeMode: themeMode,
       colorSystem: colorSystem,
@@ -1336,6 +1353,7 @@ class AppState extends ChangeNotifier {
       preludeEnabled: effectivePreludeEnabled,
       preludeMinutes: preludeMinutes,
       breakBlockingEnabled: breakBlockingEnabled,
+      guidanceFeedback: guidanceFeedback,
       workDays: workDays,
       workStartMinute: workStartMinute,
       workEndMinute: workEndMinute,

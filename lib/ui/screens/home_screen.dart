@@ -1017,6 +1017,14 @@ class _HomeScreenState extends State<HomeScreen> {
               context,
               'You have completed several breaks today.',
             ),
+            GuidanceReason.noActivityYet => appString(
+              context,
+              'No break is recorded yet today.',
+            ),
+            GuidanceReason.feedbackTooFrequent => appString(
+              context,
+              'You told us these suggestions come too often.',
+            ),
           };
     final suggestionKey = guidance == null
         ? null

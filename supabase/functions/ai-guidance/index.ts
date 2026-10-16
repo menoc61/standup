@@ -128,7 +128,7 @@ const authenticatedHandler = withSupabase(
             {
               role: "system",
               content:
-                'Give one brief, non-medical workplace movement suggestion. Return only JSON with exactly two string keys: "kind" and "reason". kind must be takeShortMovementBreak, adjustReminderCadence, or celebrate. reason must be goalProgress, repeatedSnoozes, or consistentActivity. Use only these valid pairs: takeShortMovementBreak with goalProgress or repeatedSnoozes; adjustReminderCadence with repeatedSnoozes; celebrate with goalProgress or consistentActivity. Do not output prose, personal data, medical claims, or actions that change app settings.',
+                'Give one brief, non-medical workplace movement suggestion. Return only JSON with exactly two string keys: "kind" and "reason". kind must be takeShortMovementBreak, adjustReminderCadence, or celebrate. reason must be goalProgress, repeatedSnoozes, consistentActivity, noActivityYet, or feedbackTooFrequent. Use only these valid pairs: takeShortMovementBreak with goalProgress, repeatedSnoozes, or noActivityYet; adjustReminderCadence with repeatedSnoozes or feedbackTooFrequent; celebrate with goalProgress or consistentActivity. Read the whole input before answering: if feedback is suggestionsTooFrequent, answer adjustReminderCadence with feedbackTooFrequent. Do not output prose, personal data, medical claims, or actions that change app settings.',
             },
             { role: "user", content: JSON.stringify(input) },
           ],

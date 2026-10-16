@@ -60,6 +60,11 @@ class UserPreferencesTable extends Table {
       integer().withDefault(const Constant(AppCadence.defaultPreludeMinutes))();
   BoolColumn get breakBlockingEnabled =>
       boolean().withDefault(const Constant(false))();
+  // What the employee said about the guidance they were shown. Stored as text
+  // rather than an index so a later category is a Dart change, not a table
+  // rewrite; an unrecognised value reads back as `none`.
+  TextColumn get guidanceFeedback =>
+      text().withDefault(const Constant('none'))();
   TextColumn get workDays => text().withDefault(const Constant('1,2,3,4,5'))();
   IntColumn get workStartMinute =>
       integer().withDefault(const Constant(WorkSchedule.defaultStartMinute))();
@@ -130,7 +135,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -217,6 +222,15 @@ class AppDatabase extends _$AppDatabase {
         // their screen taken over by an upgrade they did not ask for.
         await customStatement(
           'ALTER TABLE user_preferences_table ADD COLUMN break_blocking_enabled INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+      if (from < 10) {
+        // Explicit guidance feedback. It used to live in memory only, so a
+        // "these suggestions come too often" answer stopped steering anything
+        // at the next launch. Existing users start at 'none' — no feedback was
+        // ever recorded, so nothing is invented for them.
+        await customStatement(
+          "ALTER TABLE user_preferences_table ADD COLUMN guidance_feedback TEXT NOT NULL DEFAULT 'none'",
         );
       }
     },

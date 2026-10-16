@@ -1,5 +1,6 @@
 import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/core/app_colors.dart';
+import 'package:standup_app/data/models/guidance_feedback.dart';
 import 'package:standup_app/data/models/work_schedule.dart';
 
 /// Resolves a stored accent id to one the current palette offers.
@@ -59,6 +60,13 @@ class UserPreferences {
   /// screen, so it is opted into rather than switched on for the user.
   final bool breakBlockingEnabled;
 
+  /// What the employee last said about the guidance they were shown.
+  ///
+  /// Persisted so the signal keeps steering later sessions: a "too frequent"
+  /// answer that only lived in memory changed the next few minutes and then
+  /// disappeared on the next launch.
+  final GuidanceFeedback guidanceFeedback;
+
   /// Workdays as sorted comma-separated DateTime weekday numbers (1=Monday).
   final String workDays;
   final int workStartMinute;
@@ -91,6 +99,7 @@ class UserPreferences {
     this.preludeEnabled = true,
     this.preludeMinutes = AppCadence.defaultPreludeMinutes,
     this.breakBlockingEnabled = false,
+    this.guidanceFeedback = GuidanceFeedback.none,
     this.workDays = '1,2,3,4,5',
     this.workStartMinute = WorkSchedule.defaultStartMinute,
     this.workEndMinute = WorkSchedule.defaultEndMinute,
@@ -117,6 +126,7 @@ class UserPreferences {
     bool? preludeEnabled,
     int? preludeMinutes,
     bool? breakBlockingEnabled,
+    GuidanceFeedback? guidanceFeedback,
     String? workDays,
     int? workStartMinute,
     int? workEndMinute,
@@ -142,6 +152,7 @@ class UserPreferences {
       preludeEnabled: preludeEnabled ?? this.preludeEnabled,
       preludeMinutes: preludeMinutes ?? this.preludeMinutes,
       breakBlockingEnabled: breakBlockingEnabled ?? this.breakBlockingEnabled,
+      guidanceFeedback: guidanceFeedback ?? this.guidanceFeedback,
       workDays: workDays ?? this.workDays,
       workStartMinute: workStartMinute ?? this.workStartMinute,
       workEndMinute: workEndMinute ?? this.workEndMinute,
@@ -169,6 +180,7 @@ class UserPreferences {
       'prelude_enabled': preludeEnabled,
       'prelude_minutes': preludeMinutes,
       'break_blocking_enabled': breakBlockingEnabled,
+      'guidance_feedback': guidanceFeedback.name,
       'work_days': workDays,
       'work_start_minute': workStartMinute,
       'work_end_minute': workEndMinute,
@@ -206,6 +218,9 @@ class UserPreferences {
       preludeMinutes:
           json['prelude_minutes'] as int? ?? AppCadence.defaultPreludeMinutes,
       breakBlockingEnabled: json['break_blocking_enabled'] as bool? ?? false,
+      guidanceFeedback: GuidanceFeedback.parse(
+        json['guidance_feedback'] as String?,
+      ),
       workDays: workSchedule.storedDays,
       workStartMinute: workSchedule.startMinute,
       workEndMinute: workSchedule.endMinute,

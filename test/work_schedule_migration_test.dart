@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/data/local/app_database.dart';
 import 'package:standup_app/data/local/local_repository.dart';
+import 'package:standup_app/data/models/guidance_feedback.dart';
 
 void main() {
   test(
@@ -91,6 +92,10 @@ void main() {
       expect(migrated.preludeMinutes, AppCadence.defaultPreludeMinutes);
       // The forced-break column arrives at v9 and must default to opted out.
       expect(migrated.breakBlockingEnabled, isFalse);
+      // The guidance-feedback column arrives at v10. No feedback was ever
+      // recorded before it existed, so "none" is the only honest value — not
+      // "helpful", which would be inventing an opinion for the user.
+      expect(migrated.guidanceFeedback, GuidanceFeedback.none);
 
       final edited = migrated.copyWith(
         aiGuidanceOptIn: true,
@@ -100,6 +105,7 @@ void main() {
         preludeEnabled: false,
         preludeMinutes: 10,
         breakBlockingEnabled: true,
+        guidanceFeedback: GuidanceFeedback.suggestionsTooFrequent,
       );
       await repository.saveUserPreferences(edited);
       final reloaded = await repository.getUserPreferences('local_legacy');
@@ -109,6 +115,12 @@ void main() {
       expect(reloaded?.preludeEnabled, isFalse);
       expect(reloaded?.preludeMinutes, 10);
       expect(reloaded?.breakBlockingEnabled, isTrue);
+      // So does the feedback the employee gave, which is the whole point of
+      // storing it: it has to survive the process that collected it.
+      expect(
+        reloaded?.guidanceFeedback,
+        GuidanceFeedback.suggestionsTooFrequent,
+      );
 
       final indexes = await database
           .customSelect("SELECT name FROM sqlite_master WHERE type = 'index'")

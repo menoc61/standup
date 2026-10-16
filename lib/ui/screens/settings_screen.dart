@@ -1318,7 +1318,7 @@ class SettingsScreen extends StatelessWidget {
                                 Text(
                                   appString(
                                     context,
-                                    'When you ask, send daily counts, goal, cadence and feedback to the company AI. No names or event times.',
+                                    'When you ask, send daily counts, goal, cadence and feedback to the company AI. No names or event times. Your feedback choice is kept on this device and keeps guiding later sessions.',
                                   ),
                                   style: theme.textTheme.bodySmall,
                                 ),

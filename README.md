@@ -190,7 +190,7 @@ dart run build_runner build --delete-conflicting-outputs
 
 > **Service boundaries:** OAuth providers must be configured with provider credentials in the Supabase dashboard. OAuth callbacks are supported on web, iOS, Android, and macOS; Windows/Linux use email/password sign-in because native callback registration is not included in the current launchers. Account switching between multiple local profiles is not supported yet. Organization analytics need real workspace provisioning and at least five active contributors in the same cohort; until then, personal reminders and history continue to work locally.
 
-The web build now uses Drift's SQLite WebAssembly backend and browser storage instead of an in-memory database. Mobile and desktop reminders use OS-scheduled local notifications, with a rolling queue of up to 48 alerts. The queue refreshes when the app starts, resumes, or a reminder is handled. iOS and Android can still defer delivery based on system settings; Xiaomi/Redmi devices may need StandUp allowed to run in the background. Linux timers and browser reminders require the app or tab to remain open.
+The web build now uses Drift's SQLite WebAssembly backend and browser storage instead of an in-memory database. Android, iOS and Windows use OS-scheduled local notifications, with a rolling queue of up to 48 alerts; Linux uses a foreground timer per alert, so the app must be running. The queue refreshes when the app starts, resumes, or a reminder is handled. iOS and Android can still defer delivery based on system settings; Xiaomi/Redmi devices may need StandUp allowed to run in the background. Browser reminders require the tab to remain open.
 
 **CNPS Supabase setup:** the client accepts only the CNPS project's URL and publishable key through `--dart-define`. The connected Supabase MCP currently exposes only inactive `xmoni` and `farmassist` projects, so neither is used for CNPS. See the install guide before enabling cloud accounts; do not paste a service-role key into the client.
 
@@ -342,7 +342,7 @@ rather than letting them run to completion and produce broken artifacts.
 
 | Job | Runner | Output |
 | --- | --- | --- |
-| `verify` | `ubuntu-latest` | Analysis, 142 tests, `dart format` check, Drift codegen freshness |
+| `verify` | `ubuntu-latest` | Analysis, the full `flutter test` suite, `dart format` check, Drift codegen freshness |
 | `build-android` | `ubuntu-latest` | Release APK (R8 enabled) |
 | `build-web` | `ubuntu-latest` | Release web bundle incl. Drift WASM assets |
 | `build-linux` | `ubuntu-latest` | Release Linux bundle |

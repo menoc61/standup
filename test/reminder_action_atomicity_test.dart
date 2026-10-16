@@ -68,4 +68,51 @@ void main() {
     expect(analytics?.remindersSent, 1);
     expect(analytics?.remindersSnoozed, 1);
   });
+
+  test('the window lookup is scoped to the window it is asked about', () async {
+    // `AppState._hydrateActedWindow` uses this query to decide whether the
+    // current window was already logged, and a `true` in the wrong window would
+    // silently switch the forced break off for a break nobody took.
+    final completed = DateTime(2026, 10, 13, 11, 57);
+    await repository.recordReminderAction(
+      ReminderLog(
+        id: 'completed-1',
+        userId: 'user-1',
+        scheduledTime: completed,
+        timestamp: completed,
+        actionTaken: 'completed',
+      ),
+      completionWindowStart: DateTime(2026, 10, 13, 11, 55),
+      completionWindowEnd: DateTime(2026, 10, 13, 12),
+      standMinutes: 5,
+    );
+
+    expect(
+      await repository.hasCompletedReminderInWindow(
+        'user-1',
+        DateTime(2026, 10, 13, 11, 55),
+        DateTime(2026, 10, 13, 12),
+      ),
+      isTrue,
+      reason: 'the window the break was logged in',
+    );
+    expect(
+      await repository.hasCompletedReminderInWindow(
+        'user-1',
+        DateTime(2026, 10, 13, 12, 55),
+        DateTime(2026, 10, 13, 13),
+      ),
+      isFalse,
+      reason: 'a later window must not inherit the earlier completion',
+    );
+    expect(
+      await repository.hasCompletedReminderInWindow(
+        'user-2',
+        DateTime(2026, 10, 13, 11, 55),
+        DateTime(2026, 10, 13, 12),
+      ),
+      isFalse,
+      reason: 'another account on the same device has its own record',
+    );
+  });
 }

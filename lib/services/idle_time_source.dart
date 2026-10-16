@@ -41,9 +41,13 @@ class PlatformIdleTimeSource implements IdleTimeSource {
 
   const PlatformIdleTimeSource();
 
-  /// Whether a native reader exists. Only the two priority desktop platforms
-  /// have one (`windows/runner/flutter_window.cpp`, and the Linux runner once it
-  /// is written); everywhere else answers `null` without a channel call.
+  /// Whether a native reader exists. Both desktop runners have one
+  /// (`GetLastInputInfo` in `windows/runner/flutter_window.cpp`, the XScreenSaver
+  /// extension in `linux/runner/my_application.cc`); everywhere else, and on a
+  /// Linux build without `libxss-dev`, this answers `null` without a call.
+  ///
+  /// A `true` here only means the platform *can* answer. Whether it actually
+  /// did is what `AppState.presenceDetectionAvailable` reports.
   static bool get isSupported =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.windows ||

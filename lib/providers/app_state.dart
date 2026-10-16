@@ -531,6 +531,11 @@ class AppState extends ChangeNotifier {
       minutes: _preferences!.notificationFrequency,
     );
 
+    // A restart is the one moment the in-memory record of "this window is
+    // already logged" is missing, and the forced break is the one thing that
+    // would act on the gap.
+    await _hydrateActedWindow();
+
     // 6. Start 1-second UI ticker
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
@@ -635,6 +640,9 @@ class AppState extends ChangeNotifier {
   /// Reconciles the visible timer and daily totals after an OS suspend/resume.
   Future<void> onAppResumed() async {
     _tick();
+    // The machine may have been restarted, or the app restored, while a break
+    // was already recorded in the window that is still open.
+    await _hydrateActedWindow();
     // A suspend is exactly when the idle reading is most useful: the OS knows
     // how long the machine went untouched, and it is the only trustworthy
     // source after a gap.
@@ -643,6 +651,29 @@ class AppState extends ChangeNotifier {
     await drainPendingWidgetAction();
     // The launcher may have missed a state change while the app was away.
     await syncWidget();
+  }
+
+  /// Marks the open window as already logged when the database says it was.
+  ///
+  /// `_actedWindows` is an in-process set, so a restart forgets that the break
+  /// was recorded and the forced break would come back to demand the same break
+  /// a second time. The database is the authority on that question — the same
+  /// authority `recordReminderAction` enforces transactionally — so the
+  /// in-memory shortcut is reconciled with it here rather than being trusted.
+  Future<void> _hydrateActedWindow() async {
+    final userId = _userProfile?.id;
+    final window = activeWindow;
+    if (userId == null || window == null) return;
+    final key = window.end.millisecondsSinceEpoch;
+    if (_actedWindows.contains(key)) return;
+    final recorded = await localRepo.hasCompletedReminderInWindow(
+      userId,
+      window.start,
+      window.end,
+    );
+    if (_disposed || !recorded) return;
+    _actedWindows.add(key);
+    notifyListeners();
   }
 
   /// Keeps the platform's keep-above flag in step with the forced break.

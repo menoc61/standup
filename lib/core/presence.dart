@@ -90,10 +90,12 @@ class ActiveTimeTracker {
     return _presence;
   }
 
-  /// Forces the tracker back to a known state.
+  /// Forces the tracker back to a known state, for tests and for a future
+  /// explicit "start a fresh session" action.
   ///
-  /// Used on resume, where the OS reading is the only trustworthy source, and in
-  /// tests.
+  /// Not called on resume: a fresh OS reading already re-classifies the state,
+  /// and forcing `present` first would briefly claim an active user. Nothing in
+  /// `lib/` calls this today.
   void reset({Presence to = Presence.present}) {
     _presence = to;
     _awaySince = null;

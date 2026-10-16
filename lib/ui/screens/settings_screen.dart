@@ -1914,7 +1914,7 @@ class _DeviceSection extends StatelessWidget {
                   appString(
                     context,
                     appState.presenceDetectionAvailable
-                        ? 'This device reports whether you are at the keyboard, so reminders stay quiet when you step away.'
+                        ? 'This device reports whether you are at the keyboard, so the in-app chime stays silent when you step away.'
                         : 'This platform cannot report whether you are at the keyboard, so reminders always sound.',
                   ),
                   style: theme.textTheme.bodySmall,

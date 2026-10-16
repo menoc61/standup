@@ -154,6 +154,16 @@ platform-specific tests; a reader only has to answer milliseconds.
 Nothing read here is uploaded: see the local-only boundary in
 `docs/ARCHITECTURE.md`.
 
+**What presence does and does not silence.** It withholds the in-app chime and
+the five-minute cue, and it vetoes the forced break, so an empty desk is never
+nagged or covered. It does **not** withdraw a notification the OS has already
+been asked to deliver: the reminder and prelude series are scheduled ahead of
+time and fire on the platform's clock, with their sound. On Windows and Linux a
+scheduled reminder can therefore still appear while nobody is at the machine.
+Cancelling one at fire time would need a delivery event the platforms do not give
+this app, which is why Settings describes the silence as applying to the in-app
+chime rather than to reminders in general.
+
 ### The forced break is not an OS lock
 
 `BreakBlockOverlay` is a Flutter `ModalBarrier` plus a full-window `Material`.

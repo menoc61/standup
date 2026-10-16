@@ -280,9 +280,13 @@ query rather than an aggregation over raw logs. The legacy field name
   begins at the end of a window necessarily finishes after it, so its completion
   is honoured via `_breakWindowKey`. Without that binding the completion would be
   refused by the gate that protects a *new* stand action.
-- **Completion is deduplicated per window, durably.** `hasCompletedInWindow`
-  checks the database, not an in-memory set, so a restart mid-window cannot let a
-  user bank the same break twice.
+- **Completion is deduplicated per window, durably.** The write path is a Drift
+  transaction that refuses a second completion for the same window, so a restart
+  mid-window cannot let a user bank the same break twice. Credit and the *forced
+  break* read that answer from different places: `completeReminder` goes through
+  the transaction, while `isBreakBlockActive` consults an in-memory window set —
+  which is why `_hydrateActedWindow()` re-reads the database at startup and on
+  resume. Without it the cover would demand a break that was already recorded.
 - **Device clock is distrusted.** `clock_suspect` is sticky: a device whose clock
   jumps is not laundered back into good standing by a later well-behaved write.
 

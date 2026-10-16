@@ -557,7 +557,7 @@ const Map<String, String> _french = {
   'Clock integrity': 'Intégrité de l’horloge',
   'Clock looks normal': 'Horloge normale',
   // Presence detection
-  'This device reports whether you are at the keyboard, so reminders stay quiet when you step away.': 'Cet appareil indique si vous êtes au clavier ; les rappels restent donc silencieux lorsque vous vous absentez.',
+  'This device reports whether you are at the keyboard, so the in-app chime stays silent when you step away.': 'Cet appareil indique si vous êtes au clavier ; la sonnerie de l’application reste donc silencieuse lorsque vous vous absentez.',
   'This platform cannot report whether you are at the keyboard, so reminders always sound.': 'Cette plateforme ne peut pas indiquer si vous êtes au clavier ; les rappels sonnent donc toujours.',
   'The device clock has moved repeatedly, so totals are flagged as unreliable for the leaderboard.': 'L’horloge de l’appareil a été modifiée à plusieurs reprises ; les totaux sont donc signalés comme non fiables pour le classement.',
 };

@@ -4,6 +4,10 @@
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #endif
+#ifdef STANDUP_HAVE_XSCRNSAVER
+#include <X11/Xlib.h>
+#include <X11/extensions/scrnsaver.h>
+#endif
 
 #include "flutter/generated_plugin_registrant.h"
 
@@ -17,6 +21,76 @@ G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
+}
+
+// Reads the X11 idle counter, in milliseconds, or -1 when the session cannot
+// answer.
+//
+// MIT-SCREEN-SAVER is an X11 extension. A Wayland session has no equivalent, and
+// GTK may be talking to XWayland, where the extension is normally absent and the
+// query fails; that is reported honestly as "unknown" rather than as an active
+// user. A build without the XScreenSaver development headers compiles this out
+// to the same answer, so a missing optional package can never break the build.
+static gint64 x11_idle_milliseconds() {
+#if defined(GDK_WINDOWING_X11) && defined(STANDUP_HAVE_XSCRNSAVER)
+  GdkDisplay* display = gdk_display_get_default();
+  if (display == nullptr || !GDK_IS_X11_DISPLAY(display)) {
+    return -1;
+  }
+
+  Display* x_display = gdk_x11_display_get_xdisplay(display);
+  if (x_display == nullptr) {
+    return -1;
+  }
+
+  int event_base = 0;
+  int error_base = 0;
+  if (!XScreenSaverQueryExtension(x_display, &event_base, &error_base)) {
+    return -1;
+  }
+
+  XScreenSaverInfo* info = XScreenSaverAllocInfo();
+  if (info == nullptr) {
+    return -1;
+  }
+
+  gint64 idle_milliseconds = -1;
+  if (XScreenSaverQueryInfo(x_display, DefaultRootWindow(x_display), info)) {
+    idle_milliseconds = static_cast<gint64>(info->idle);
+  }
+  XFree(info);
+  return idle_milliseconds;
+#else
+  return -1;
+#endif
+}
+
+// Answers `standup/presence` with how long the session has been untouched.
+//
+// The reading never leaves the machine: it only decides whether a reminder is
+// allowed to sound. A null result means "unknown", and the Dart side holds its
+// previous state for it — a fabricated zero would claim an active user.
+static void presence_method_call_cb(FlMethodChannel* channel,
+                                    FlMethodCall* method_call,
+                                    gpointer user_data) {
+  g_autoptr(FlMethodResponse) response = nullptr;
+
+  if (g_strcmp0(fl_method_call_get_name(method_call), "getIdleTime") == 0) {
+    const gint64 idle_milliseconds = x11_idle_milliseconds();
+    if (idle_milliseconds < 0) {
+      response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+    } else {
+      g_autoptr(FlValue) idle = fl_value_new_int(idle_milliseconds);
+      response = FL_METHOD_RESPONSE(fl_method_success_response_new(idle));
+    }
+  } else {
+    response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
+  }
+
+  g_autoptr(GError) error = nullptr;
+  if (!fl_method_call_respond(method_call, response, &error)) {
+    g_warning("Failed to send presence response: %s", error->message);
+  }
 }
 
 // Answers `standup/window` so the forced break can keep the window above other
@@ -55,6 +129,18 @@ static void window_method_call_cb(FlMethodChannel* channel,
   if (!fl_method_call_respond(method_call, response, &error)) {
     g_warning("Failed to send window response: %s", error->message);
   }
+}
+
+// Attaches a method channel to @window.
+//
+// The reference lives on the window itself, so each handler is alive exactly as
+// long as the widget it acts on and nothing has to be unwound at shutdown.
+static void attach_channel(GtkWindow* window, const gchar* name,
+                           FlBinaryMessenger* messenger, FlMethodCodec* codec,
+                           FlMethodChannelMethodCallHandler handler) {
+  FlMethodChannel* channel = fl_method_channel_new(messenger, name, codec);
+  fl_method_channel_set_method_call_handler(channel, handler, window, nullptr);
+  g_object_set_data_full(G_OBJECT(window), name, channel, g_object_unref);
 }
 
 // Implements GApplication::activate.
@@ -113,18 +199,15 @@ static void my_application_activate(GApplication* application) {
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
 
-  // The channel is stored on the window so its lifetime matches the window it
-  // controls: nothing else holds a reference, so the handler cannot outlive the
-  // widget it calls into.
-  g_autoptr(FlStandardMethodCodec) window_codec = fl_standard_method_codec_new();
-  FlMethodChannel* window_channel = fl_method_channel_new(
-      fl_engine_get_binary_messenger(fl_view_get_engine(view)),
-      "standup/window", FL_METHOD_CODEC(window_codec));
-  fl_method_channel_set_method_call_handler(window_channel,
-                                            window_method_call_cb, window,
-                                            nullptr);
-  g_object_set_data_full(G_OBJECT(window), "standup-window-channel",
-                         window_channel, g_object_unref);
+  // Both channels are attached to the window, so neither handler can outlive
+  // the widget it acts on.
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+  FlBinaryMessenger* messenger =
+      fl_engine_get_binary_messenger(fl_view_get_engine(view));
+  attach_channel(window, "standup/presence", messenger, FL_METHOD_CODEC(codec),
+                 presence_method_call_cb);
+  attach_channel(window, "standup/window", messenger, FL_METHOD_CODEC(codec),
+                 window_method_call_cb);
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }

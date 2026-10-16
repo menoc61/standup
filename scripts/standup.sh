@@ -359,6 +359,12 @@ cmd_doctor() {
     if ! pkg-config --exists gtk+-3.0 2>/dev/null; then
       warn "GTK 3 development headers not found (libgtk-3-dev)"
     fi
+    # Optional: only the presence reader needs it, and it is the difference
+    # between reminders that can tell an empty desk from a present user and
+    # reminders that always sound.
+    if ! pkg-config --exists xscrnsaver 2>/dev/null; then
+      warn "XScreenSaver headers not found (libxss-dev) — presence detection will be unavailable"
+    fi
   fi
 
   section "Home-screen widgets"
@@ -429,11 +435,11 @@ cmd_setup() {
         die "need root or sudo to install Linux build packages"
       fi
     fi
-    info "installing clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev"
+    info "installing clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libxss-dev"
     ${sudo_cmd} apt-get update
     ${sudo_cmd} apt-get install -y \
       clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
-      libstdc++-12-dev libblkid-dev uuid-dev
+      libstdc++-12-dev libblkid-dev uuid-dev libxss-dev
     success "Linux desktop packages installed"
   fi
 

@@ -54,6 +54,12 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
 
+# Presence detection needs the XScreenSaver extension, which is only meaningful
+# on an X11 session. Kept optional on purpose: a machine without libxss-dev
+# still builds, and the reader compiles out to "unknown" rather than failing the
+# build for a feature the app can live without.
+pkg_check_modules(XSCRNSAVER xscrnsaver)
+
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 

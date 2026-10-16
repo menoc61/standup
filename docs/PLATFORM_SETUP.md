@@ -77,13 +77,17 @@ Install the build dependencies once:
 ./scripts/standup.sh setup --linux-deps
 # or, without the TUI:
 sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev \
-  liblzma-dev libstdc++-12-dev libblkid-dev uuid-dev \
+  liblzma-dev libstdc++-12-dev libblkid-dev uuid-dev libxss-dev \
   libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 ```
 
 The GStreamer packages are required by `audioplayers_linux`. Omitting them makes
 the build fail inside CMake at `pkg_check_modules` with a confusing message
 about a package you were never told to install.
+
+`libxss-dev` is the one *optional* entry: it is only needed by the X11 presence
+reader. Without it the app still builds, presence detection reports "unavailable"
+in Settings → Device, and reminders always sound.
 
 ### Reminder delivery on Linux
 
@@ -118,22 +122,31 @@ workload, so the job is not gated.
 
 ### Presence detection (all platforms)
 
-The decision logic is Dart and tested. The Windows reader is implemented
-(`GetLastInputInfo` in `windows/runner/flutter_window.cpp`); the Linux reader is
-not written yet, so on Linux `presenceDetectionAvailable` stays `false` and
-reminders always sound. Settings → Device says which of the two you are on, on
-purpose.
+The decision logic is Dart and tested. Both desktop readers are implemented:
+`GetLastInputInfo` in `windows/runner/flutter_window.cpp` and the XScreenSaver
+extension in `linux/runner/my_application.cc`. Both are answered over
+`standup/presence`, so `presenceDetectionAvailable` reflects what the platform
+actually answered rather than what was compiled. On a platform with no reader,
+reminders always sound; Settings → Device says which case you are in, on purpose.
 
 | Platform | Reader | Status |
 | --- | --- | --- |
 | Windows | `GetLastInputInfo`, answered over `standup/presence` | implemented; **runtime unverified** here, CI only compiles it |
-| Linux (X11) | `XScreenSaverQueryInfo` | not implemented |
-| Linux (Wayland) | no portable idle API | likely never; documented as unsupported |
+| Linux (X11) | MIT-SCREEN-SAVER via `XScreenSaverQueryInfo` | implemented; **runtime unverified** here, CI only compiles it |
+| Linux (Wayland) | no portable idle API | reports "unknown"; documented as unsupported |
 | Android | interactive/`PowerManager` state | not implemented |
 | macOS / Web | — | not planned |
 
-`PlatformIdleTimeSource.isSupported` short-circuits to `null` on every other
-platform, so a mobile build never pays for a platform round-trip every polling
+`gdk_display_get_default()` is checked against `GDK_IS_X11_DISPLAY` before any
+X call, so a Wayland session never gets an idle reading from the XWayland
+connection it may still have. The reader is also compiled out entirely when
+`libxss-dev` is absent (see the `XSCRNSAVER_FOUND` guard in
+`linux/CMakeLists.txt`), which reports "unknown" — the same answer as Wayland,
+and never a fabricated zero.
+
+`PlatformIdleTimeSource.isSupported` short-circuits the channel call on platforms
+without a reader, and the source itself degrades a missing implementation to
+`null`, so a mobile build never pays for a platform round-trip every polling
 interval only to learn nothing is registered. The threshold, hysteresis and
 clock-jump handling all live in `core/presence.dart` and need no
 platform-specific tests; a reader only has to answer milliseconds.

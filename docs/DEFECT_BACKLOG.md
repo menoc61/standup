@@ -32,9 +32,12 @@ publish on the transition, not on a timer.
 
 ### Dismissing the guided-stretch sheet still auto-logs the break
 `home_screen.dart` — `showModalBottomSheet` defaults to `isDismissible: true`
-and `_GuidedStretchSheetState` has no `dispose`, so `initState`'s
+and `_GuidedStretchSheetState` (now `_GuidedStretchPanelState`, in
+`ui/widgets/guided_stretch.dart`) has no `dispose`, so `initState`'s
 `startGuidedStretch()` keeps running and logs a stretch the user abandoned.
 Fix: cancel on dispose, or make the sheet non-dismissible.
+*Resolved:* the state cancels the routine in `dispose`, so dismissing still
+counts as abandoning it; the sheet stays dismissible.
 
 ### `remindersSent` counts recorded user actions, not delivered reminders
 `local_repository.dart:280` increments on every action, so "reminders sent"

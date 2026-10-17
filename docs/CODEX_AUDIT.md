@@ -332,3 +332,44 @@ The F-05 presentation was also clarified: dashboards describe the existing ratio
 The user chose a company-hosted endpoint and asked for a Supabase proxy rather than a large local model. Settings now has an AI consent separate from statistics sharing; it defaults off, is stored only in Drift (schema v7), and the Home action makes a request only after a manual tap and only for a signed-in Supabase user. The client sends the coarse `GuidanceInput` allowlist. The authenticated `ai-guidance` Edge Function validates request shape/ranges and the fixed consent contract, calls an HTTPS OpenAI-compatible endpoint using server-only secrets, and returns only validated typed guidance. The Home UI uses localized app copy and keeps deterministic local guidance as fallback.
 
 **Verification after this follow-up:** `dart format --output=none --set-exit-if-changed lib test tool` is clean (84 files, 0 changed); `flutter analyze --fatal-infos --fatal-warnings` reports no issues; `flutter test` passes (252 tests); `flutter build apk --debug` and `flutter build web --release` both succeed. No company model endpoint, API key, or Supabase project is configured in this checkout. The proxy fails closed until its three documented server secrets are configured and the function is deployed; a live upstream inference call and Edge Function runtime test could not be run because Deno and the Supabase CLI are unavailable on this host. The function contract tests are included for Deno but remain unexecuted here. Windows desktop is unavailable without Visual Studio's C++ workload; iOS/macOS require macOS and Linux desktop requires Linux.
+
+### Follow-up — Workrave-parity batch (prelude, presence, cover, quiet mode, autostart, daily cut-off, guided routine on the cover)
+
+Thirteen commits on top of `20e8b92`, each one independently reviewable; the
+per-defect detail is in `docs/DEFECT_BACKLOG.md` and the feature-by-feature
+comparison with Workrave is in `docs/WORKRAVE_ANALYSIS.md`.
+
+- **Prelude, presence, cover.** An advisory heads-up before each window (in-app
+  banner plus an OS notification on desktop); Windows `GetLastInputInfo` and
+  Linux X11 `MIT-SCREEN-SAVER` idle readings that withhold the chime, the nudge
+  and the cover while nobody is at the desk; an opt-in cover that also keeps the
+  window above other applications for its duration.
+- **Quiet mode** pauses every interruption at once and is deliberately
+  session-only, because a persisted quiet mode is a silent failure the user
+  cannot see.
+- **Startup registration** writes the session entry Windows and Linux read
+  (`Run` value, autostart `.desktop`), read back from the OS rather than
+  remembered from the last tap.
+- **Company aggregates.** The admin dashboard is a multi-day trend with the
+  arithmetic in a pure `OrgTrendSummary`, gated by role rather than by having an
+  organisation, and two SQL landmines are gone: `synced_to_cloud` was referenced
+  by the RPC but created by no script, and `total_stand_minutes` (a view alias)
+  was used as the base column `total_stand_time`. Both failed only on the first
+  sync of a fresh project, which is why a static contract test now pins the class
+  of defect.
+- **Guidance.** The feedback choice is persisted (`user_preferences.guidance_feedback`,
+  v10) instead of living in memory, and the answer space gained the two things it
+  could not phrase (an explicit "too frequent", a day with nothing recorded yet) —
+  in both the Dart rule and the TypeScript contract, with a test asserting every
+  pair a model may return is one the local rule can also phrase.
+- **Daily cut-off.** An optional limit stops offering breaks *N* hours after the
+  work day starts; it is schedule arithmetic rather than Workrave's usage
+  accounting, for the reasons written up in `WORKRAVE_ANALYSIS.md`, and Settings
+  prints the resolved clock time so the difference is visible.
+- **Guided routine on the cover.** The routine is no longer a private sheet in
+  `home_screen.dart`, so the forced-break cover can offer it; the overlay's
+  surface is chosen by the pure `breakBlockView`.
+
+**Verification of this batch:** `dart format --output=none --set-exit-if-changed lib test tool` is clean; `flutter analyze --fatal-infos --fatal-warnings` reports no issues; `flutter test` passes (354 tests, including the new `test/daily_limit_test.dart`, the migration round-trip for schema v10 and v11, the queue's per-day cut-off cases and the overlay's view rule); the Drift schema moved to v11 with `dart run build_runner build` re-run and the regenerated `app_database.g.dart` committed; `flutter build apk --debug` and `flutter build web --release` both succeed on this host, so the Dart side compiles for two real targets beyond the test VM.
+
+**Unverified, and not claimed:** the Windows and Linux desktop builds have never been compiled anywhere, because this host has no Visual Studio C++ workload and no Linux toolchain — the native presence and keep-above code is reviewed, not run, and the two rows in `PLATFORM_SETUP.md` still say so. The `ai-guidance` Deno contract tests are modified but unexecuted (no Deno). No live Supabase project is configured, so RLS and the RPC changes have not been exercised against a server. Notification delivery on a real device and DST transition behaviour remain unverified. The launcher widget's countdown ignores the daily cut-off because the payload carries no cut-off field and its native rendering cannot be built here. **All thirteen commits are local; CI has not run**. Until they are pushed, the desktop targets, the Deno tests and the packaging are unaudited.

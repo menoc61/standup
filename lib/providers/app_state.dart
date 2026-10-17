@@ -1302,8 +1302,9 @@ class AppState extends ChangeNotifier {
     _breakTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
       if (_breakSecondsRemaining > 0) {
         _breakSecondsRemaining--;
-        // 5 steps: 60s per step
-        _activeBreakStep = (4 - (_breakSecondsRemaining ~/ 60)).clamp(0, 4);
+        _activeBreakStep = AppCadence.guidedStretchStepFor(
+          secondsRemaining: _breakSecondsRemaining,
+        );
         notifyListeners();
         return;
       }

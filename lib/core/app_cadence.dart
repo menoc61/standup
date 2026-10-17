@@ -219,9 +219,29 @@ abstract final class AppCadence {
   static const int guidedStretchSeconds = 300;
 
   /// How many discrete steps the guided stretch has.
-  static const int guidedStretchStepCount = 4;
+  ///
+  /// Five, which is what the routine in `ui/widgets/guided_stretch.dart`
+  /// actually shows: it was written as four here while the ticker in `AppState`
+  /// counted five steps of sixty seconds, so the number a future change would
+  /// have trusted was the wrong one.
+  static const int guidedStretchStepCount = 5;
 
   /// Seconds per guided-stretch step.
   static const int guidedStretchStepSeconds =
       guidedStretchSeconds ~/ guidedStretchStepCount;
+
+  /// Which step [secondsRemaining] puts the user on, counting from zero.
+  ///
+  /// Lived inside `AppState`'s one-second ticker as `4 - (remaining ~/ 60)`,
+  /// which encoded the step count and the step length as literals nothing else
+  /// could read. The `- 1` is not decoration: the ticker decrements before it
+  /// asks, so the first second of the routine is second 299 of 300, and without
+  /// it every step boundary would land one second late.
+  static int guidedStretchStepFor({required int secondsRemaining}) {
+    final elapsed = guidedStretchSeconds - 1 - secondsRemaining;
+    return (elapsed ~/ guidedStretchStepSeconds).clamp(
+      0,
+      guidedStretchStepCount - 1,
+    );
+  }
 }

@@ -315,6 +315,19 @@ query rather than an aggregation over raw logs. The legacy field name
   never revoked mid-break. It is enforced at completion too, because a user who
   does not enforce the action window can otherwise log breaks all day — the one
   setting that would have done nothing and still ended their reminders.
+- **The forced-break cover offers the guided routine, and the guided routine is
+  a widget rather than a sheet.** `BreakBlockOverlay` is mounted from
+  `MaterialApp.builder`, *above* the navigator, so a modal sheet opened from it
+  would render underneath the cover that asked for it; the routine was therefore
+  extracted from `home_screen.dart` into `ui/widgets/guided_stretch.dart` as
+  `GuidedStretchPanel` (chrome-free) with `GuidedStretchSheet` wrapping it for the
+  dashboard. Which surface the overlay shows is a pure function,
+  `breakBlockView` in `core/break_block.dart`, because the interesting case is a
+  conflict between two rules: `shouldBlockBreak` vetoes the cover while a break is
+  in progress (the routine owns the screen), so a routine started *from* the cover
+  would remove the overlay hosting it on the same tap. The view rule separates the
+  one who asked for the routine from the one who started it on the dashboard and
+  already has it in a sheet.
 - **Quiet mode is one flag, read everywhere, stored nowhere.** `isInterruptionPaused`
   (`quietMode || quietHours`) is the single question the chime, the nudge, the
   prelude getter, the forced-break rule (`shouldBlockBreak(quiet:)`) and the OS

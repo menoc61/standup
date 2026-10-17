@@ -351,6 +351,47 @@ void main() {
         AppCadence.guidedStretchSeconds,
       );
     });
+
+    test('the step lasts one step, and the last step lasts the rest', () {
+      // The ticker decrements before asking, so step 0 starts on second 299 of
+      // 300 and step 4 begins with the final minute. These are the boundaries
+      // the routine's progress dots are drawn from.
+      int step(int remaining) =>
+          AppCadence.guidedStretchStepFor(secondsRemaining: remaining);
+
+      expect(step(AppCadence.guidedStretchSeconds), 0);
+      expect(step(241), 0);
+      expect(step(240), 0);
+      expect(step(239), 1);
+      expect(step(180), 1);
+      expect(step(179), 2);
+      expect(step(120), 2);
+      expect(step(119), 3);
+      expect(step(60), 3);
+      expect(step(59), 4);
+      expect(step(1), 4);
+      expect(step(0), 4);
+    });
+
+    test('every step index is one the routine can render', () {
+      // The constant used to say four while the routine shows five, so this is
+      // the assertion that keeps a future edit from making the last exercise
+      // unreachable.
+      for (
+        var remaining = 0;
+        remaining <= AppCadence.guidedStretchSeconds;
+        remaining++
+      ) {
+        final index = AppCadence.guidedStretchStepFor(
+          secondsRemaining: remaining,
+        );
+        expect(
+          index,
+          inInclusiveRange(0, AppCadence.guidedStretchStepCount - 1),
+        );
+      }
+      expect(AppCadence.guidedStretchStepCount, 5);
+    });
   });
 
   group('version is single-sourced', () {

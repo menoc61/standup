@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
+import 'package:standup_app/core/break_block.dart';
 import 'package:standup_app/providers/app_state.dart';
+import 'package:standup_app/ui/widgets/guided_stretch.dart';
 import 'package:standup_app/ui/widgets/spring_button.dart';
 
 /// The forced-break screen: a full-window cover raised for the duration of a
@@ -20,7 +23,16 @@ import 'package:standup_app/ui/widgets/spring_button.dart';
 /// The block must cover *any* route, including one pushed by a deep link while
 /// the break opens. Wrapping the navigator once is the only way a screen cannot
 /// forget to include it.
-class BreakBlockOverlay extends StatelessWidget {
+///
+/// ## Why the guided routine lives inside the cover
+///
+/// The one moment a guided stretch is unambiguously the right action is the
+/// forced break, and the cover cannot push it: this widget sits *above* the
+/// navigator, so a bottom sheet opened from here would render underneath the
+/// cover that asked for it. The routine is therefore swapped in place — the
+/// cover's secondary button replaces the cover with [GuidedStretchPanel] and the
+/// same tap path back out restores it.
+class BreakBlockOverlay extends StatefulWidget {
   final AppState appState;
 
   /// Whether the block may show at all. False during splash and onboarding.
@@ -37,33 +49,102 @@ class BreakBlockOverlay extends StatelessWidget {
   });
 
   @override
+  State<BreakBlockOverlay> createState() => _BreakBlockOverlayState();
+}
+
+class _BreakBlockOverlayState extends State<BreakBlockOverlay> {
+  /// Whether *this* cover session asked for the guided routine. Deliberately not
+  /// derived from `isBreakActive`: a stretch started from the dashboard bell is
+  /// already on screen with its own sheet, and taking over the cover for it
+  /// would show the same routine twice.
+  bool _stretchRequested = false;
+
+  @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: appState,
+      listenable: widget.appState,
       builder: (context, _) {
         // The window end is read from the app state on every tick, so the
         // countdown below stays in step with the timer that decides when the
         // block lifts.
-        final window = appState.activeWindow;
-        final show = active && appState.isBreakBlockActive && window != null;
+        final window = widget.appState.activeWindow;
+        final view = breakBlockView(
+          active: widget.active,
+          windowOpen: window != null,
+          coverEligible: widget.appState.isBreakBlockActive,
+          coverRequestedStretch: _stretchRequested,
+          breakInProgress: widget.appState.isBreakActive,
+        );
 
         return Stack(
           children: [
-            child,
-            if (show) ...[
+            widget.child,
+            if (view != BreakBlockView.none) ...[
               // Swallows taps, drags and scrolls aimed at the app underneath.
               const ModalBarrier(dismissible: false, color: Colors.black54),
               Positioned.fill(
-                child: BreakBlockScreen(
-                  endsAt: window.end,
-                  standing: appState.isBreakActive,
-                  onStoodUp: () => appState.completeReminder(),
-                ),
+                child: view == BreakBlockView.guidedStretch
+                    ? _EmbeddedStretch(
+                        appState: widget.appState,
+                        onClose: () =>
+                            setState(() => _stretchRequested = false),
+                      )
+                    : BreakBlockScreen(
+                        endsAt: window!.end,
+                        standing: widget.appState.isBreakActive,
+                        onStoodUp: () => widget.appState.completeReminder(),
+                        onStartStretch: () {
+                          setState(() => _stretchRequested = true);
+                          widget.appState.startGuidedStretch();
+                        },
+                      ),
               ),
             ],
           ],
         );
       },
+    );
+  }
+}
+
+/// The guided routine as a centred card, so it is legible over the dimmed app
+/// rather than being bare text on a translucent barrier.
+class _EmbeddedStretch extends StatelessWidget {
+  final AppState appState;
+  final VoidCallback onClose;
+
+  const _EmbeddedStretch({required this.appState, required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
+      child: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Container(
+                margin: const EdgeInsets.all(AppSpace.section),
+                padding: const EdgeInsets.all(AppSpace.section),
+                decoration: BoxDecoration(
+                  color: scheme.surface.withValues(alpha: 0.97),
+                  borderRadius: BorderRadius.circular(AppRadius.xxl),
+                  border: Border.all(color: scheme.outlineVariant),
+                ),
+                child: GuidedStretchPanel(
+                  appState: appState,
+                  // The cover already started it; starting it again here would
+                  // reset a routine that is a second old.
+                  autoStart: false,
+                  onClose: onClose,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -83,11 +164,17 @@ class BreakBlockScreen extends StatelessWidget {
 
   final VoidCallback onStoodUp;
 
+  /// Optional: offers the five-minute guided routine instead of a plain stand.
+  /// Null keeps the cover to its single authoritative action, which is what the
+  /// widget tests render.
+  final VoidCallback? onStartStretch;
+
   const BreakBlockScreen({
     super.key,
     required this.endsAt,
     required this.onStoodUp,
     this.standing = false,
+    this.onStartStretch,
   });
 
   @override
@@ -169,6 +256,24 @@ class BreakBlockScreen extends StatelessWidget {
                       ),
                       child: Text(appString(context, 'I stood up')),
                     ),
+                    if (onStartStretch != null) ...[
+                      const SizedBox(height: 12),
+                      // Secondary on purpose: standing up is the action that
+                      // counts, and the routine is a longer way of doing the
+                      // same thing rather than an alternative to it.
+                      SpringButton(
+                        onTap: standing ? null : onStartStretch,
+                        backgroundColor: scheme.primary.withValues(alpha: 0.12),
+                        foregroundColor: scheme.primary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        child: Text(
+                          appString(context, 'Guided 5-minute stretch'),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

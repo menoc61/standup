@@ -199,6 +199,7 @@ const Map<String, String> _french = {
       'Commencer les étirements guidés (5 min)',
   "Today's Activity": 'Activité du jour',
   '5-Min Guided Stretch': 'Étirements guidés (5 min)',
+  'Guided 5-minute stretch': 'Étirement guidé de 5 minutes',
   'Finish & Log Stand': 'Terminer et enregistrer',
   'Unable to save the completed stretch':
       'Impossible d’enregistrer la pause terminée',

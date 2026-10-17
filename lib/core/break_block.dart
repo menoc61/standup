@@ -40,3 +40,41 @@ bool shouldBlockBreak({
   if (breakInProgress) return false;
   return true;
 }
+
+/// What the forced-break overlay should be showing right now.
+enum BreakBlockView {
+  /// Nothing: the app underneath is interactive.
+  none,
+
+  /// The cover.
+  cover,
+
+  /// The guided routine, swapped in where the cover asked for it.
+  guidedStretch,
+}
+
+/// Picks the overlay's surface from the facts the overlay itself holds.
+///
+/// ## The case this exists for
+///
+/// [shouldBlockBreak] vetoes the cover while a break is in progress, because the
+/// guided routine already owns the screen. That is right when the routine was
+/// started from the dashboard, and wrong when it was started *from the cover*:
+/// the cover would vanish on the same tap that asked it for the routine, taking
+/// the routine with it. `coverRequestedStretch` is what separates the two — the
+/// one who asked keeps something on screen, the one who did not is left alone
+/// with the sheet they already have.
+BreakBlockView breakBlockView({
+  required bool active,
+  required bool windowOpen,
+  required bool coverEligible,
+  required bool coverRequestedStretch,
+  required bool breakInProgress,
+}) {
+  if (!active || !windowOpen) return BreakBlockView.none;
+  if (coverEligible) return BreakBlockView.cover;
+  if (coverRequestedStretch && breakInProgress) {
+    return BreakBlockView.guidedStretch;
+  }
+  return BreakBlockView.none;
+}

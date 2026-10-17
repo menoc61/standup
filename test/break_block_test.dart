@@ -62,6 +62,61 @@ void main() {
     });
   });
 
+  group('breakBlockView', () {
+    BreakBlockView view({
+      bool active = true,
+      bool windowOpen = true,
+      bool coverEligible = true,
+      bool coverRequestedStretch = false,
+      bool breakInProgress = false,
+    }) => breakBlockView(
+      active: active,
+      windowOpen: windowOpen,
+      coverEligible: coverEligible,
+      coverRequestedStretch: coverRequestedStretch,
+      breakInProgress: breakInProgress,
+    );
+
+    test('the cover shows when it is eligible and no routine is running', () {
+      expect(view(), BreakBlockView.cover);
+    });
+
+    test('nothing shows outside a window, on splash, or once logged', () {
+      expect(view(windowOpen: false), BreakBlockView.none);
+      expect(view(active: false), BreakBlockView.none);
+      expect(view(coverEligible: false), BreakBlockView.none);
+    });
+
+    test('a routine started from the cover keeps the routine on screen', () {
+      // `shouldBlockBreak` vetoes the cover while a break is in progress, so
+      // without this the routine would vanish on the very tap that started it.
+      expect(
+        view(
+          coverEligible: false,
+          coverRequestedStretch: true,
+          breakInProgress: true,
+        ),
+        BreakBlockView.guidedStretch,
+      );
+    });
+
+    test('a routine started from the dashboard never summons the cover', () {
+      // It is already visible in its own sheet; taking over the whole window
+      // would render the same routine twice, over the dashboard that asked.
+      expect(
+        view(coverEligible: false, breakInProgress: true),
+        BreakBlockView.none,
+      );
+    });
+
+    test('a routine that has already ended leaves the window alone', () {
+      expect(
+        view(coverEligible: false, coverRequestedStretch: true),
+        BreakBlockView.none,
+      );
+    });
+  });
+
   group('BreakBlockScreen', () {
     final endsAt = DateTime.now().add(const Duration(minutes: 5));
 
@@ -138,6 +193,34 @@ void main() {
       expect(find.text('Unlocks in 00:00'), findsOneWidget);
     });
 
+    testWidgets('offers the guided routine only when a caller provides one', (
+      tester,
+    ) async {
+      // Without a callback the cover keeps its single authoritative action, so
+      // every existing rendering of it is unchanged.
+      await tester.pumpWidget(
+        wrap(BreakBlockScreen(endsAt: endsAt, onStoodUp: () {})),
+      );
+      expect(find.text('Guided 5-minute stretch'), findsNothing);
+
+      var stretches = 0;
+      await tester.pumpWidget(
+        wrap(
+          BreakBlockScreen(
+            endsAt: endsAt,
+            onStoodUp: () {},
+            onStartStretch: () => stretches++,
+          ),
+        ),
+      );
+      expect(find.text('Guided 5-minute stretch'), findsOneWidget);
+      await tester.tap(find.text('Guided 5-minute stretch'));
+      await tester.pump();
+      expect(stretches, 1);
+      // Standing up is still the primary action and still works.
+      expect(find.text('I stood up'), findsOneWidget);
+    });
+
     testWidgets('renders French copy when the locale is French', (
       tester,
     ) async {
@@ -162,6 +245,7 @@ void main() {
         'Stand, stretch and breathe. This screen lifts when the break ends or when you log it.',
         'Unlocks in {time}',
         'I stood up',
+        'Guided 5-minute stretch',
       ]) {
         expect(
           hasFrenchTranslation(literal),

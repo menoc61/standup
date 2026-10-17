@@ -1820,6 +1820,126 @@ class _PreludeSection extends StatelessWidget {
             ),
           ],
         ),
+        const Divider(height: AppSpace.section),
+        _DailyLimitSection(appState: appState, accent: accent),
+      ],
+    );
+  }
+}
+
+/// When StandUp stops offering breaks for the day.
+///
+/// Workrave calls this a daily limit and measures the work actually done. This
+/// measures the *scheduled* work day instead, because the alternative is
+/// continuously tracking desk occupancy, and an interruption the employee
+/// cannot predict from a setting they chose is worse than one they can. The
+/// caption states the resolved clock time so the difference is visible rather
+/// than implied.
+class _DailyLimitSection extends StatelessWidget {
+  final AppState appState;
+  final Color accent;
+
+  const _DailyLimitSection({required this.appState, required this.accent});
+
+  static String _clock(int minute) =>
+      '${(minute ~/ 60).toString().padLeft(2, '0')}:'
+      '${(minute % 60).toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final stored = appState.dailyLimitMinutes;
+    final enabled = stored > 0;
+    // A hand-edited value outside the offered set would make the dropdown
+    // throw, so fall back for display without rewriting storage — the same
+    // treatment `_PreludeSection` gives its own dropdown.
+    final value = AppCadence.dailyLimitOptions.contains(stored)
+        ? stored
+        : AppCadence.enabledDailyLimitMinutes;
+    final cutOffMinute = appState.dailyLimitClockMinute;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    appString(context, 'Daily limit'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: AppFontSize.small,
+                    ),
+                  ),
+                  Text(
+                    appString(
+                      context,
+                      'Stop offering breaks after a set number of hours, so a long day does not become endless reminders.',
+                    ),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: enabled,
+              activeThumbColor: accent,
+              onChanged: (val) => appState.updatePreferences(
+                dailyLimitMinutes: val
+                    ? AppCadence.enabledDailyLimitMinutes
+                    : 0,
+              ),
+            ),
+          ],
+        ),
+        if (enabled) ...[
+          const SizedBox(height: AppSpace.xl),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  appString(context, 'Hours after your work day starts'),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+              DropdownButton<int>(
+                value: value,
+                underline: const SizedBox.shrink(),
+                items: AppCadence.dailyLimitOptions
+                    .map(
+                      (m) => DropdownMenuItem(
+                        value: m,
+                        child: Text('${m ~/ 60} h'),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (selected) {
+                  if (selected != null) {
+                    appState.updatePreferences(dailyLimitMinutes: selected);
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpace.xs),
+          Text(
+            cutOffMinute == null
+                ? appString(
+                    context,
+                    'Longer than your work day, so nothing changes.',
+                  )
+                : '${appString(context, 'Breaks stop at')} '
+                      '${_clock(cutOffMinute)}.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ],
     );
   }

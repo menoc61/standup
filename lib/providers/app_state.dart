@@ -381,14 +381,58 @@ class AppState extends ChangeNotifier {
       actionWindowMinutes: _actionWindowMinutes,
       cadenceMinutes: _cadenceMinutes,
     );
-    if (candidate == null ||
-        !preferences.workSchedule.allowsWindow(
-          candidate.start,
-          candidate.end,
-        )) {
+    if (candidate == null || !_windowAllowed(candidate)) {
       return null;
     }
     return candidate;
+  }
+
+  /// Whether both the work schedule and the day's daily cut-off permit a window.
+  ///
+  /// One predicate rather than two checks at each site: the schedule gate had
+  /// three copies already (`activeWindow`, `_nextEligibleWindow`, the queue
+  /// builder), and a limit that reached two of them would show the user a
+  /// countdown to an interruption that never arrives.
+  bool _windowAllowed(WindowSpan window) =>
+      preferences.workSchedule.allowsWindow(window.start, window.end) &&
+      !preferences.workSchedule.isPastDailyLimit(
+        windowStart: window.start,
+        limitMinutes: dailyLimitMinutes,
+      );
+
+  /// The stored cut-off in minutes after the work day starts; 0 means no
+  /// cut-off. Clamped so a hand-edited row cannot make the rule meaningless.
+  int get dailyLimitMinutes =>
+      AppCadence.clampDailyLimit(preferences.dailyLimitMinutes);
+
+  /// When breaks stop being offered today, or null when no cut-off applies.
+  ///
+  /// Null does not mean "off": it also covers a limit as long as the work day,
+  /// a non-working day, and a malformed schedule. The UI reports the mechanism
+  /// from [dailyLimitClockMinute] and [isDailyLimitReached] rather than reading
+  /// a null here as "disabled".
+  DateTime? get dailyLimitInstant => preferences.workSchedule.dailyLimitInstant(
+    when: DateTime.now(),
+    limitMinutes: dailyLimitMinutes,
+  );
+
+  /// The cut-off as a minute past local midnight, independent of the date.
+  ///
+  /// Settings shows this so turning the switch on and seeing nothing change is
+  /// explained rather than mysterious: an eight-hour limit on an eight-hour day
+  /// is the schedule already saying it.
+  int? get dailyLimitClockMinute {
+    final schedule = preferences.workSchedule;
+    if (dailyLimitMinutes <= 0 || dailyLimitMinutes >= schedule.lengthMinutes) {
+      return null;
+    }
+    return schedule.startMinute + dailyLimitMinutes;
+  }
+
+  /// Whether the day's cut-off has passed. False while no cut-off applies.
+  bool get isDailyLimitReached {
+    final limit = dailyLimitInstant;
+    return limit != null && !DateTime.now().isBefore(limit);
   }
 
   /// The advisory prelude currently open, or null when none is.
@@ -478,10 +522,7 @@ class AppState extends ChangeNotifier {
         cadenceMinutes: _cadenceMinutes,
       );
       if (candidate == null) return null;
-      if (preferences.workSchedule.allowsWindow(
-        candidate.start,
-        candidate.end,
-      )) {
+      if (_windowAllowed(candidate)) {
         return candidate;
       }
       cursor = candidate.start.add(const Duration(seconds: 1));
@@ -965,6 +1006,7 @@ class AppState extends ChangeNotifier {
       workDays: preferences.workDays,
       workStartMinute: preferences.workStartMinute,
       workEndMinute: preferences.workEndMinute,
+      dailyLimitMinutes: dailyLimitMinutes,
     );
   }
 
@@ -1039,6 +1081,25 @@ class AppState extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+
+    // Gate 1b: the daily cut-off. It has to be checked at the action and not
+    // only in the window rules, because a user who does not enforce the action
+    // window may log a break at any moment of the working day — without this
+    // gate the cut-off would be the one setting that does nothing for them,
+    // while still ending their reminders.
+    final cutOff = preferences.workSchedule.dailyLimitInstant(
+      when: now,
+      limitMinutes: dailyLimitMinutes,
+    );
+    if (!inProgressStretch && cutOff != null && !now.isBefore(cutOff)) {
+      _lastActionRejection = _languageCode == 'fr'
+          ? 'StandUp ne propose plus de pauses aujourd’hui. Reprise demain.'
+          : 'StandUp has stopped offering breaks for today. They resume tomorrow.';
+      unawaited(audioService.playClick());
+      notifyListeners();
+      return false;
+    }
+
     if (preferences.enforceActionWindow &&
         windowKey == null &&
         !inProgressStretch &&
@@ -1305,6 +1366,7 @@ class AppState extends ChangeNotifier {
     int? preludeMinutes,
     bool? breakBlockingEnabled,
     GuidanceFeedback? guidanceFeedback,
+    int? dailyLimitMinutes,
     String? workDays,
     int? workStartMinute,
     int? workEndMinute,
@@ -1354,6 +1416,7 @@ class AppState extends ChangeNotifier {
       preludeMinutes: preludeMinutes,
       breakBlockingEnabled: breakBlockingEnabled,
       guidanceFeedback: guidanceFeedback,
+      dailyLimitMinutes: dailyLimitMinutes,
       workDays: workDays,
       workStartMinute: workStartMinute,
       workEndMinute: workEndMinute,
@@ -1411,7 +1474,11 @@ class AppState extends ChangeNotifier {
     if (notificationFrequency != null ||
         workDays != null ||
         workStartMinute != null ||
-        workEndMinute != null) {
+        workEndMinute != null ||
+        // The cut-off decides which windows exist for the rest of the day, so it
+        // belongs with the settings that re-derive the timer rather than with
+        // those that only repaint.
+        dailyLimitMinutes != null) {
       await _scheduleNextInterval(minutes: _cadenceMinutes);
     }
 

@@ -85,6 +85,99 @@ void main() {
       expect(reminders, [DateTime(2026, 10, 19, 9, 55)]);
     });
 
+    test('notification candidates stop at the daily cut-off', () {
+      // The schedule is 09:00–17:00, so a six-hour cut-off ends the day at
+      // 15:00: nothing after 14:55 may be queued, on any day.
+      final reminders = reminderTimesForSchedule(
+        firstBoundary: DateTime(2026, 10, 16, 15), // Friday
+        frequencyMinutes: 60,
+        actionWindowMinutes: 5,
+        schedule: schedule,
+        now: DateTime(2026, 10, 16, 14),
+        count: 8,
+        dailyLimitMinutes: 6 * 60,
+      );
+
+      expect(reminders.first, DateTime(2026, 10, 16, 14, 55));
+      for (final reminder in reminders) {
+        expect(
+          reminder.isBefore(
+            DateTime(reminder.year, reminder.month, reminder.day, 15),
+          ),
+          isTrue,
+          reason:
+              'a window starting at or after the cut-off was queued: $reminder',
+        );
+      }
+      // The cut-off is not the end of the queue: the next work day resumes at
+      // its own 09:55 and stops at its own 14:55.
+      final monday = reminders.where(
+        (r) => r.year == 2026 && r.month == 10 && r.day == 19,
+      );
+      expect(monday.first, DateTime(2026, 10, 19, 9, 55));
+      expect(monday.last, DateTime(2026, 10, 19, 14, 55));
+    });
+
+    test('the cut-off is re-applied to every day in the queue', () {
+      // The queue spans 90 days; a limit tested once against `now` would apply
+      // to the first day and be forgotten after midnight. This asserts the
+      // property on later days rather than on the first.
+      final capped = reminderTimesForSchedule(
+        firstBoundary: DateTime(2026, 10, 16, 17),
+        frequencyMinutes: 60,
+        actionWindowMinutes: 5,
+        schedule: schedule,
+        now: DateTime(2026, 10, 16, 16),
+        count: 20,
+        dailyLimitMinutes: 2 * 60,
+      );
+      final days = capped.map((r) => DateTime(r.year, r.month, r.day)).toSet();
+      expect(
+        days.length,
+        greaterThanOrEqualTo(5),
+        reason: 'the test has to reach several days to prove anything',
+      );
+      for (final reminder in capped) {
+        expect(
+          reminder.isBefore(
+            DateTime(reminder.year, reminder.month, reminder.day, 11),
+          ),
+          isTrue,
+          reason: 'a window past the cut-off was queued: $reminder',
+        );
+      }
+      // Two windows a day, on every day: 09:55 and 10:55.
+      expect(capped.length, 20);
+      expect(
+        capped.where((r) => r.hour == 10 && r.minute == 55).length,
+        days.length,
+      );
+    });
+
+    test('a cut-off as long as the work day changes nothing', () {
+      // 8 hours on a 09:00–17:00 schedule is the schedule already saying it,
+      // so the queue must be identical to one built with no limit at all.
+      final withLimit = reminderTimesForSchedule(
+        firstBoundary: DateTime(2026, 10, 16, 17),
+        frequencyMinutes: 60,
+        actionWindowMinutes: 5,
+        schedule: schedule,
+        now: DateTime(2026, 10, 16, 16),
+        count: 10,
+        dailyLimitMinutes: 8 * 60,
+      );
+      final withoutLimit = reminderTimesForSchedule(
+        firstBoundary: DateTime(2026, 10, 16, 17),
+        frequencyMinutes: 60,
+        actionWindowMinutes: 5,
+        schedule: schedule,
+        now: DateTime(2026, 10, 16, 16),
+        count: 10,
+      );
+      expect(withLimit, withoutLimit);
+      expect(withLimit, isNotEmpty);
+    });
+
     test('prelude times sit the configured lead time before each reminder', () {
       final reminders = [
         DateTime(2026, 10, 16, 16, 55),

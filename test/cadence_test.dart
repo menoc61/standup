@@ -37,6 +37,7 @@ void main() {
       expect(prefs.preludeEnabled, isTrue);
       expect(prefs.preludeMinutes, AppCadence.defaultPreludeMinutes);
       expect(prefs.breakBlockingEnabled, isFalse);
+      expect(prefs.dailyLimitMinutes, AppCadence.defaultDailyLimitMinutes);
     });
 
     test('fromJson falls back to AppCadence for missing keys', () {
@@ -50,6 +51,7 @@ void main() {
       expect(prefs.preludeEnabled, isTrue);
       expect(prefs.preludeMinutes, AppCadence.defaultPreludeMinutes);
       expect(prefs.breakBlockingEnabled, isFalse);
+      expect(prefs.dailyLimitMinutes, AppCadence.defaultDailyLimitMinutes);
     });
 
     test('defaultPreferences matches AppCadence', () {
@@ -60,6 +62,7 @@ void main() {
       expect(prefs.preludeEnabled, isTrue);
       expect(prefs.preludeMinutes, AppCadence.defaultPreludeMinutes);
       expect(prefs.breakBlockingEnabled, isFalse);
+      expect(prefs.dailyLimitMinutes, AppCadence.defaultDailyLimitMinutes);
     });
   });
 
@@ -136,6 +139,24 @@ void main() {
         ),
       );
     });
+
+    test('daily_limit_minutes migrates in as off', () {
+      // A cut-off applied by an upgrade would end somebody's afternoon without
+      // them asking, so the migration must write the same "off" the Dart default
+      // means.
+      expect(
+        databaseSource,
+        contains(
+          'ADD COLUMN daily_limit_minutes INTEGER NOT NULL '
+          'DEFAULT ${AppCadence.defaultDailyLimitMinutes}',
+        ),
+        reason:
+            'The v11 migration writes '
+            'DEFAULT ${AppCadence.defaultDailyLimitMinutes} for '
+            'daily_limit_minutes.',
+      );
+      expect(AppCadence.defaultDailyLimitMinutes, 0);
+    });
   });
 
   group('option sets contain the default', () {
@@ -169,12 +190,34 @@ void main() {
       );
     });
 
+    test('dailyLimitOptions spans hours and covers the bounds', () {
+      expect(AppCadence.dailyLimitOptions, contains(60));
+      expect(
+        AppCadence.dailyLimitOptions,
+        contains(AppCadence.enabledDailyLimitMinutes),
+        reason:
+            'the value the switch turns on must be one the picker can show, or '
+            'turning the limit on would jump to a setting the user cannot see',
+      );
+      expect(
+        AppCadence.dailyLimitOptions.first,
+        AppCadence.minDailyLimitMinutes,
+      );
+      expect(
+        AppCadence.dailyLimitOptions.last,
+        AppCadence.maxDailyLimitMinutes,
+      );
+      // Zero is not an option: "off" is the switch, not a length.
+      expect(AppCadence.dailyLimitOptions, isNot(contains(0)));
+    });
+
     test('options are strictly ascending', () {
       for (final list in [
         AppCadence.cadenceOptions,
         AppCadence.dailyGoalOptions,
         AppCadence.actionWindowOptions,
         AppCadence.preludeOptions,
+        AppCadence.dailyLimitOptions,
       ]) {
         for (var i = 1; i < list.length; i++) {
           expect(
@@ -255,6 +298,20 @@ void main() {
         AppCadence.resolvePrelude(-5, 60),
         AppCadence.defaultPreludeMinutes,
       );
+    });
+
+    test('clampDailyLimit leaves zero alone and bounds the rest', () {
+      // Zero is "off", not "the shortest day": collapsing it to an hour would
+      // turn the default into a cut-off nobody chose.
+      expect(AppCadence.clampDailyLimit(0), 0);
+      expect(AppCadence.clampDailyLimit(-30), 0);
+      expect(
+        AppCadence.clampDailyLimit(30),
+        AppCadence.minDailyLimitMinutes,
+        reason: 'a hand-edited 30-minute day rounds up to the shortest offered',
+      );
+      expect(AppCadence.clampDailyLimit(9999), AppCadence.maxDailyLimitMinutes);
+      expect(AppCadence.clampDailyLimit(480), 480);
     });
   });
 

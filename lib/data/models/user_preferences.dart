@@ -67,6 +67,10 @@ class UserPreferences {
   /// disappeared on the next launch.
   final GuidanceFeedback guidanceFeedback;
 
+  /// Minutes after the start of the work day when StandUp stops offering
+  /// breaks. Zero means no cut-off, which is the default.
+  final int dailyLimitMinutes;
+
   /// Workdays as sorted comma-separated DateTime weekday numbers (1=Monday).
   final String workDays;
   final int workStartMinute;
@@ -100,6 +104,7 @@ class UserPreferences {
     this.preludeMinutes = AppCadence.defaultPreludeMinutes,
     this.breakBlockingEnabled = false,
     this.guidanceFeedback = GuidanceFeedback.none,
+    this.dailyLimitMinutes = AppCadence.defaultDailyLimitMinutes,
     this.workDays = '1,2,3,4,5',
     this.workStartMinute = WorkSchedule.defaultStartMinute,
     this.workEndMinute = WorkSchedule.defaultEndMinute,
@@ -127,6 +132,7 @@ class UserPreferences {
     int? preludeMinutes,
     bool? breakBlockingEnabled,
     GuidanceFeedback? guidanceFeedback,
+    int? dailyLimitMinutes,
     String? workDays,
     int? workStartMinute,
     int? workEndMinute,
@@ -153,6 +159,7 @@ class UserPreferences {
       preludeMinutes: preludeMinutes ?? this.preludeMinutes,
       breakBlockingEnabled: breakBlockingEnabled ?? this.breakBlockingEnabled,
       guidanceFeedback: guidanceFeedback ?? this.guidanceFeedback,
+      dailyLimitMinutes: dailyLimitMinutes ?? this.dailyLimitMinutes,
       workDays: workDays ?? this.workDays,
       workStartMinute: workStartMinute ?? this.workStartMinute,
       workEndMinute: workEndMinute ?? this.workEndMinute,
@@ -181,6 +188,7 @@ class UserPreferences {
       'prelude_minutes': preludeMinutes,
       'break_blocking_enabled': breakBlockingEnabled,
       'guidance_feedback': guidanceFeedback.name,
+      'daily_limit_minutes': dailyLimitMinutes,
       'work_days': workDays,
       'work_start_minute': workStartMinute,
       'work_end_minute': workEndMinute,
@@ -220,6 +228,9 @@ class UserPreferences {
       breakBlockingEnabled: json['break_blocking_enabled'] as bool? ?? false,
       guidanceFeedback: GuidanceFeedback.parse(
         json['guidance_feedback'] as String?,
+      ),
+      dailyLimitMinutes: AppCadence.clampDailyLimit(
+        json['daily_limit_minutes'] as int? ?? 0,
       ),
       workDays: workSchedule.storedDays,
       workStartMinute: workSchedule.startMinute,

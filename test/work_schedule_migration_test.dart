@@ -96,6 +96,9 @@ void main() {
       // recorded before it existed, so "none" is the only honest value — not
       // "helpful", which would be inventing an opinion for the user.
       expect(migrated.guidanceFeedback, GuidanceFeedback.none);
+      // The daily cut-off arrives at v11 and must default to off: a limit
+      // applied by an upgrade would end somebody's afternoon unasked.
+      expect(migrated.dailyLimitMinutes, AppCadence.defaultDailyLimitMinutes);
 
       final edited = migrated.copyWith(
         aiGuidanceOptIn: true,
@@ -106,6 +109,7 @@ void main() {
         preludeMinutes: 10,
         breakBlockingEnabled: true,
         guidanceFeedback: GuidanceFeedback.suggestionsTooFrequent,
+        dailyLimitMinutes: 6 * 60,
       );
       await repository.saveUserPreferences(edited);
       final reloaded = await repository.getUserPreferences('local_legacy');
@@ -115,6 +119,9 @@ void main() {
       expect(reloaded?.preludeEnabled, isFalse);
       expect(reloaded?.preludeMinutes, 10);
       expect(reloaded?.breakBlockingEnabled, isTrue);
+      // So does the cut-off, which is meaningless unless it outlives the
+      // session that set it.
+      expect(reloaded?.dailyLimitMinutes, 6 * 60);
       // So does the feedback the employee gave, which is the whole point of
       // storing it: it has to survive the process that collected it.
       expect(

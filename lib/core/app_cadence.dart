@@ -74,6 +74,22 @@ abstract final class AppCadence {
   /// changes whether a break counts, only whether the app warns first.
   static const int defaultPreludeMinutes = 5;
 
+  /// Minutes after the start of the work day when StandUp stops offering
+  /// breaks. Zero means no cut-off.
+  ///
+  /// Off by default on purpose: a cut-off changes what the app does for the rest
+  /// of the day, so it is a choice the employee makes rather than something an
+  /// upgrade switches on for them.
+  static const int defaultDailyLimitMinutes = 0;
+
+  /// What the Settings switch sets the cut-off to when it is turned on.
+  ///
+  /// Turning the limit on and choosing a length are two decisions; the first
+  /// must not silently mean "one hour". Eight hours is a full working day, so
+  /// the switch on its own is a no-op against a 9–17 schedule — which is why
+  /// Settings shows the resolved cut-off time next to the value.
+  static const int enabledDailyLimitMinutes = 8 * 60;
+
   // ── Bounds ─────────────────────────────────────────────────────────────────
 
   static const int minCadenceMinutes = 1;
@@ -137,6 +153,42 @@ abstract final class AppCadence {
 
   /// Prelude-warning lengths, in minutes.
   static const List<int> preludeOptions = [1, 2, 5, 10];
+
+  /// Cut-off lengths the UI offers, in minutes (one to twelve hours).
+  ///
+  /// An entry longer than the configured work day is not an error: it is a
+  /// cut-off the schedule already imposes, and [WorkSchedule.dailyLimitInstant]
+  /// reports it as no cut-off rather than drawing a line nothing can cross.
+  static const List<int> dailyLimitOptions = [
+    60,
+    120,
+    180,
+    240,
+    300,
+    360,
+    420,
+    480,
+    540,
+    600,
+    660,
+    720,
+  ];
+
+  /// The longest cut-off the UI offers.
+  static const int maxDailyLimitMinutes = 720;
+
+  /// The shortest cut-off the UI offers.
+  static const int minDailyLimitMinutes = 60;
+
+  /// Bounds a stored cut-off to the offered range, leaving zero ("off") alone.
+  ///
+  /// A hand-edited row asking for a 30-minute day is rounded up to the shortest
+  /// offered value rather than silently ignored, so the app never behaves as if
+  /// the setting were absent.
+  static int clampDailyLimit(int minutes) {
+    if (minutes <= 0) return 0;
+    return minutes.clamp(minDailyLimitMinutes, maxDailyLimitMinutes);
+  }
 
   // ── Reminder scheduling ────────────────────────────────────────────────────
 

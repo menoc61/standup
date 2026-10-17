@@ -65,6 +65,10 @@ class UserPreferencesTable extends Table {
   // rewrite; an unrecognised value reads back as `none`.
   TextColumn get guidanceFeedback =>
       text().withDefault(const Constant('none'))();
+  // Minutes after the start of the work day when breaks stop being offered.
+  // Zero means no cut-off, which is the default: this is a behaviour change the
+  // employee asks for, not one an upgrade makes for them.
+  IntColumn get dailyLimitMinutes => integer().withDefault(const Constant(0))();
   TextColumn get workDays => text().withDefault(const Constant('1,2,3,4,5'))();
   IntColumn get workStartMinute =>
       integer().withDefault(const Constant(WorkSchedule.defaultStartMinute))();
@@ -135,7 +139,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -231,6 +235,14 @@ class AppDatabase extends _$AppDatabase {
         // ever recorded, so nothing is invented for them.
         await customStatement(
           "ALTER TABLE user_preferences_table ADD COLUMN guidance_feedback TEXT NOT NULL DEFAULT 'none'",
+        );
+      }
+      if (from < 11) {
+        // The daily cut-off. Defaults to 0 (off) so no existing user loses the
+        // reminders they have today: a limit silently applied by an upgrade
+        // would end someone's afternoon without them asking for it.
+        await customStatement(
+          'ALTER TABLE user_preferences_table ADD COLUMN daily_limit_minutes INTEGER NOT NULL DEFAULT 0',
         );
       }
     },

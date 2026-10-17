@@ -534,6 +534,17 @@ const Map<String, String> _french = {
   'Forced break': 'Pause forcée',
   'Block the screen during the break': 'Bloquer l’écran pendant la pause',
   'Cover the app until you stand up. The break still ends when the window closes.': 'Couvrir l’application jusqu’à ce que vous vous leviez. La pause se termine tout de même à la fermeture de la fenêtre.',
+  // Daily cut-off
+  'Daily limit': 'Limite quotidienne',
+  'Stop offering breaks after a set number of hours, so a long day does not become endless reminders.': 'Arrêter de proposer des pauses après un nombre d’heures défini, pour qu’une longue journée ne devienne pas une succession de rappels.',
+  'Hours after your work day starts':
+      'Heures après le début de votre journée de travail',
+  'Breaks stop at': 'Les pauses s’arrêtent à',
+  'Longer than your work day, so nothing changes.':
+      'Plus long que votre journée de travail : rien ne change.',
+  'Breaks have stopped for today': 'Les pauses sont terminées pour aujourd’hui',
+  'Reminders resume on your next work day.':
+      'Les rappels reprennent à votre prochaine journée de travail.',
   'Time to stand up': 'Debout !',
   'Stand, stretch and breathe. This screen lifts when the break ends or when you log it.': 'Levez-vous, étirez-vous et respirez. Cet écran disparaît à la fin de la pause ou dès que vous l’enregistrez.',
   'Unlocks in {time}': 'Déblocage dans {time}',

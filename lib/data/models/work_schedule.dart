@@ -73,6 +73,56 @@ class WorkSchedule {
     return beginMinute >= startMinute && finishMinute <= endMinute;
   }
 
+  /// Minutes this schedule spans in a single day.
+  int get lengthMinutes => endMinute - startMinute;
+
+  /// The instant on [when]'s local day after which StandUp stops offering
+  /// breaks, or `null` when no cut-off applies.
+  ///
+  /// ## What this measures, and what it deliberately does not
+  ///
+  /// This is the **scheduled** day's length, not accumulated desk time. Workrave
+  /// counts the real minutes you worked and forces a rest once you pass the
+  /// limit; doing that here would mean continuously tracking desk occupancy,
+  /// reading it back after a crash, and reconciling it across clock changes and
+  /// suspend — and the app would then fire an interruption the employee cannot
+  /// predict from any setting they chose. The cut-off is expressed instead as
+  /// "N hours after your work day starts", which the user can compute from their
+  /// own schedule, which is stable across days, and which cannot be wrong about
+  /// how long they were actually at the desk.
+  ///
+  /// Returns `null` — no cut-off — for a non-positive limit, and for a limit at
+  /// least as long as the schedule itself. The second case matters: an 8-hour
+  /// limit on an 8-hour day is not a feature that failed to work, it is the
+  /// schedule already saying the same thing, and returning an instant there
+  /// would put a cut-off line where no window could exist anyway.
+  DateTime? dailyLimitInstant({
+    required DateTime when,
+    required int limitMinutes,
+  }) {
+    if (limitMinutes <= 0 || limitMinutes >= lengthMinutes) return null;
+    final midnight = DateTime(when.year, when.month, when.day);
+    return midnight.add(Duration(minutes: startMinute + limitMinutes));
+  }
+
+  /// Whether a window starting at [windowStart] falls past the daily cut-off.
+  ///
+  /// The comparison uses the window's **start**, so a window that opened before
+  /// the limit stays actionable for its whole length. Cutting it mid-window
+  /// would revoke a break the app had already offered, which is the one thing a
+  /// limit must not do: the rule exists to end the day, not to snatch an
+  /// invitation back.
+  bool isPastDailyLimit({
+    required DateTime windowStart,
+    required int limitMinutes,
+  }) {
+    final limit = dailyLimitInstant(
+      when: windowStart,
+      limitMinutes: limitMinutes,
+    );
+    return limit != null && !windowStart.isBefore(limit);
+  }
+
   @override
   bool operator ==(Object other) =>
       other is WorkSchedule &&

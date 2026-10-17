@@ -883,14 +883,22 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildWindowBanner(BuildContext context, Color accent, bool isOpen) {
     final state = widget.appState;
     final theme = Theme.of(context);
+    // The cut-off is a third state, not "closed": without it the banner counts
+    // down to tomorrow's first window while the app refuses to open one, which
+    // reads as a bug rather than as a setting the user chose.
+    final cutOffReached = !isOpen && state.isDailyLimitReached;
     final label = isOpen
         ? appString(context, 'Movement window open')
+        : cutOffReached
+        ? appString(context, 'Breaks have stopped for today')
         : appString(context, 'Next movement window');
     final countdown = isOpen
         ? formatClock(state.windowTimeRemaining)
         : formatClock(state.timeUntilNextWindow);
     final detail = isOpen
         ? appString(context, 'Log your stand-up before the window closes')
+        : cutOffReached
+        ? appString(context, 'Reminders resume on your next work day.')
         : appString(
             context,
             'A break only counts in the last minutes of each hour',
@@ -933,15 +941,16 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(width: AppSpace.lg),
-          Text(
-            countdown,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: AppFontSize.label,
-              fontFeatures: const [FontFeature.tabularFigures()],
-              color: isOpen ? accent : theme.colorScheme.onSurface,
+          if (!cutOffReached)
+            Text(
+              countdown,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: AppFontSize.label,
+                fontFeatures: const [FontFeature.tabularFigures()],
+                color: isOpen ? accent : theme.colorScheme.onSurface,
+              ),
             ),
-          ),
         ],
       ),
     );

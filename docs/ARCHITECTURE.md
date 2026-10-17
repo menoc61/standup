@@ -296,6 +296,25 @@ query rather than an aggregation over raw logs. The legacy field name
   `setEnabled`, so a switch that was refused, or an entry the user deleted
   outside the app, shows the truth instead of the last tap. No native code, no
   new dependency, and no macOS path, because no macOS build exists to test one.
+- **The daily cut-off is schedule arithmetic, not usage accounting.** The rule
+  is one method on the value type that already owns the other schedule rules —
+  `WorkSchedule.dailyLimitInstant` — so it is pure, pinnable by
+  `test/daily_limit_test.dart` and `test/work_schedule_test.dart`, and the same
+  answer reaches `activeWindow`, `_nextEligibleWindow` (both through
+  `AppState._windowAllowed`) and the OS queue (`reminderTimesForSchedule`, which
+  applies it per candidate against that candidate's own day). It is measured from
+  the work day's start, which is why the Settings row prints the resolved clock
+  time next to the number: a setting whose effect cannot be read off the schedule
+  is a setting nobody can predict. Workrave's daily limit counts the time actually
+  worked and forces a rest, which would mean continuously tracking desk
+  occupancy, reconciling it across suspend and clock changes, and then firing an
+  interruption no chosen setting explains; this app deliberately does not. Two
+  edges are deliberate: a limit at least as long as the work day is *reported as
+  no cut-off* rather than drawn where no window could exist, and the comparison
+  uses the window's **start**, so a window that opened before the cut-off is
+  never revoked mid-break. It is enforced at completion too, because a user who
+  does not enforce the action window can otherwise log breaks all day — the one
+  setting that would have done nothing and still ended their reminders.
 - **Quiet mode is one flag, read everywhere, stored nowhere.** `isInterruptionPaused`
   (`quietMode || quietHours`) is the single question the chime, the nudge, the
   prelude getter, the forced-break rule (`shouldBlockBreak(quiet:)`) and the OS

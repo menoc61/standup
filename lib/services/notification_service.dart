@@ -25,6 +25,7 @@ List<DateTime> reminderTimesForSchedule({
   String? quietHours,
   int count = 48,
   int maxLookAheadDays = 90,
+  int dailyLimitMinutes = 0,
 }) {
   if (frequencyMinutes <= 0) {
     throw ArgumentError.value(frequencyMinutes, 'frequencyMinutes');
@@ -40,6 +41,15 @@ List<DateTime> reminderTimesForSchedule({
     final when = boundary.subtract(Duration(minutes: actionWindowMinutes));
     if (!when.isBefore(now.subtract(const Duration(minutes: 1))) &&
         schedule.allowsWindow(when, boundary) &&
+        // The daily cut-off is evaluated per candidate, against *that* day's
+        // boundary. Testing it once against `now` would queue a cut-off for
+        // today and none for tomorrow, so after midnight the limit would
+        // silently stop applying — the queue spans 90 days precisely because it
+        // crosses days.
+        !schedule.isPastDailyLimit(
+          windowStart: when,
+          limitMinutes: dailyLimitMinutes,
+        ) &&
         !QuietHours.isQuietAt(quietHours, when)) {
       reminders.add(when);
     }
@@ -555,6 +565,7 @@ class NotificationService {
     String workDays = '1,2,3,4,5',
     int workStartMinute = 540,
     int workEndMinute = 1020,
+    int dailyLimitMinutes = 0,
   }) {
     final operation = _queueOperations.then(
       (_) => _rebuildReminderSeries(
@@ -569,6 +580,7 @@ class NotificationService {
         workDays: workDays,
         workStartMinute: workStartMinute,
         workEndMinute: workEndMinute,
+        dailyLimitMinutes: dailyLimitMinutes,
       ),
     );
     // A failed rebuild must be reported to its caller without poisoning the
@@ -591,6 +603,7 @@ class NotificationService {
     String workDays = '1,2,3,4,5',
     int workStartMinute = 540,
     int workEndMinute = 1020,
+    int dailyLimitMinutes = 0,
   }) async {
     if (frequencyMinutes <= 0) {
       throw ArgumentError.value(frequencyMinutes, 'frequencyMinutes');
@@ -626,6 +639,7 @@ class NotificationService {
       now: DateTime.now(),
       quietHours: quietHours,
       count: count,
+      dailyLimitMinutes: dailyLimitMinutes,
     );
     if (reminders.isEmpty) {
       debugPrint(

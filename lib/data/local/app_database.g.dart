@@ -771,6 +771,18 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     requiredDuringInsert: false,
     defaultValue: const Constant('none'),
   );
+  static const VerificationMeta _dailyLimitMinutesMeta = const VerificationMeta(
+    'dailyLimitMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> dailyLimitMinutes = GeneratedColumn<int>(
+    'daily_limit_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _workDaysMeta = const VerificationMeta(
     'workDays',
   );
@@ -840,6 +852,7 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     preludeMinutes,
     breakBlockingEnabled,
     guidanceFeedback,
+    dailyLimitMinutes,
     workDays,
     workStartMinute,
     workEndMinute,
@@ -1014,6 +1027,15 @@ class $UserPreferencesTableTable extends UserPreferencesTable
         ),
       );
     }
+    if (data.containsKey('daily_limit_minutes')) {
+      context.handle(
+        _dailyLimitMinutesMeta,
+        dailyLimitMinutes.isAcceptableOrUnknown(
+          data['daily_limit_minutes']!,
+          _dailyLimitMinutesMeta,
+        ),
+      );
+    }
     if (data.containsKey('work_days')) {
       context.handle(
         _workDaysMeta,
@@ -1132,6 +1154,10 @@ class $UserPreferencesTableTable extends UserPreferencesTable
         DriftSqlType.string,
         data['${effectivePrefix}guidance_feedback'],
       )!,
+      dailyLimitMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}daily_limit_minutes'],
+      )!,
       workDays: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}work_days'],
@@ -1178,6 +1204,7 @@ class UserPreferencesTableData extends DataClass
   final int preludeMinutes;
   final bool breakBlockingEnabled;
   final String guidanceFeedback;
+  final int dailyLimitMinutes;
   final String workDays;
   final int workStartMinute;
   final int workEndMinute;
@@ -1202,6 +1229,7 @@ class UserPreferencesTableData extends DataClass
     required this.preludeMinutes,
     required this.breakBlockingEnabled,
     required this.guidanceFeedback,
+    required this.dailyLimitMinutes,
     required this.workDays,
     required this.workStartMinute,
     required this.workEndMinute,
@@ -1231,6 +1259,7 @@ class UserPreferencesTableData extends DataClass
     map['prelude_minutes'] = Variable<int>(preludeMinutes);
     map['break_blocking_enabled'] = Variable<bool>(breakBlockingEnabled);
     map['guidance_feedback'] = Variable<String>(guidanceFeedback);
+    map['daily_limit_minutes'] = Variable<int>(dailyLimitMinutes);
     map['work_days'] = Variable<String>(workDays);
     map['work_start_minute'] = Variable<int>(workStartMinute);
     map['work_end_minute'] = Variable<int>(workEndMinute);
@@ -1261,6 +1290,7 @@ class UserPreferencesTableData extends DataClass
       preludeMinutes: Value(preludeMinutes),
       breakBlockingEnabled: Value(breakBlockingEnabled),
       guidanceFeedback: Value(guidanceFeedback),
+      dailyLimitMinutes: Value(dailyLimitMinutes),
       workDays: Value(workDays),
       workStartMinute: Value(workStartMinute),
       workEndMinute: Value(workEndMinute),
@@ -1303,6 +1333,7 @@ class UserPreferencesTableData extends DataClass
         json['breakBlockingEnabled'],
       ),
       guidanceFeedback: serializer.fromJson<String>(json['guidanceFeedback']),
+      dailyLimitMinutes: serializer.fromJson<int>(json['dailyLimitMinutes']),
       workDays: serializer.fromJson<String>(json['workDays']),
       workStartMinute: serializer.fromJson<int>(json['workStartMinute']),
       workEndMinute: serializer.fromJson<int>(json['workEndMinute']),
@@ -1332,6 +1363,7 @@ class UserPreferencesTableData extends DataClass
       'preludeMinutes': serializer.toJson<int>(preludeMinutes),
       'breakBlockingEnabled': serializer.toJson<bool>(breakBlockingEnabled),
       'guidanceFeedback': serializer.toJson<String>(guidanceFeedback),
+      'dailyLimitMinutes': serializer.toJson<int>(dailyLimitMinutes),
       'workDays': serializer.toJson<String>(workDays),
       'workStartMinute': serializer.toJson<int>(workStartMinute),
       'workEndMinute': serializer.toJson<int>(workEndMinute),
@@ -1359,6 +1391,7 @@ class UserPreferencesTableData extends DataClass
     int? preludeMinutes,
     bool? breakBlockingEnabled,
     String? guidanceFeedback,
+    int? dailyLimitMinutes,
     String? workDays,
     int? workStartMinute,
     int? workEndMinute,
@@ -1383,6 +1416,7 @@ class UserPreferencesTableData extends DataClass
     preludeMinutes: preludeMinutes ?? this.preludeMinutes,
     breakBlockingEnabled: breakBlockingEnabled ?? this.breakBlockingEnabled,
     guidanceFeedback: guidanceFeedback ?? this.guidanceFeedback,
+    dailyLimitMinutes: dailyLimitMinutes ?? this.dailyLimitMinutes,
     workDays: workDays ?? this.workDays,
     workStartMinute: workStartMinute ?? this.workStartMinute,
     workEndMinute: workEndMinute ?? this.workEndMinute,
@@ -1443,6 +1477,9 @@ class UserPreferencesTableData extends DataClass
       guidanceFeedback: data.guidanceFeedback.present
           ? data.guidanceFeedback.value
           : this.guidanceFeedback,
+      dailyLimitMinutes: data.dailyLimitMinutes.present
+          ? data.dailyLimitMinutes.value
+          : this.dailyLimitMinutes,
       workDays: data.workDays.present ? data.workDays.value : this.workDays,
       workStartMinute: data.workStartMinute.present
           ? data.workStartMinute.value
@@ -1476,6 +1513,7 @@ class UserPreferencesTableData extends DataClass
           ..write('preludeMinutes: $preludeMinutes, ')
           ..write('breakBlockingEnabled: $breakBlockingEnabled, ')
           ..write('guidanceFeedback: $guidanceFeedback, ')
+          ..write('dailyLimitMinutes: $dailyLimitMinutes, ')
           ..write('workDays: $workDays, ')
           ..write('workStartMinute: $workStartMinute, ')
           ..write('workEndMinute: $workEndMinute, ')
@@ -1505,6 +1543,7 @@ class UserPreferencesTableData extends DataClass
     preludeMinutes,
     breakBlockingEnabled,
     guidanceFeedback,
+    dailyLimitMinutes,
     workDays,
     workStartMinute,
     workEndMinute,
@@ -1533,6 +1572,7 @@ class UserPreferencesTableData extends DataClass
           other.preludeMinutes == this.preludeMinutes &&
           other.breakBlockingEnabled == this.breakBlockingEnabled &&
           other.guidanceFeedback == this.guidanceFeedback &&
+          other.dailyLimitMinutes == this.dailyLimitMinutes &&
           other.workDays == this.workDays &&
           other.workStartMinute == this.workStartMinute &&
           other.workEndMinute == this.workEndMinute &&
@@ -1560,6 +1600,7 @@ class UserPreferencesTableCompanion
   final Value<int> preludeMinutes;
   final Value<bool> breakBlockingEnabled;
   final Value<String> guidanceFeedback;
+  final Value<int> dailyLimitMinutes;
   final Value<String> workDays;
   final Value<int> workStartMinute;
   final Value<int> workEndMinute;
@@ -1585,6 +1626,7 @@ class UserPreferencesTableCompanion
     this.preludeMinutes = const Value.absent(),
     this.breakBlockingEnabled = const Value.absent(),
     this.guidanceFeedback = const Value.absent(),
+    this.dailyLimitMinutes = const Value.absent(),
     this.workDays = const Value.absent(),
     this.workStartMinute = const Value.absent(),
     this.workEndMinute = const Value.absent(),
@@ -1611,6 +1653,7 @@ class UserPreferencesTableCompanion
     this.preludeMinutes = const Value.absent(),
     this.breakBlockingEnabled = const Value.absent(),
     this.guidanceFeedback = const Value.absent(),
+    this.dailyLimitMinutes = const Value.absent(),
     this.workDays = const Value.absent(),
     this.workStartMinute = const Value.absent(),
     this.workEndMinute = const Value.absent(),
@@ -1638,6 +1681,7 @@ class UserPreferencesTableCompanion
     Expression<int>? preludeMinutes,
     Expression<bool>? breakBlockingEnabled,
     Expression<String>? guidanceFeedback,
+    Expression<int>? dailyLimitMinutes,
     Expression<String>? workDays,
     Expression<int>? workStartMinute,
     Expression<int>? workEndMinute,
@@ -1669,6 +1713,7 @@ class UserPreferencesTableCompanion
       if (breakBlockingEnabled != null)
         'break_blocking_enabled': breakBlockingEnabled,
       if (guidanceFeedback != null) 'guidance_feedback': guidanceFeedback,
+      if (dailyLimitMinutes != null) 'daily_limit_minutes': dailyLimitMinutes,
       if (workDays != null) 'work_days': workDays,
       if (workStartMinute != null) 'work_start_minute': workStartMinute,
       if (workEndMinute != null) 'work_end_minute': workEndMinute,
@@ -1697,6 +1742,7 @@ class UserPreferencesTableCompanion
     Value<int>? preludeMinutes,
     Value<bool>? breakBlockingEnabled,
     Value<String>? guidanceFeedback,
+    Value<int>? dailyLimitMinutes,
     Value<String>? workDays,
     Value<int>? workStartMinute,
     Value<int>? workEndMinute,
@@ -1724,6 +1770,7 @@ class UserPreferencesTableCompanion
       preludeMinutes: preludeMinutes ?? this.preludeMinutes,
       breakBlockingEnabled: breakBlockingEnabled ?? this.breakBlockingEnabled,
       guidanceFeedback: guidanceFeedback ?? this.guidanceFeedback,
+      dailyLimitMinutes: dailyLimitMinutes ?? this.dailyLimitMinutes,
       workDays: workDays ?? this.workDays,
       workStartMinute: workStartMinute ?? this.workStartMinute,
       workEndMinute: workEndMinute ?? this.workEndMinute,
@@ -1796,6 +1843,9 @@ class UserPreferencesTableCompanion
     if (guidanceFeedback.present) {
       map['guidance_feedback'] = Variable<String>(guidanceFeedback.value);
     }
+    if (dailyLimitMinutes.present) {
+      map['daily_limit_minutes'] = Variable<int>(dailyLimitMinutes.value);
+    }
     if (workDays.present) {
       map['work_days'] = Variable<String>(workDays.value);
     }
@@ -1836,6 +1886,7 @@ class UserPreferencesTableCompanion
           ..write('preludeMinutes: $preludeMinutes, ')
           ..write('breakBlockingEnabled: $breakBlockingEnabled, ')
           ..write('guidanceFeedback: $guidanceFeedback, ')
+          ..write('dailyLimitMinutes: $dailyLimitMinutes, ')
           ..write('workDays: $workDays, ')
           ..write('workStartMinute: $workStartMinute, ')
           ..write('workEndMinute: $workEndMinute, ')
@@ -3321,6 +3372,7 @@ typedef $$UserPreferencesTableTableCreateCompanionBuilder =
       Value<int> preludeMinutes,
       Value<bool> breakBlockingEnabled,
       Value<String> guidanceFeedback,
+      Value<int> dailyLimitMinutes,
       Value<String> workDays,
       Value<int> workStartMinute,
       Value<int> workEndMinute,
@@ -3348,6 +3400,7 @@ typedef $$UserPreferencesTableTableUpdateCompanionBuilder =
       Value<int> preludeMinutes,
       Value<bool> breakBlockingEnabled,
       Value<String> guidanceFeedback,
+      Value<int> dailyLimitMinutes,
       Value<String> workDays,
       Value<int> workStartMinute,
       Value<int> workEndMinute,
@@ -3456,6 +3509,11 @@ class $$UserPreferencesTableTableFilterComposer
 
   ColumnFilters<String> get guidanceFeedback => $composableBuilder(
     column: $table.guidanceFeedback,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dailyLimitMinutes => $composableBuilder(
+    column: $table.dailyLimitMinutes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3584,6 +3642,11 @@ class $$UserPreferencesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get dailyLimitMinutes => $composableBuilder(
+    column: $table.dailyLimitMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get workDays => $composableBuilder(
     column: $table.workDays,
     builder: (column) => ColumnOrderings(column),
@@ -3703,6 +3766,11 @@ class $$UserPreferencesTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get dailyLimitMinutes => $composableBuilder(
+    column: $table.dailyLimitMinutes,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get workDays =>
       $composableBuilder(column: $table.workDays, builder: (column) => column);
 
@@ -3782,6 +3850,7 @@ class $$UserPreferencesTableTableTableManager
                 Value<int> preludeMinutes = const Value.absent(),
                 Value<bool> breakBlockingEnabled = const Value.absent(),
                 Value<String> guidanceFeedback = const Value.absent(),
+                Value<int> dailyLimitMinutes = const Value.absent(),
                 Value<String> workDays = const Value.absent(),
                 Value<int> workStartMinute = const Value.absent(),
                 Value<int> workEndMinute = const Value.absent(),
@@ -3807,6 +3876,7 @@ class $$UserPreferencesTableTableTableManager
                 preludeMinutes: preludeMinutes,
                 breakBlockingEnabled: breakBlockingEnabled,
                 guidanceFeedback: guidanceFeedback,
+                dailyLimitMinutes: dailyLimitMinutes,
                 workDays: workDays,
                 workStartMinute: workStartMinute,
                 workEndMinute: workEndMinute,
@@ -3834,6 +3904,7 @@ class $$UserPreferencesTableTableTableManager
                 Value<int> preludeMinutes = const Value.absent(),
                 Value<bool> breakBlockingEnabled = const Value.absent(),
                 Value<String> guidanceFeedback = const Value.absent(),
+                Value<int> dailyLimitMinutes = const Value.absent(),
                 Value<String> workDays = const Value.absent(),
                 Value<int> workStartMinute = const Value.absent(),
                 Value<int> workEndMinute = const Value.absent(),
@@ -3859,6 +3930,7 @@ class $$UserPreferencesTableTableTableManager
                 preludeMinutes: preludeMinutes,
                 breakBlockingEnabled: breakBlockingEnabled,
                 guidanceFeedback: guidanceFeedback,
+                dailyLimitMinutes: dailyLimitMinutes,
                 workDays: workDays,
                 workStartMinute: workStartMinute,
                 workEndMinute: workEndMinute,

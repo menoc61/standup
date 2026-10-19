@@ -203,7 +203,22 @@ jobs:
         run: flutter pub get
 
       - name: Build Linux
-        run: flutter build linux --release
+        run: |
+          # `flutter build linux` without -v captures the toolchain's stderr and
+          # reports a link failure as a bare "clang++: error: linker command
+          # failed", with the `undefined reference to ...` line — the only part
+          # worth reading — nowhere in the log. That is what made this job
+          # undiagnosable. Verbose streaming shows it; if the build still fails,
+          # the link is re-run directly so the symbol is captured either way.
+          if ! flutter build linux --release -v; then
+            echo "::error::Linux release build failed; re-running the link directly"
+            if [ -d build/linux/x64/release ]; then
+              cmake --build build/linux/x64/release --config Release --verbose || true
+            else
+              echo "No CMake build directory exists, so the link could not be re-run."
+            fi
+            exit 1
+          fi
 
       - name: Upload Linux bundle
         uses: actions/upload-artifact@v4

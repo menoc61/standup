@@ -285,7 +285,20 @@ jobs:
         run: flutter pub get
 
       - name: Build Linux
-        run: flutter build linux --release
+        run: |
+          # Same reason as the CI job: a link failure must not reach the release
+          # log as a bare "linker command failed". If the build fails, the link
+          # is re-run directly so the undefined symbol is in the log before
+          # anyone goes looking for it.
+          if ! flutter build linux --release -v; then
+            echo "::error::Linux release build failed; re-running the link directly"
+            if [ -d build/linux/x64/release ]; then
+              cmake --build build/linux/x64/release --config Release --verbose || true
+            else
+              echo "No CMake build directory exists, so the link could not be re-run."
+            fi
+            exit 1
+          fi
 
       - name: Package as a tarball
         run: |

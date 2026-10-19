@@ -14,7 +14,12 @@ import 'package:standup_app/data/models/stand_window.dart';
 /// must use the known field types instead of guessing from the value alone
 /// (`"1"` is both a valid integer and the true boolean marker).
 abstract final class WidgetPayloadCodec {
-  static const _booleanKeys = {'window_open', 'goal_met', 'clock_suspect'};
+  static const _booleanKeys = {
+    'window_open',
+    'goal_met',
+    'clock_suspect',
+    'cut_off_reached',
+  };
   static const _integerKeys = {
     'window_minutes',
     'cadence_minutes',
@@ -120,6 +125,15 @@ class WidgetSnapshot {
   /// the figures as authoritative.
   final bool clockSuspect;
 
+  /// True once the day's cut-off has passed, so no window will be offered.
+  ///
+  /// The launcher re-derives its countdown from [cadenceMinutes] against the
+  /// device clock, so without this flag the widget kept counting down to the
+  /// next hourly boundary while the app itself announced that no break was
+  /// coming. Two surfaces disagreeing about whether the day was over is worse
+  /// than either being silent on its own.
+  final bool cutOffReached;
+
   /// Resolved colours for the widget, as 8-digit `AARRGGBB` hex.
   ///
   /// The palette travels from Dart rather than being duplicated in the Kotlin and
@@ -145,6 +159,7 @@ class WidgetSnapshot {
     this.dailyGoal = 8,
     this.goalMet = false,
     this.clockSuspect = false,
+    this.cutOffReached = false,
     this.palette = const WidgetPaletteHex(),
   });
 
@@ -159,6 +174,7 @@ class WidgetSnapshot {
     required int windowMinutes,
     required int cadenceMinutes,
     required bool clockSuspect,
+    bool cutOffReached = false,
     String colorSystem = 'brand',
   }) {
     final resolved = now ?? DateTime.now();
@@ -188,6 +204,7 @@ class WidgetSnapshot {
       dailyGoal: dailyGoal,
       goalMet: dailyGoal > 0 && todayCompleted >= dailyGoal,
       clockSuspect: clockSuspect,
+      cutOffReached: cutOffReached,
       palette: WidgetPaletteHex.forAccent(colorSystem),
     );
   }
@@ -205,6 +222,7 @@ class WidgetSnapshot {
     'daily_goal': dailyGoal,
     'goal_met': goalMet,
     'clock_suspect': clockSuspect,
+    'cut_off_reached': cutOffReached,
     'c_surface': palette.surface,
     'c_on_surface': palette.onSurface,
     'c_muted': palette.muted,
@@ -234,6 +252,7 @@ class WidgetSnapshot {
           (map['daily_goal'] as num?)?.toInt() ?? AppCadence.defaultDailyGoal,
       goalMet: map['goal_met'] as bool? ?? false,
       clockSuspect: map['clock_suspect'] as bool? ?? false,
+      cutOffReached: map['cut_off_reached'] as bool? ?? false,
       palette: WidgetPaletteHex(
         surface: map['c_surface'] as String?,
         onSurface: map['c_on_surface'] as String?,

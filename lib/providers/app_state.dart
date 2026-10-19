@@ -562,6 +562,10 @@ class AppState extends ChangeNotifier {
       windowMinutes: _actionWindowMinutes,
       cadenceMinutes: _cadenceMinutes,
       clockSuspect: isClockUnreliable,
+      // Without this the launcher keeps counting to the next hourly boundary
+      // after the cut-off, while the app says no break is coming. The widget is
+      // drawn by the launcher, not by Flutter, so it cannot discover this.
+      cutOffReached: isDailyLimitReached,
       // The widget follows the user's accent, so the preference is part of the
       // payload rather than something the native side guesses.
       colorSystem: preferences.colorSystem,

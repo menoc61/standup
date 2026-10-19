@@ -101,6 +101,7 @@ class StandUpWidgetProvider : AppWidgetProvider() {
 
         val windowOpen = values["window_open"] == "1"
         val clockSuspect = values["clock_suspect"] == "1"
+        val cutOffReached = values["cut_off_reached"] == "1"
         val streak = values["streak"]?.toIntOrNull() ?: 0
         val level = values["level"]?.toIntOrNull() ?: 0
         val lang = values["lang"] ?: "en"
@@ -138,14 +139,24 @@ class StandUpWidgetProvider : AppWidgetProvider() {
         )
 
         // ── Countdown ────────────────────────────────────────────────────────
+        //
+        // Past the cut-off there is no window to count towards, so the target
+        // is dropped even though `window_opens_at` still names the next hourly
+        // boundary. Counting to a break the app has already refused to offer
+        // would contradict the dashboard, which says the day is finished.
         val endsAt = values["window_ends_at"]?.let { parseIso(it) }
         val opensAt = values["window_opens_at"]?.let { parseIso(it) }
-        val target = if (windowOpen) endsAt else opensAt
+        val target = if (cutOffReached) null else if (windowOpen) endsAt else opensAt
         val remainingMs = target?.let { it - System.currentTimeMillis() }
 
         val countdownText: String
         val statusText: String
         when {
+            cutOffReached -> {
+                countdownText = "--:--"
+                statusText = t(lang, "Breaks done for today", "Pauses terminées pour aujourd’hui")
+            }
+
             target == null || remainingMs == null -> {
                 countdownText = "--:--"
                 statusText = t(lang, "Open the app to start", "Ouvrez l’application")

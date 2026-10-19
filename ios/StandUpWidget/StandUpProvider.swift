@@ -8,6 +8,12 @@ struct StandUpEntry: TimelineEntry {
     /// The sentence under the countdown, resolved once per entry rather than in
     /// the view so it stays stable across a re-render.
     var status: String {
+        // Checked before the nil-target branch below: past the cut-off the
+        // countdown is gone on purpose, and "open the app to start" would then
+        // describe a day that is over rather than one that has not started.
+        if payload.cutOffReached {
+            return payload.t("Breaks done for today", "Pauses terminées pour aujourd’hui")
+        }
         guard payload.countdownTarget != nil else {
             return payload.t("Open the app to start", "Ouvrez l'application")
         }

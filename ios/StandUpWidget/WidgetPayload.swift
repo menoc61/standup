@@ -23,6 +23,14 @@ struct WidgetPayload {
     let dailyGoal: Int
     let goalMet: Bool
     let clockSuspect: Bool
+
+    /// True once the day's cut-off has passed, so no window will be offered.
+    ///
+    /// The widget re-derives its countdown from `cadenceMinutes` against the
+    /// device clock, so without this flag the launcher kept counting down to
+    /// the next hourly boundary while the app itself announced that no break
+    /// was coming. See `cutoffTarget` for how it is applied.
+    let cutOffReached: Bool
     let language: String
 
     /// Colours published by the Dart side, already resolved from the user's
@@ -70,14 +78,21 @@ struct WidgetPayload {
             dailyGoal: Self.int(fields["daily_goal"]) ?? 8,
             goalMet: fields["goal_met"] == "1",
             clockSuspect: fields["clock_suspect"] == "1",
+            cutOffReached: fields["cut_off_reached"] == "1",
             language: fields["lang"] ?? "en",
             palette: WidgetPalette(fields: fields)
         )
     }
 
     /// The instant the countdown should aim at, or nil when there is none.
+    ///
+    /// Past the daily cut-off there is no window to count towards, so the
+    /// target is dropped even though `window_opens_at` still names the next
+    /// hourly boundary. Counting to a break the app has already refused to
+    /// offer would contradict the dashboard, which says the day is finished.
     var countdownTarget: Date? {
-        windowOpen ? windowEndsAt : windowOpensAt
+        guard !cutOffReached else { return nil }
+        return windowOpen ? windowEndsAt : windowOpensAt
     }
 
     /// Whether the action button may be offered.
@@ -103,6 +118,7 @@ struct WidgetPayload {
         dailyGoal: 8,
         goalMet: false,
         clockSuspect: false,
+        cutOffReached: false,
         language: "en",
         palette: .fallback
     )

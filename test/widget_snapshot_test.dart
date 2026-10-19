@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:standup_app/core/app_colors.dart';
 import 'package:standup_app/data/local/widget_palette.dart';
@@ -192,6 +194,133 @@ void main() {
       expect(roundTripped.goalMet, isFalse);
       expect(roundTripped.clockSuspect, isFalse);
       expect(roundTripped.streak, 0);
+    });
+
+    test('a reached cut-off travels to the widget as the flag it gates on', () {
+      // The launcher re-derives its countdown from the cadence and the device
+      // clock, so it cannot discover the cut-off on its own. Without this flag
+      // the widget counts down to an hourly boundary the app has already
+      // refused to open, and the two surfaces disagree about the day.
+      final payload = WidgetSnapshot.fromState(
+        streak: 4,
+        totalXp: 300,
+        todayCompleted: 5,
+        dailyGoal: 8,
+        windowOpen: false,
+        windowMinutes: 5,
+        cadenceMinutes: 60,
+        clockSuspect: false,
+        cutOffReached: true,
+        now: _closed,
+      ).toMap();
+
+      // Both native providers read exactly this key and compare it to "1".
+      expect(payload['cut_off_reached'], isTrue);
+      // The next boundary is still published; the provider is the thing that
+      // decides to ignore it. Dropping the timestamp here would make the
+      // widget's own countdown jump rather than stop.
+      expect(payload['window_opens_at'], isNotNull);
+    });
+
+    test('the cut-off flag survives the widget encoding as a boolean', () {
+      final snapshot = WidgetSnapshot.fromState(
+        streak: 0,
+        totalXp: 0,
+        todayCompleted: 0,
+        dailyGoal: 8,
+        windowOpen: false,
+        windowMinutes: 5,
+        cadenceMinutes: 60,
+        clockSuspect: false,
+        cutOffReached: true,
+        now: _closed,
+      );
+
+      final decoded = WidgetPayloadCodec.decode(
+        WidgetPayloadCodec.encode(snapshot.toMap()),
+      );
+      expect(decoded, isNotNull);
+
+      // The codec stores booleans as decimal text, so a missing entry in
+      // `_booleanKeys` would decode "1" as the integer 1 and the native side
+      // would read a non-boolean. This is the class of defect the earlier
+      // `clock_suspect` round-trip test was written for.
+      expect(decoded!['cut_off_reached'], isA<bool>());
+      expect(WidgetSnapshot.fromMap(decoded).cutOffReached, isTrue);
+    });
+
+    test('a payload with no cut-off key reads as not reached', () {
+      // A widget updated by an older build, or an empty payload, must not
+      // leave the launcher stuck showing a finished day.
+      final roundTripped = WidgetSnapshot.fromMap({
+        'window_open': true,
+        'window_minutes': 5,
+        'cadence_minutes': 60,
+      });
+      expect(roundTripped.cutOffReached, isFalse);
+    });
+  });
+
+  group('Payload keys are read by all three implementations', () {
+    // The widget is drawn by the launcher process, so none of this can be
+    // reached from a Flutter widget test. A key published by Dart and ignored
+    // by a native provider degrades silently to a wrong-looking widget rather
+    // than to an error, which is why the contract is asserted by reading the
+    // sources instead.
+    final root = Directory.current.path;
+    final sep = Platform.pathSeparator;
+
+    final android = File(
+      '$root${sep}android${sep}app${sep}src${sep}main${sep}kotlin${sep}com'
+      '${sep}cnps${sep}standup${sep}widget${sep}StandUpWidgetProvider.kt',
+    );
+    final swift = File(
+      '$root${sep}ios${sep}StandUpWidget${sep}WidgetPayload.swift',
+    );
+    final swiftProvider = File(
+      '$root${sep}ios${sep}StandUpWidget${sep}StandUpProvider.swift',
+    );
+
+    for (final entry in {
+      'StandUpWidgetProvider.kt': android,
+      'WidgetPayload.swift': swift,
+      'StandUpProvider.swift': swiftProvider,
+    }.entries) {
+      test('${entry.key} exists where the payload contract expects it', () {
+        expect(
+          entry.value.existsSync(),
+          isTrue,
+          reason:
+              'The provider is renamed or moved; the contract below '
+              'would be asserting against a file that is not built.',
+        );
+      });
+    }
+
+    test('both native parsers read cut_off_reached as a "1" flag', () {
+      for (final file in [android, swift]) {
+        expect(
+          file.readAsStringSync(),
+          contains('cut_off_reached'),
+          reason:
+              '${file.path} never reads the flag, so the launcher keeps '
+              'counting down past the cut-off while the app says the day is '
+              'finished.',
+        );
+      }
+    });
+
+    test('the iOS entry renders its own sentence past the cut-off', () {
+      // Returning a nil countdown target alone would fall through to "Open
+      // the app to start", which describes a day that has not started rather
+      // than one that is over.
+      expect(
+        swiftProvider.readAsStringSync(),
+        contains('cutOffReached'),
+        reason:
+            'A nil target is not enough; the status line needs its own '
+            'copy or it describes the wrong state.',
+      );
     });
   });
 

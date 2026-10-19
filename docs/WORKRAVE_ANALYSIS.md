@@ -61,7 +61,7 @@ day/week/month, and the tool has distinct **normal / quiet / suspended** modes.
 | Statistics | Daily analytics, contribution heatmap, charts, local CSV export | `ui/screens/analytics_screen.dart` |
 | Daily limit | Optional cut-off after N hours of the scheduled work day | `WorkSchedule.dailyLimitInstant` |
 | Quiet mode | One flag read by every interruption path, deliberately not persisted, announced by a banner | `core/presence.dart`, `ui/widgets/quiet_mode_banner.dart` |
-| Idle-aware supervision | OS idle reading → present/away; chimes, nudges and the screen takeover are all withheld while away | `ActiveTimeTracker`, `IdleTimeSource` |
+| Idle-aware supervision | OS idle reading → present/away; chimes, nudges and the screen takeover are all withheld while away, and the dashboard says so | `ActiveTimeTracker`, `IdleTimeSource`, `core/dashboard_notice.dart` |
 | Exercises during a long break | Guided stretch, 5 minutes in 5 timed steps — offered on the dashboard **and** on the forced-break cover | `AppCadence.guidedStretchSeconds`, `ui/widgets/guided_stretch.dart` |
 
 ## Three differences that are decisions, not gaps

@@ -546,6 +546,10 @@ const Map<String, String> _french = {
   'Breaks have stopped for today': 'Les pauses sont terminées pour aujourd’hui',
   'Reminders resume on your next work day.':
       'Les rappels reprennent à votre prochaine journée de travail.',
+  // Presence
+  'Away from the desk': 'Absent du poste',
+  'Breaks are on hold. No activity for {time}.':
+      'Les pauses sont suspendues. Aucune activité depuis {time}.',
   'Time to stand up': 'Debout !',
   'Stand, stretch and breathe. This screen lifts when the break ends or when you log it.': 'Levez-vous, étirez-vous et respirez. Cet écran disparaît à la fin de la pause ou dès que vous l’enregistrez.',
   'Unlocks in {time}': 'Déblocage dans {time}',

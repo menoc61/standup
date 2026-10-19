@@ -278,6 +278,17 @@ query rather than an aggregation over raw logs. The legacy field name
   the tracker treats as "no information" and holds its previous state — the app
   must never chime at an empty chair *or* silence a present user by guessing.
   The away threshold is `AppCadence.defaultAwayThresholdMinutes`.
+- **Presence is announced, not just obeyed.** Nothing is written to the counters
+  unless the user acts, so a window that opens and expires over an unattended
+  desk costs no completion, skip, XP or streak — but a dashboard still counting
+  down anyway would *look* like it was charging them. `resolveDashboardNotice`
+  (`core/dashboard_notice.dart`) resolves the banner's single message from the
+  window, the presence and the cut-off, and **away outranks both**: an away user
+  is never shown "log your stand-up before the window closes" beside a running
+  countdown, because the chime, the nudge and the takeover are all withheld and
+  such an invitation is one they cannot answer. `dashboardNoticeShowsCountdown`
+  pins that both silent states drop the countdown. The message is pure so the
+  precedence is testable without an `AppState`.
 - **The forced break is a rule, not a widget.** `shouldBlockBreak`
   (`core/break_block.dart`) is a pure five-input veto: opt-in, present, inside the
   window, not already logged, no stretch running. `AppState.isBreakBlockActive`

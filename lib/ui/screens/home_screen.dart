@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:standup_app/core/app_colors.dart';
 import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
+import 'package:standup_app/core/dashboard_notice.dart';
 import 'package:standup_app/data/models/gamification_metrics.dart';
 import 'package:standup_app/data/models/workday_metrics.dart';
 import 'package:standup_app/providers/app_state.dart';
@@ -885,41 +886,73 @@ class _HomeScreenState extends State<HomeScreen> {
     final theme = Theme.of(context);
     // The cut-off is a third state, not "closed": without it the banner counts
     // down to tomorrow's first window while the app refuses to open one, which
-    // reads as a bug rather than as a setting the user chose.
-    final cutOffReached = !isOpen && state.isDailyLimitReached;
-    final label = isOpen
-        ? appString(context, 'Movement window open')
-        : cutOffReached
-        ? appString(context, 'Breaks have stopped for today')
-        : appString(context, 'Next movement window');
+    // reads as a bug rather than as a setting the user chose. Presence adds a
+    // fourth — see `core/dashboard_notice.dart`, which owns the precedence.
+    final notice = resolveDashboardNotice(
+      windowOpen: isOpen,
+      userAway: state.isUserAway,
+      cutOffReached: !isOpen && state.isDailyLimitReached,
+    );
+    final label = switch (notice) {
+      DashboardNotice.actionWindow => appString(
+        context,
+        'Movement window open',
+      ),
+      DashboardNotice.away => appString(context, 'Away from the desk'),
+      DashboardNotice.dayFinished => appString(
+        context,
+        'Breaks have stopped for today',
+      ),
+      DashboardNotice.nextWindow => appString(context, 'Next movement window'),
+    };
     final countdown = isOpen
         ? formatClock(state.windowTimeRemaining)
         : formatClock(state.timeUntilNextWindow);
-    final detail = isOpen
-        ? appString(context, 'Log your stand-up before the window closes')
-        : cutOffReached
-        ? appString(context, 'Reminders resume on your next work day.')
-        : appString(
-            context,
-            'A break only counts in the last minutes of each hour',
-          );
+    final detail = switch (notice) {
+      DashboardNotice.actionWindow => appString(
+        context,
+        'Log your stand-up before the window closes',
+      ),
+      // The away state has to say how long, because that duration is the whole
+      // reassurance: it is what makes "your breaks are on hold" a measurement
+      // rather than a suspicion.
+      DashboardNotice.away => appStringArgs(
+        context,
+        'Breaks are on hold. No activity for {time}.',
+        {'time': formatDurationLabel(context, state.timeAway.inMinutes)},
+      ),
+      DashboardNotice.dayFinished => appString(
+        context,
+        'Reminders resume on your next work day.',
+      ),
+      DashboardNotice.nextWindow => appString(
+        context,
+        'A break only counts in the last minutes of each hour',
+      ),
+    };
+    final isActionable = notice == DashboardNotice.actionWindow;
 
     return GlassCard(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpace.xxl,
         vertical: AppSpace.xl,
       ),
-      tintColor: isOpen ? accent.withValues(alpha: 0.12) : null,
+      tintColor: isActionable ? accent.withValues(alpha: 0.12) : null,
       border: Border.all(
-        color: isOpen
+        color: isActionable
             ? accent.withValues(alpha: 0.4)
             : theme.colorScheme.outlineVariant,
       ),
       child: Row(
         children: [
           Icon(
-            isOpen ? Icons.check_circle_rounded : Icons.schedule_rounded,
-            color: isOpen ? accent : theme.colorScheme.onSurfaceVariant,
+            switch (notice) {
+              DashboardNotice.actionWindow => Icons.check_circle_rounded,
+              DashboardNotice.away => Icons.person_off_outlined,
+              DashboardNotice.dayFinished => Icons.bedtime_outlined,
+              DashboardNotice.nextWindow => Icons.schedule_rounded,
+            },
+            color: isActionable ? accent : theme.colorScheme.onSurfaceVariant,
             size: AppSpace.huge,
           ),
           const SizedBox(width: AppSpace.xl),
@@ -941,14 +974,14 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(width: AppSpace.lg),
-          if (!cutOffReached)
+          if (dashboardNoticeShowsCountdown(notice))
             Text(
               countdown,
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: AppFontSize.label,
                 fontFeatures: const [FontFeature.tabularFigures()],
-                color: isOpen ? accent : theme.colorScheme.onSurface,
+                color: isActionable ? accent : theme.colorScheme.onSurface,
               ),
             ),
         ],

@@ -83,10 +83,29 @@ an unhandled stream error. Fix: store and cancel it; wrap the call.
 
 ## Low
 
-- `dailyGoalBonusXp = 25` is declared and promised by `totalXp`'s doc but never
-  awarded (`gamification_metrics.dart`).
-- `StandWindow.windowsBetween` is documented as the way to detect missed breaks
-  without trusting a client counter, but has no caller in `lib/`.
+- **`StandWindow.windowsBetween` stays uncalled, and that is the decision.** It is
+  documented as the tamper-resistant way to count missed breaks, and it is fully
+  tested, so the instinct is to wire it up. It would not need a schema migration —
+  the count is derived from the schedule rather than stored, so the earlier
+  estimate that this cost a migration was wrong — but it would need one thing the
+  storage does not have. `windowsBetween` counts cadence boundaries and nothing
+  else: it knows nothing about the work schedule, quiet mode, the daily cut-off,
+  or presence, so used as-is it reports the 03:00 window and the weekend as
+  missed breaks. Subtracting those is possible; subtracting **absence** is not,
+  because `IdleTimeSource` is a runtime reading that is deliberately never stored
+  and never synced. Nothing in the database can say whether the user was at the
+  desk when a window closed, and a "missed break" that includes windows opened
+  over an empty chair is the exact number the presence work exists to prevent.
+  The two ways forward are each honest and each costly: persist presence, which
+  writes on every transition and weakens "nothing is written without an action",
+  or rename every surface to "windows with no recorded response", which is true
+  but re-charges absences. So nothing is counted. Completed, snoozed and skipped
+  remain exactly what they claim — actions the user took — and when breaks are
+  being held for an absent user the dashboard says so instead
+  (`resolveDashboardNotice`, `core/dashboard_notice.dart`). Revisit if presence
+  is ever persisted, or if the cadence becomes activity-driven.
+- **`dailyGoalBonusXp = 25` is declared and promised by `totalXp`'s doc but never
+  awarded (`gamification_metrics.dart`).**
 - `WidgetBridge.requestAndroidRefresh()` publishes an empty map, which would
   blank the launcher widget. Currently unused.
 - `Colors.black54` on `GlassCard` is roughly 1.4:1 in the dark theme

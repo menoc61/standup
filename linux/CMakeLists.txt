@@ -54,11 +54,18 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
 
-# Presence detection needs the XScreenSaver extension, which is only meaningful
-# on an X11 session. Kept optional on purpose: a machine without libxss-dev
-# still builds, and the reader compiles out to "unknown" rather than failing the
-# build for a feature the app can live without.
-pkg_check_modules(XSCRNSAVER xscrnsaver)
+# Presence detection needs two libraries, not one, and listing only the obvious
+# one fails at link time rather than at configure time. MIT-SCREEN-SAVER lives in
+# libXss, but the reader also calls XFree and DefaultRootWindow, which live in
+# libX11. A shared library does not re-export its own dependencies' symbols, so
+# `Xss` alone configures cleanly and then fails to link the executable — the error
+# names X11 functions in a build that never mentions libx11.
+#
+# Both stay optional: a machine without libxss-dev still builds, and the reader
+# compiles out to "unknown" rather than failing the build for a feature the app
+# can live without.
+pkg_check_modules(X11 x11 IMPORTED_TARGET)
+pkg_check_modules(XSCRNSAVER xscrnsaver IMPORTED_TARGET)
 
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")

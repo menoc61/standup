@@ -24,11 +24,13 @@ target_link_libraries(${BINARY_NAME} PRIVATE flutter)
 target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK)
 
 # The X11 idle reader is compiled in only when the XScreenSaver headers are
-# present, so presence stays a bonus rather than a build requirement.
-if(XSCRNSAVER_FOUND)
+# present, so presence stays a bonus rather than a build requirement. X11 is
+# required alongside Xss for the same compile: the reader frees its result with
+# XFree and asks for the root window, both of which libX11 owns.
+if(XSCRNSAVER_FOUND AND X11_FOUND)
   target_compile_definitions(${BINARY_NAME} PRIVATE STANDUP_HAVE_XSCRNSAVER)
-  target_include_directories(${BINARY_NAME} PRIVATE ${XSCRNSAVER_INCLUDE_DIRS})
-  target_link_libraries(${BINARY_NAME} PRIVATE ${XSCRNSAVER_LIBRARIES})
+  target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::XSCRNSAVER)
+  target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::X11)
 endif()
 
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")

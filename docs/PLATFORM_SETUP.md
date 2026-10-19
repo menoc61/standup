@@ -140,9 +140,17 @@ reminders always sound; Settings → Device says which case you are in, on purpo
 `gdk_display_get_default()` is checked against `GDK_IS_X11_DISPLAY` before any
 X call, so a Wayland session never gets an idle reading from the XWayland
 connection it may still have. The reader is also compiled out entirely when
-`libxss-dev` is absent (see the `XSCRNSAVER_FOUND` guard in
-`linux/CMakeLists.txt`), which reports "unknown" — the same answer as Wayland,
-and never a fabricated zero.
+`libxss-dev` is absent (see the `XSCRNSAVER_FOUND AND X11_FOUND` guard in
+`linux/runner/CMakeLists.txt`), which reports "unknown" — the same answer as
+Wayland, and never a fabricated zero.
+
+Two libraries are involved and both are named explicitly: MIT-SCREEN-SAVER lives
+in `libXss`, while `XFree` and `DefaultRootWindow` live in `libX11`. A shared
+library does not re-export its own dependencies' symbols, so listing only `Xss`
+configures cleanly and then fails at the link step with an X11 function in the
+error — the defect this paragraph exists to explain. `libx11-dev` is already
+required by `libgtk-3-dev`, so the extra dependency is never new to a machine
+that can build the runner at all.
 
 `PlatformIdleTimeSource.isSupported` short-circuits the channel call on platforms
 without a reader, and the source itself degrades a missing implementation to

@@ -258,4 +258,75 @@ void main() {
       expect(body, contains('RAISE EXCEPTION'));
     });
   });
+
+  group('AI provider configuration', () {
+    test('the Vault reader is service-role only', () {
+      // The Edge Function may fall back to a Vault secret when the project has
+      // no CLI access to environment secrets. The function returns a provider
+      // API key, so it must be unreachable from an app session: anon and
+      // authenticated are revoked, service_role is the only grantee.
+      final source = _uncommented(schema);
+      final body = RegExp(
+        r'CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.ai_guidance_config\(\).*?\$\$;',
+        dotAll: true,
+        caseSensitive: false,
+      ).firstMatch(source)?.group(0);
+      expect(body, isNotNull, reason: 'ai_guidance_config is missing');
+      expect(body!, contains('SECURITY DEFINER'));
+      expect(body, contains("SET search_path = ''"));
+      expect(body, contains('vault.decrypted_secrets'));
+
+      final revoke = RegExp(
+        r'REVOKE\s+ALL\s+ON\s+FUNCTION\s+public\.ai_guidance_config\(\)\s+'
+        r'FROM\s+PUBLIC\s*,\s*anon\s*,\s*authenticated',
+        dotAll: true,
+        caseSensitive: false,
+      );
+      final grant = RegExp(
+        r'GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.ai_guidance_config\(\)\s+'
+        r'TO\s+service_role',
+        dotAll: true,
+        caseSensitive: false,
+      );
+      expect(revoke.hasMatch(source), isTrue);
+      expect(grant.hasMatch(source), isTrue);
+    });
+
+    test('the Edge Function prefers environment secrets', () {
+      final source = File('supabase/functions/ai-guidance/index.ts')
+          .readAsStringSync();
+      final envIndex = source.indexOf('AI_GUIDANCE_API_KEY');
+      final vaultIndex = source.indexOf('rpc/ai_guidance_config');
+      expect(envIndex, isNonNegative);
+      expect(vaultIndex, isNonNegative);
+      expect(
+        envIndex,
+        lessThan(vaultIndex),
+        reason:
+            'the documented dashboard secrets must be read before the Vault '
+            'fallback, so an operator can rotate without touching the database',
+      );
+    });
+  });
+
+  group('profile write path', () {
+    test('the client may not update its own id, organization or role', () {
+      // syncProfileToCloud() therefore cannot use an upsert (PostgREST writes
+      // the conflict target on ON CONFLICT DO UPDATE); it updates then inserts.
+      final source = _uncommented(schema);
+      final grants = RegExp(
+        r'GRANT\s+UPDATE\s*\(([^)]*)\)\s+ON\s+public\.profiles\s+TO\s+authenticated',
+        dotAll: true,
+        caseSensitive: false,
+      ).firstMatch(source);
+      expect(grants, isNotNull);
+      final columns = grants!.group(1)!.toLowerCase();
+      expect(columns, contains('name'));
+      expect(columns, contains('designation'));
+      expect(columns, contains('department'));
+      expect(columns, isNot(contains('id')));
+      expect(columns, isNot(contains('organization_id')));
+      expect(columns, isNot(contains('role')));
+    });
+  });
 }

@@ -304,6 +304,36 @@ $$;
 REVOKE ALL ON FUNCTION public.join_organization(TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.join_organization(TEXT) TO authenticated;
 
+-- Provider credentials for the ai-guidance Edge Function. They live in Vault so
+-- a project without CLI access can still be configured, and so the key is never
+-- committed, bundled, or sent to the client. Execution is limited to
+-- service_role (which the Edge Function already holds); anon and authenticated
+-- are revoked, so /rest/v1/rpc/ai_guidance_config refuses every app session.
+-- Environment secrets, when set, take precedence in the function.
+CREATE OR REPLACE FUNCTION public.ai_guidance_config()
+RETURNS JSONB
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = ''
+STABLE
+AS $$
+  SELECT jsonb_build_object(
+    'endpoint', coalesce(
+      (SELECT decrypted_secret FROM vault.decrypted_secrets
+        WHERE name = 'ai_guidance_completions_url' LIMIT 1), ''),
+    'api_key', coalesce(
+      (SELECT decrypted_secret FROM vault.decrypted_secrets
+        WHERE name = 'ai_guidance_api_key' LIMIT 1), ''),
+    'model', coalesce(
+      (SELECT decrypted_secret FROM vault.decrypted_secrets
+        WHERE name = 'ai_guidance_model' LIMIT 1), '')
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.ai_guidance_config()
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.ai_guidance_config() TO service_role;
+
 -- Keep per-employee summaries private. Organization access is only through
 -- aggregate views below, with a minimum cohort size to reduce re-identification.
 

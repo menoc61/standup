@@ -130,6 +130,35 @@ guidance** stays off until the employee turns it on, and **Ask company AI**
 appears only when signed in. Remove the secrets to return to the local
 deterministic guidance; the function fails closed and the client falls back.
 
+### Configure without CLI access (Vault fallback)
+
+When the project is administered from the dashboard only, the same three values
+can live in Supabase Vault. The function reads dashboard secrets first and falls
+back to Vault, so either path works and rotating later only needs one of them.
+
+```sql
+select vault.create_secret(
+  'https://openrouter.ai/api/v1/chat/completions',
+  'ai_guidance_completions_url',
+  'OpenAI-compatible endpoint for ai-guidance'
+);
+select vault.create_secret('<provider key>', 'ai_guidance_api_key',
+  'Server-side provider credential');
+select vault.create_secret('openai/gpt-4o-mini', 'ai_guidance_model',
+  'Model name accepted by that endpoint');
+```
+
+`public.ai_guidance_config()` (`supabase_schema.sql`) is `SECURITY DEFINER` and
+returns the three values. Execute is revoked from `PUBLIC`, `anon` and
+`authenticated` and granted only to `service_role`, so an app session calling
+`/rest/v1/rpc/ai_guidance_config` receives `42501 permission denied`. The Edge
+Function holds the service-role key and never returns it to the client. To
+rotate, call `vault.update_secret` (or re-run `vault.create_secret` with a new
+name) and redeploy is not required.
+
+Both paths are server-side only. Neither value may appear in Dart, assets,
+`--dart-define`, build logs, or the repository.
+
 ### Two cheap improvements, in order
 
 1. **A per-user daily cap.** The function has no quota today (recorded in

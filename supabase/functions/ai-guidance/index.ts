@@ -55,6 +55,59 @@ async function readJsonLimited(request: Request, maxBytes: number): Promise<unkn
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 
+type GuidanceConfig = {
+  endpoint: string;
+  apiKey: string;
+  model: string;
+};
+
+/// Dashboard secrets win. They are the documented path and need no database
+/// round trip. The Vault fallback exists for a project without CLI access to
+/// set secrets: the credentials are encrypted at rest and only service_role
+/// may read them (`public.ai_guidance_config` revokes anon/authenticated).
+function envConfig(): GuidanceConfig | null {
+  const endpoint = Deno.env.get("AI_GUIDANCE_COMPLETIONS_URL")?.trim() ?? "";
+  const apiKey = Deno.env.get("AI_GUIDANCE_API_KEY")?.trim() ?? "";
+  const model = Deno.env.get("AI_GUIDANCE_MODEL")?.trim() ?? "";
+  return endpoint.length > 0 && apiKey.length > 0 && model.length > 0
+    ? { endpoint, apiKey, model }
+    : null;
+}
+
+async function loadGuidanceConfig(): Promise<GuidanceConfig | null> {
+  const fromEnv = envConfig();
+  if (fromEnv !== null) return fromEnv;
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")?.trim();
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")?.trim();
+  if (!supabaseUrl || !serviceKey) return null;
+
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/ai_guidance_config`, {
+      method: "POST",
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+      },
+      body: "{}",
+      signal: AbortSignal.timeout(4_000),
+    });
+    if (!response.ok) return null;
+    const payload: unknown = await response.json();
+    if (typeof payload !== "object" || payload === null) return null;
+    const record = payload as Record<string, unknown>;
+    const endpoint = typeof record.endpoint === "string" ? record.endpoint.trim() : "";
+    const apiKey = typeof record.api_key === "string" ? record.api_key.trim() : "";
+    const model = typeof record.model === "string" ? record.model.trim() : "";
+    return endpoint.length > 0 && apiKey.length > 0 && model.length > 0
+      ? { endpoint, apiKey, model }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 const authenticatedHandler = withSupabase(
   { auth: "user", cors: "disabled" },
   async (request) => {
@@ -86,16 +139,14 @@ const authenticatedHandler = withSupabase(
     const input = parseGuidanceInput(requestBody.input);
     if (input === null) return json({ error: "invalid_guidance_input" }, 400);
 
-    const endpoint = Deno.env.get("AI_GUIDANCE_COMPLETIONS_URL")?.trim();
-    const apiKey = Deno.env.get("AI_GUIDANCE_API_KEY")?.trim();
-    const model = Deno.env.get("AI_GUIDANCE_MODEL")?.trim();
-    if (!endpoint || !apiKey || !model) {
+    const config = await loadGuidanceConfig();
+    if (config === null) {
       return json({ error: "ai_not_configured" }, 503);
     }
 
     let endpointUrl: URL;
     try {
-      endpointUrl = new URL(endpoint);
+      endpointUrl = new URL(config.endpoint);
     } catch {
       return json({ error: "ai_not_configured" }, 503);
     }
@@ -116,12 +167,12 @@ const authenticatedHandler = withSupabase(
         method: "POST",
         redirect: "error",
         headers: {
-          "Authorization": `Bearer ${apiKey}`,
+          "Authorization": `Bearer ${config.apiKey}`,
           "Content-Type": "application/json",
           "Accept": "application/json",
         },
         body: JSON.stringify({
-          model,
+          model: config.model,
           temperature: 0,
           max_tokens: 100,
           messages: [

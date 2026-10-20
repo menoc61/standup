@@ -68,6 +68,10 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   drift_dev: ^2.35.1
   build_runner: ^2.16.2
+  # Pure-Dart Supabase client, used only by tool/verify_supabase.dart so the
+  # live row-level-security checks do not need a Flutter binding. The app itself
+  # keeps using supabase_flutter.
+  supabase: ^2.16.2
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

@@ -96,7 +96,13 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reminder_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.analytics_daily ENABLE ROW LEVEL SECURITY;
 
+-- Policies are dropped before being re-created so this file can be re-run on a
+-- project that already has it, which is how a second environment is provisioned.
+-- Without the DROP the second run stops at the first "policy already exists".
+
 -- ORGANIZATIONS POLICIES
+DROP POLICY IF EXISTS "Organizations are viewable by authenticated users"
+    ON public.organizations;
 CREATE POLICY "Organizations are viewable by authenticated users"
     ON public.organizations FOR SELECT
     TO authenticated
@@ -105,17 +111,20 @@ REVOKE ALL ON public.organizations FROM anon, authenticated;
 GRANT SELECT (id, name, domain) ON public.organizations TO authenticated;
 
 -- PROFILES POLICIES
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 CREATE POLICY "Users can view their own profile"
     ON public.profiles FOR SELECT
     TO authenticated
     USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile"
     ON public.profiles FOR UPDATE
     TO authenticated
     USING (auth.uid() = id)
     WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile"
     ON public.profiles FOR INSERT
     TO authenticated
@@ -131,11 +140,13 @@ GRANT UPDATE (name, designation, department, updated_at)
     ON public.profiles TO authenticated;
 
 -- REMINDER LOGS POLICIES (Strict individual privacy)
+DROP POLICY IF EXISTS "Users can view own reminder logs" ON public.reminder_logs;
 CREATE POLICY "Users can view own reminder logs"
     ON public.reminder_logs FOR SELECT
     TO authenticated
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own reminder logs" ON public.reminder_logs;
 CREATE POLICY "Users can insert own reminder logs"
     ON public.reminder_logs FOR INSERT
     TO authenticated
@@ -143,11 +154,16 @@ CREATE POLICY "Users can insert own reminder logs"
 GRANT SELECT, INSERT ON public.reminder_logs TO authenticated;
 
 -- ANALYTICS DAILY POLICIES
+-- supabase_validation.sql later revokes INSERT and UPDATE here, so the only
+-- write path is record_daily_analytics(). Re-running that file is therefore part
+-- of provisioning, not an optional step.
+DROP POLICY IF EXISTS "Users can view own daily analytics" ON public.analytics_daily;
 CREATE POLICY "Users can view own daily analytics"
     ON public.analytics_daily FOR SELECT
     TO authenticated
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert/update own daily analytics" ON public.analytics_daily;
 CREATE POLICY "Users can insert/update own daily analytics"
     ON public.analytics_daily FOR ALL
     TO authenticated

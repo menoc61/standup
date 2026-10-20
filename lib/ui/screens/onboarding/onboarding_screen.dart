@@ -69,7 +69,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _designationController = TextEditingController(
       text: profile?.designation ?? '',
     );
-    _emailController = TextEditingController(text: profile?.email ?? '');
+    // An account already knows the address it was created with. Prefilling it
+    // keeps the profile from being saved with an empty email right after a
+    // sign-in, while still allowing a different contact address to be entered.
+    final profileEmail = profile?.email?.trim() ?? '';
+    final accountEmail =
+        widget.appState.supabaseService.signedInEmail?.trim() ?? '';
+    _emailController = TextEditingController(
+      text: profileEmail.isNotEmpty ? profileEmail : accountEmail,
+    );
 
     _department = profile?.department ?? 'Engineering';
     _frequency = prefs.notificationFrequency;

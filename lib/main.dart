@@ -15,12 +15,20 @@ import 'package:standup_app/services/autostart_service.dart';
 import 'package:standup_app/services/idle_time_source.dart';
 import 'package:standup_app/services/notification_service.dart';
 import 'package:standup_app/services/window_chrome.dart';
+import 'package:standup_app/ui/screens/auth/auth_screen.dart';
+import 'package:standup_app/ui/screens/auth/set_new_password_screen.dart';
 import 'package:standup_app/ui/screens/main_shell.dart';
 import 'package:standup_app/ui/screens/onboarding/onboarding_screen.dart';
 import 'package:standup_app/ui/screens/splash_screen.dart';
 import 'package:standup_app/ui/widgets/break_block.dart';
 import 'package:standup_app/ui/widgets/prelude_alert.dart';
 import 'package:standup_app/ui/widgets/quiet_mode_banner.dart';
+
+/// Remembers that the person chose to use the app without an account.
+///
+/// Only the pre-onboarding gate reads it. Someone who skipped it and later signs
+/// in from Settings is already past the gate, so the flag cannot lock them out.
+const String _authGateSkippedKey = 'auth_gate_skipped';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,9 +45,8 @@ void main() async {
   // 3. Initialize Audio & Notification Services
   final audioService = AudioService();
   final notificationService = NotificationService();
-  final storedLanguage = (await SharedPreferences.getInstance()).getString(
-    'language_code',
-  );
+  final sharedPreferences = await SharedPreferences.getInstance();
+  final storedLanguage = sharedPreferences.getString('language_code');
   await notificationService.initialize(
     languageCode: storedLanguage == 'en' ? 'en' : 'fr',
   );
@@ -68,13 +75,25 @@ void main() async {
   // callback handle and re-invokes it in a background engine later.
   await registerWidgetBackgroundAction();
 
-  runApp(StandUpApp(appState: appState));
+  runApp(
+    StandUpApp(
+      appState: appState,
+      authGateSkipped: sharedPreferences.getBool(_authGateSkippedKey) ?? false,
+    ),
+  );
 }
 
 class StandUpApp extends StatefulWidget {
   final AppState appState;
 
-  const StandUpApp({super.key, required this.appState});
+  /// Whether this device already chose local-only use at the account gate.
+  final bool authGateSkipped;
+
+  const StandUpApp({
+    super.key,
+    required this.appState,
+    this.authGateSkipped = false,
+  });
 
   @override
   State<StandUpApp> createState() => _StandUpAppState();
@@ -83,19 +102,23 @@ class StandUpApp extends StatefulWidget {
 class _StandUpAppState extends State<StandUpApp> with WidgetsBindingObserver {
   bool _splashCompleted = false;
   bool _forceOnboarding = false;
+  late bool _authGateSkipped;
 
   /// Whether the user is actually working through the app, as opposed to being
-  /// on the splash or in onboarding. The heads-up banner and the forced-break
-  /// cover both gate on this: interrupting someone who has not yet set the app
-  /// up is noise, and covering the setup flow would be hostile.
+  /// on the splash, the account gate, a password reset or in onboarding. The
+  /// heads-up banner and the forced-break cover both gate on this: interrupting
+  /// someone who has not yet set the app up is noise, and covering those screens
+  /// would be hostile.
   bool get _inAppSession =>
       _splashCompleted &&
       widget.appState.preferences.onboardingCompleted &&
+      !widget.appState.passwordRecoveryActive &&
       !_forceOnboarding;
 
   @override
   void initState() {
     super.initState();
+    _authGateSkipped = widget.authGateSkipped;
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -111,6 +134,16 @@ class _StandUpAppState extends State<StandUpApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       unawaited(widget.appState.onAppResumed());
     }
+  }
+
+  /// Records the deliberate local-only choice so the gate does not reappear on
+  /// every launch. Signing in later from Settings still works: the flag is only
+  /// read before onboarding.
+  Future<void> _continueWithoutAccount() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(_authGateSkippedKey, true);
+    if (!mounted) return;
+    setState(() => _authGateSkipped = true);
   }
 
   ThemeMode _resolveThemeMode(String mode) {
@@ -144,6 +177,14 @@ class _StandUpAppState extends State<StandUpApp> with WidgetsBindingObserver {
 
         Widget currentScreen;
         String currentScreenKey;
+        // The account gate is a pre-onboarding decision. Someone who already
+        // completed setup keeps working even when signed out: offline-first is
+        // the product, and hiding their history behind a login would break it.
+        final needsAccount =
+            widget.appState.cloudConfigured &&
+            !widget.appState.isSignedIn &&
+            !_authGateSkipped;
+
         if (!_splashCompleted) {
           currentScreenKey = 'splash';
           currentScreen = SplashScreen(
@@ -152,16 +193,40 @@ class _StandUpAppState extends State<StandUpApp> with WidgetsBindingObserver {
               setState(() => _splashCompleted = true);
             },
           );
-        } else if (!prefs.onboardingCompleted || _forceOnboarding) {
-          currentScreenKey = _forceOnboarding
-              ? 'onboarding-replay'
-              : 'onboarding';
-          currentScreen = OnboardingScreen(
-            appState: widget.appState,
-            onFinish: () {
-              setState(() => _forceOnboarding = false);
-            },
+        } else if (widget.appState.passwordRecoveryActive) {
+          currentScreenKey = 'password-recovery';
+          currentScreen = SetNewPasswordScreen(
+            onSubmit: widget.appState.completePasswordRecovery,
+            onCancel: widget.appState.cancelPasswordRecovery,
           );
+        } else if (!prefs.onboardingCompleted || _forceOnboarding) {
+          if (needsAccount && !_forceOnboarding) {
+            currentScreenKey = 'auth';
+            currentScreen = AuthScreen(
+              onSignIn: (email, password) =>
+                  widget.appState.signIn(email: email, password: password),
+              onCreateAccount: (email, password) async {
+                final hasSession = await widget.appState.createAccount(
+                  email: email,
+                  password: password,
+                );
+                if (hasSession) await widget.appState.attachCurrentAccount();
+                return hasSession;
+              },
+              onSendReset: widget.appState.sendPasswordReset,
+              onContinueOffline: _continueWithoutAccount,
+            );
+          } else {
+            currentScreenKey = _forceOnboarding
+                ? 'onboarding-replay'
+                : 'onboarding';
+            currentScreen = OnboardingScreen(
+              appState: widget.appState,
+              onFinish: () {
+                setState(() => _forceOnboarding = false);
+              },
+            );
+          }
         } else {
           currentScreenKey = 'home';
           currentScreen = MainShell(

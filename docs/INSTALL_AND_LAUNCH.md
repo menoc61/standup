@@ -218,7 +218,7 @@ local Drift database.
 ## Optional Supabase connection
 
 1. Create a Supabase project and apply the repository's [`supabase_schema.sql`](../supabase_schema.sql) in that project's SQL editor.
-2. Enable the auth providers you intend to use. Configure redirect URLs and provider credentials in Supabase; OAuth provider sign-in is only available where its callback can be registered.
+2. Enable the auth providers you intend to use. Configure the Site URL and the `standup://login-callback` redirect URL in Supabase; OAuth provider sign-in is only available where its callback can be registered. With a project configured, the app shows a sign-in/create-account/reset password screen before onboarding, plus a "use this device only" option that keeps the app local.
 3. Run with the project URL and **publishable** client key:
 
    PowerShell:

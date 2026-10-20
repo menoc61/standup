@@ -300,6 +300,49 @@ const Map<String, String> _french = {
   'Sign in': 'Se connecter',
   'Connect': 'Connecter',
   'Sign out': 'Se déconnecter',
+  'Email address': 'Adresse e-mail',
+  'Password': 'Mot de passe',
+  'New password': 'Nouveau mot de passe',
+  'Confirm password': 'Confirmer le mot de passe',
+  'Show password': 'Afficher le mot de passe',
+  'Hide password': 'Masquer le mot de passe',
+  'Forgot password?': 'Mot de passe oublié ?',
+  'Send reset link': 'Envoyer le lien de réinitialisation',
+  'Reset your password': 'Réinitialiser votre mot de passe',
+  'Set a new password': 'Définir un nouveau mot de passe',
+  'Update password': 'Mettre à jour le mot de passe',
+  'Back to sign in': 'Revenir à la connexion',
+  'Use this device only': 'Utiliser cet appareil uniquement',
+  'Your breaks stay on this device. You can sign in later from Settings.': 'Vos pauses restent sur cet appareil. Vous pourrez vous connecter plus tard dans les réglages.',
+  'Sign in to sync your breaks across devices.':
+      'Connectez-vous pour synchroniser vos pauses entre vos appareils.',
+  'Create an account to sync your breaks across devices.':
+      'Créez un compte pour synchroniser vos pauses entre vos appareils.',
+  'We will email you a link to choose a new password.':
+      'Nous vous enverrons un lien pour choisir un nouveau mot de passe.',
+  'Check your email for a reset link.':
+      'Consultez votre boîte mail pour le lien de réinitialisation.',
+  'Enter your email address.': 'Saisissez votre adresse e-mail.',
+  'Enter a valid email address.': 'Saisissez une adresse e-mail valide.',
+  'Enter your password.': 'Saisissez votre mot de passe.',
+  'Use at least 8 characters.': 'Utilisez au moins 8 caractères.',
+  'Confirm your new password.': 'Confirmez votre nouveau mot de passe.',
+  'Passwords do not match.': 'Les mots de passe ne correspondent pas.',
+  'Choose a password with at least 8 characters.':
+      'Choisissez un mot de passe d’au moins 8 caractères.',
+  'Email or password is incorrect.':
+      'L’adresse e-mail ou le mot de passe est incorrect.',
+  'An account already exists. Choose Sign in.':
+      'Un compte existe déjà. Choisissez « Se connecter ».',
+  'Confirm your email address before signing in.':
+      'Confirmez votre adresse e-mail avant de vous connecter.',
+  'Too many attempts. Wait a few minutes and try again.':
+      'Trop de tentatives. Patientez quelques minutes puis réessayez.',
+  'Cloud accounts are not configured for this app yet.':
+      'Les comptes cloud ne sont pas encore configurés pour cette application.',
+  'Could not reach the server. Check your connection and try again.': 'Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.',
+  'Something went wrong. Please try again.':
+      'Une erreur est survenue. Veuillez réessayer.',
   'Using this device': 'Utilisation hors ligne sur cet appareil',
   'Sign in to turn on account sync':
       'Connectez-vous pour activer la synchronisation',

@@ -167,6 +167,22 @@ provider credentials in the Supabase dashboard and register the same
 register a native URL scheme, so OAuth sign-in is unavailable there; email and
 password still work on every platform.
 
+### Account gate and password reset
+
+When a project is configured, the app shows an account screen — **sign in**,
+**create account**, or **forgot password** — before onboarding. Choosing **Use
+this device only** keeps the app fully local and is remembered on the device;
+the person can still sign in later from Settings. This is the offline-first path
+and it exists on purpose, so a project misconfiguration can never lock someone
+out of their own break history.
+
+Password reset uses the redirect list above. The reset email lands on the
+**Site URL** on web, Windows and Linux (desktop registers no `standup://`
+handler), and on `standup://login-callback` on Android, iOS and macOS, where
+`supabase_flutter` exchanges the link for a session and the app asks for the new
+password. The built-in email sender is capped at a few messages per hour, so
+configure custom SMTP before relying on resets for a whole team.
+
 ---
 
 ## 5. Provision an organisation

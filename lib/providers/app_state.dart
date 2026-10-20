@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show OAuthProvider;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show AuthChangeEvent, OAuthProvider;
 import 'package:uuid/uuid.dart';
 import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/core/app_colors.dart';
@@ -77,9 +78,14 @@ class AppState extends ChangeNotifier {
   DateTime? _timerStartTime;
   String? _analyticsDate;
   Timer? _ticker;
-  StreamSubscription<void>? _authSubscription;
+  StreamSubscription<AuthChangeEvent>? _authSubscription;
   Future<void> _accountTransition = Future<void>.value();
   Duration _remainingDuration = Duration.zero;
+
+  /// True while the session was opened by a password-recovery link and the new
+  /// password has not been saved yet. The root widget uses it to put the
+  /// "choose a new password" screen above onboarding and home.
+  bool _passwordRecoveryActive = false;
 
   int _consecutiveSkips = 0;
   bool _isBreakActive = false;
@@ -191,6 +197,20 @@ class AppState extends ChangeNotifier {
   /// screen can tell "no data yet" from "not allowed" without guessing.
   List<OrgAnalytics> get orgTrend => _orgTrend;
   DateTime? get nextReminderTime => _nextReminderTime;
+
+  /// Whether this build has a usable cloud project at all.
+  ///
+  /// False in the offline bundle and whenever the credentials are missing or
+  /// rejected; the account screens are skipped entirely in that case rather
+  /// than offering a form that can never succeed.
+  bool get cloudConfigured => supabaseService.isInitialized;
+
+  /// Whether an account session is active for this launch.
+  bool get isSignedIn => supabaseService.signedInUserId != null;
+
+  /// True while a password-recovery link has opened a session that still needs
+  /// a new password.
+  bool get passwordRecoveryActive => _passwordRecoveryActive;
   Duration get remainingDuration => _remainingDuration;
   int get consecutiveSkips => _consecutiveSkips;
   bool get isBreakActive => _isBreakActive;
@@ -811,9 +831,25 @@ class AppState extends ChangeNotifier {
     // 6. Start 1-second UI ticker
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
-    _authSubscription ??= supabaseService.authStateChanges.listen((_) {
+    _authSubscription ??= supabaseService.authEvents.listen((event) {
+      if (event == AuthChangeEvent.passwordRecovery) {
+        _passwordRecoveryActive = true;
+        supabaseService.clearPendingPasswordRecovery();
+        notifyListeners();
+        // The link also opened a real session. Adopt it exactly as a normal
+        // sign-in would, so the new password is saved against the same account
+        // identity that onboarding and sync are about to use.
+        unawaited(_handleAuthStateChanged());
+        return;
+      }
       unawaited(_handleAuthStateChanged());
     });
+    // The link may have been exchanged before this subscription existed, in
+    // which case the event is not in the stream but its consequence is.
+    if (supabaseService.hasPendingPasswordRecovery) {
+      _passwordRecoveryActive = true;
+      supabaseService.clearPendingPasswordRecovery();
+    }
     if (preferences.statisticsOptIn) await _startRealtimeAnalytics();
 
     registerWidgetActions();
@@ -1795,6 +1831,30 @@ class AppState extends ChangeNotifier {
   Future<void> sendMagicLink(String email) =>
       supabaseService.sendMagicLink(email);
 
+  /// Starts the "forgot password" flow. The result does not reveal whether the
+  /// address has an account.
+  Future<void> sendPasswordReset(String email) =>
+      supabaseService.sendPasswordReset(email);
+
+  /// Saves the new password for the session opened by the recovery link.
+  ///
+  /// The flag is cleared only after the server accepts the change, so a failed
+  /// update leaves the person on the form with an error rather than dropping
+  /// them into the app with their old password still in place.
+  Future<void> completePasswordRecovery(String password) async {
+    await supabaseService.updatePassword(password);
+    _passwordRecoveryActive = false;
+    supabaseService.clearPendingPasswordRecovery();
+    notifyListeners();
+  }
+
+  /// Abandons a recovery session and returns to the account screen.
+  Future<void> cancelPasswordRecovery() async {
+    _passwordRecoveryActive = false;
+    supabaseService.clearPendingPasswordRecovery();
+    await signOut();
+  }
+
   Future<void> attachCurrentAccount() async {
     final id = supabaseService.signedInUserId;
     if (id == null) throw StateError('There is no active account session.');
@@ -1808,6 +1868,8 @@ class AppState extends ChangeNotifier {
   Future<void> signOut() async {
     await supabaseService.signOut();
     await supabaseService.stopWatchingAnalytics();
+    _passwordRecoveryActive = false;
+    supabaseService.clearPendingPasswordRecovery();
     _syncStatus = SyncStatus.offline;
     notifyListeners();
   }

@@ -21,14 +21,48 @@ class SupabaseService {
   String? _analyticsChannelUserId;
   bool get isInitialized => _isInitialized;
 
+  /// Auth events, re-broadcast so the app can react to a password-recovery link
+  /// as well as to sign-in/sign-out.
+  ///
+  /// The listener is registered inside [initialize], before `AppState.init`
+  /// runs. A recovery link can be the reason the process started, so the event
+  /// may fire before anyone is listening; [_pendingPasswordRecovery] keeps that
+  /// fact instead of letting it disappear into a stream with no subscriber.
+  final StreamController<AuthChangeEvent> _authEvents =
+      StreamController<AuthChangeEvent>.broadcast();
+  bool _pendingPasswordRecovery = false;
+
   String? get signedInEmail => client?.auth.currentUser?.email;
   String? get signedInUserId => client?.auth.currentUser?.id;
-  Stream<void> get authStateChanges =>
-      client?.auth.onAuthStateChange.map<void>((_) {}) ??
-      const Stream<void>.empty();
+  Stream<AuthChangeEvent> get authEvents => _isInitialized
+      ? _authEvents.stream
+      : const Stream<AuthChangeEvent>.empty();
+  bool get hasPendingPasswordRecovery => _pendingPasswordRecovery;
+  void clearPendingPasswordRecovery() => _pendingPasswordRecovery = false;
 
   SupabaseClient? get client =>
       _isInitialized ? Supabase.instance.client : null;
+
+  /// Where Supabase should send the browser or the OS after an email link.
+  ///
+  /// Web and desktop stay on the project's Site URL: the app has no registered
+  /// `standup://` handler on Windows or Linux, so handing them a custom scheme
+  /// would send the person to a dead link. Android, iOS and macOS do register
+  /// the scheme, and `supabase_flutter` exchanges the incoming URI for a
+  /// session, which is what lets a reset finish inside the app.
+  String? get _authRedirect {
+    if (kIsWeb) return null;
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return AppIdentity.authRedirectUrl;
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return null;
+    }
+  }
 
   Future<void> initialize({String? url, String? anonKey}) async {
     final targetUrl = (url ?? defaultUrl).trim();
@@ -53,10 +87,20 @@ class SupabaseService {
         ),
       );
       _isInitialized = true;
+      // Registered before any screen exists: a cold start caused by a recovery
+      // link can emit the event during the first frame.
+      Supabase.instance.client.auth.onAuthStateChange.listen(_recordAuthEvent);
     } catch (e) {
       debugPrint('Supabase initialization fallback: $e');
       _isInitialized = false;
     }
+  }
+
+  void _recordAuthEvent(AuthState state) {
+    if (state.event == AuthChangeEvent.passwordRecovery) {
+      _pendingPasswordRecovery = true;
+    }
+    if (!_authEvents.isClosed) _authEvents.add(state.event);
   }
 
   Future<bool> createEmailAccount({
@@ -70,7 +114,7 @@ class SupabaseService {
     final response = await supabase.auth.signUp(
       email: email.trim(),
       password: password,
-      emailRedirectTo: kIsWeb ? null : AppIdentity.authRedirectUrl,
+      emailRedirectTo: _authRedirect,
     );
     return response.session != null;
   }
@@ -100,10 +144,7 @@ class SupabaseService {
     if (supabase == null) {
       throw StateError('Cloud accounts are not configured.');
     }
-    await supabase.auth.signInWithOAuth(
-      provider,
-      redirectTo: kIsWeb ? null : AppIdentity.authRedirectUrl,
-    );
+    await supabase.auth.signInWithOAuth(provider, redirectTo: _authRedirect);
   }
 
   Future<void> sendMagicLink(String email) async {
@@ -113,8 +154,33 @@ class SupabaseService {
     }
     await supabase.auth.signInWithOtp(
       email: email.trim(),
-      emailRedirectTo: kIsWeb ? null : AppIdentity.authRedirectUrl,
+      emailRedirectTo: _authRedirect,
     );
+  }
+
+  /// Sends the "choose a new password" email.
+  ///
+  /// Nothing is revealed about whether the address has an account: Supabase
+  /// answers the same way either way, and the page says "check your email"
+  /// rather than "that account exists".
+  Future<void> sendPasswordReset(String email) async {
+    final supabase = client;
+    if (supabase == null) {
+      throw StateError('Cloud accounts are not configured.');
+    }
+    await supabase.auth.resetPasswordForEmail(
+      email.trim(),
+      redirectTo: _authRedirect,
+    );
+  }
+
+  /// Sets a new password for the session opened by the recovery link.
+  Future<void> updatePassword(String password) async {
+    final supabase = client;
+    if (supabase == null) {
+      throw StateError('Cloud accounts are not configured.');
+    }
+    await supabase.auth.updateUser(UserAttributes(password: password));
   }
 
   Future<Map<String, dynamic>> joinOrganization(String inviteCode) async {

@@ -22,14 +22,24 @@ hiding the button.
 
 ## 2. First sign-in and joining the workspace
 
-1. Sign up in the app with your **professional address** (`@cnps.cm`).
-2. Confirm the email if the project still requires confirmation. (The
-   administrator can turn confirmation off under **Authentication → Providers →
-   Email** in the Supabase dashboard; the app never stores that setting.)
-3. Open **Settings → Organization Workspace** and enter the workspace invite
+1. On first launch the app shows the account screen **before** onboarding. Create
+   your account with your **professional address** (`@cnps.cm`). If you only want
+   to try the app locally, choose **Use this device only** instead — the account
+   is only needed for workspace figures and sync.
+2. Confirm the email if the project still requires confirmation, then sign in.
+   (The administrator can turn confirmation off under **Authentication →
+   Providers → Email** in the Supabase dashboard; the app never stores that
+   setting.)
+3. Finish onboarding. Name and role are required; the professional email is
+   prefilled from the account.
+4. Open **Settings → Organization Workspace** and enter the workspace invite
    code.
-4. The app calls `join_organization(code)`, which stores the organisation on your
+5. The app calls `join_organization(code)`, which stores the organisation on your
    profile. From then on your daily aggregates roll up into the workspace.
+
+Forgot your password? Use **Forgot password?** on the account screen (or in the
+Settings account card). The emailed link opens the set-new-password form inside
+the app on Android, iOS and macOS, and in the browser on web, Windows and Linux.
 
 Signing up does not join a workspace by itself — a new account belongs to no
 organisation until it presents the code. That is what keeps an unrelated account

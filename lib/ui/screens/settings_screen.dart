@@ -8,6 +8,7 @@ import 'package:standup_app/core/app_colors.dart';
 import 'package:standup_app/core/app_identity.dart';
 import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
+import 'package:standup_app/core/auth_errors.dart';
 import 'package:standup_app/data/models/device_profile.dart';
 import 'package:standup_app/data/models/work_schedule.dart';
 import 'package:standup_app/data/remote/supabase_service.dart';
@@ -146,7 +147,7 @@ class SettingsScreen extends StatelessWidget {
               if (dialogContext.mounted) Navigator.pop(dialogContext);
             } catch (error) {
               if (dialogContext.mounted) {
-                setDialogState(() => errorText = _friendlyAuthError(error));
+                setDialogState(() => errorText = friendlyAuthError(error));
               }
             } finally {
               if (dialogContext.mounted) {
@@ -183,7 +184,41 @@ class SettingsScreen extends StatelessWidget {
               );
             } catch (error) {
               if (dialogContext.mounted) {
-                setDialogState(() => errorText = _friendlyAuthError(error));
+                setDialogState(() => errorText = friendlyAuthError(error));
+              }
+            } finally {
+              if (dialogContext.mounted) {
+                setDialogState(() => isWorking = false);
+              }
+            }
+          }
+
+          Future<void> sendReset() async {
+            final email = emailController.text.trim();
+            if (!email.contains('@')) {
+              setDialogState(
+                () => errorText = 'Enter your email address first.',
+              );
+              return;
+            }
+            setDialogState(() {
+              isWorking = true;
+              errorText = null;
+            });
+            try {
+              await appState.sendPasswordReset(email);
+              if (!dialogContext.mounted) return;
+              Navigator.pop(dialogContext);
+              messenger.showSnackBar(
+                SnackBar(
+                  content: Text(
+                    appString(context, 'Check your email for a reset link.'),
+                  ),
+                ),
+              );
+            } catch (error) {
+              if (dialogContext.mounted) {
+                setDialogState(() => errorText = friendlyAuthError(error));
               }
             } finally {
               if (dialogContext.mounted) {
@@ -237,7 +272,7 @@ class SettingsScreen extends StatelessWidget {
               if (dialogContext.mounted) Navigator.pop(dialogContext);
             } catch (error) {
               if (dialogContext.mounted) {
-                setDialogState(() => errorText = _friendlyAuthError(error));
+                setDialogState(() => errorText = friendlyAuthError(error));
               }
             } finally {
               if (dialogContext.mounted) {
@@ -299,6 +334,13 @@ class SettingsScreen extends StatelessWidget {
                           child: Text(
                             appString(context, 'Email me a sign-in link'),
                           ),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: isWorking ? null : sendReset,
+                          child: Text(appString(context, 'Forgot password?')),
                         ),
                       ),
                       const SizedBox(height: AppSpace.xs),
@@ -411,21 +453,6 @@ class SettingsScreen extends StatelessWidget {
     });
   }
 
-  String _friendlyAuthError(Object error) {
-    final message = error.toString().replaceFirst('Exception: ', '');
-    if (message.contains('Invalid login credentials')) {
-      return 'Email or password is incorrect.';
-    }
-    if (message.contains('already registered')) {
-      return 'An account already exists. Choose Sign in.';
-    }
-    if (message.contains('different saved account')) return message;
-    if (message.contains('not configured')) {
-      return 'Cloud accounts are not configured for this app yet.';
-    }
-    return message;
-  }
-
   void _showJoinWorkspaceDialog(BuildContext context) {
     final codeController = TextEditingController();
     var joining = false;
@@ -493,7 +520,7 @@ class SettingsScreen extends StatelessWidget {
                           setDialogState(
                             () => errorText = message.contains('not valid')
                                 ? 'That invite code was not recognized.'
-                                : _friendlyAuthError(error),
+                                : friendlyAuthError(error),
                           );
                         }
                       } finally {

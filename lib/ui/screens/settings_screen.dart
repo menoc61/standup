@@ -1823,7 +1823,126 @@ class _PreludeSection extends StatelessWidget {
         const Divider(height: AppSpace.section),
         _EscalationSection(appState: appState, accent: accent),
         const Divider(height: AppSpace.section),
+        _LongBreakSection(appState: appState, accent: accent),
+        const Divider(height: AppSpace.section),
         _DailyLimitSection(appState: appState, accent: accent),
+      ],
+    );
+  }
+}
+
+/// How often a break is a long one, and how long it then runs.
+///
+/// Workrave splits its cadence in two — a microbreak every few minutes and a
+/// restbreak every forty-five — so "stand up for a while, properly" is a
+/// separate thing rather than a longer version of the same thing. StandUp has one
+/// cadence, so the second kind is periodic instead: every Nth window gets the
+/// longer routine. It is off by default, and the length control only appears once
+/// a period is chosen, because a length on its own does nothing.
+class _LongBreakSection extends StatelessWidget {
+  final AppState appState;
+  final Color accent;
+
+  const _LongBreakSection({required this.appState, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // A hand-edited value outside the offered set would make a dropdown throw, so
+    // fall back for display without rewriting storage — the same treatment the
+    // prelude and escalation dropdowns give their own values.
+    final every = appState.longBreakEvery;
+    final everyValue = AppCadence.longBreakEveryOptions.contains(every)
+        ? every
+        : AppCadence.defaultLongBreakEvery;
+    final minutes = appState.longBreakMinutes;
+    final minutesValue = AppCadence.longBreakMinutesOptions.contains(minutes)
+        ? minutes
+        : AppCadence.defaultLongBreakMinutes;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    appString(context, 'Long break'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: AppFontSize.small,
+                    ),
+                  ),
+                  Text(
+                    appString(
+                      context,
+                      'Every few breaks is longer, so you stand up for more than a moment.',
+                    ),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            DropdownButton<int>(
+              value: everyValue,
+              underline: const SizedBox.shrink(),
+              items: AppCadence.longBreakEveryOptions
+                  .map(
+                    (n) => DropdownMenuItem(
+                      value: n,
+                      child: Text(
+                        n == 0
+                            ? appString(context, 'Never')
+                            : appStringArgs(context, 'Every {count} breaks', {
+                                'count': '$n',
+                              }),
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (next) {
+                if (next != null) {
+                  appState.updatePreferences(longBreakEvery: next);
+                }
+              },
+            ),
+          ],
+        ),
+        if (everyValue > 0) ...[
+          const SizedBox(height: AppSpace.md),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  appString(context, 'How long the long break runs'),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+              DropdownButton<int>(
+                value: minutesValue,
+                underline: const SizedBox.shrink(),
+                items: AppCadence.longBreakMinutesOptions
+                    .map(
+                      (m) => DropdownMenuItem(
+                        value: m,
+                        child: Text(formatDurationLabel(context, m)),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (next) {
+                  if (next != null) {
+                    appState.updatePreferences(longBreakMinutes: next);
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }

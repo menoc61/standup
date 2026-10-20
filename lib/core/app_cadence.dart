@@ -255,6 +255,65 @@ abstract final class AppCadence {
   /// How long the guided stretch runs, in seconds.
   static const int guidedStretchSeconds = 300;
 
+  /// The same length in whole minutes, for copy that states it.
+  static const int guidedStretchMinutes = guidedStretchSeconds ~/ 60;
+
+  // ── Long breaks ────────────────────────────────────────────────────────────
+
+  /// How many windows apart the long breaks are. Zero means there are none.
+  ///
+  /// Workrave splits its cadence in two: a microbreak every few minutes and a
+  /// restbreak every forty-five. StandUp has one cadence, so the second kind has
+  /// to be periodic instead — every Nth window gets the longer break. Zero (off)
+  /// is the default, because a break that is longer than asked for is a change
+  /// to somebody's day that no upgrade should make on their behalf.
+  static const int defaultLongBreakEvery = 0;
+
+  /// The periods the UI offers. Zero is "never".
+  static const List<int> longBreakEveryOptions = [0, 2, 3, 4];
+
+  /// How long a long break runs. Ten minutes is Workrave's restbreak default.
+  static const int defaultLongBreakMinutes = 10;
+
+  /// The long-break lengths the UI offers, in minutes.
+  static const List<int> longBreakMinutesOptions = [10, 15, 20];
+
+  /// Bounds a stored period to the offered set, rounding *up* so a hand-edited
+  /// value cannot switch long breaks off — the direction that fails safely for a
+  /// setting the user deliberately turned on.
+  static int clampLongBreakEvery(int every) {
+    if (every <= 0) return 0;
+    if (every == 1) return longBreakEveryOptions[1];
+    for (final option in longBreakEveryOptions) {
+      if (option >= every) return option;
+    }
+    return longBreakEveryOptions.last;
+  }
+
+  /// Bounds a stored long-break length to the offered set.
+  ///
+  /// Anything at or below zero falls back to the default: a break with no length
+  /// is not a smaller break, it is a broken one.
+  static int clampLongBreakMinutes(int minutes) =>
+      longBreakMinutesOptions.contains(minutes)
+      ? minutes
+      : defaultLongBreakMinutes;
+
+  /// The length in seconds of the guided break a window gets.
+  ///
+  /// A long break is the same routine run for longer, not a different one: the
+  /// five movements simply repeat. That is an honest description of what the
+  /// routine contains today — see gap #4 in `docs/WORKRAVE_ANALYSIS.md`, which is
+  /// the lot that gives a long break movements of its own.
+  static int breakSecondsFor({
+    required bool longBreak,
+    int longBreakMinutes = defaultLongBreakMinutes,
+  }) =>
+      (longBreak
+          ? clampLongBreakMinutes(longBreakMinutes)
+          : guidedStretchMinutes) *
+      60;
+
   /// How many discrete steps the guided stretch has.
   ///
   /// Five, which is what the routine in `ui/widgets/guided_stretch.dart`
@@ -274,11 +333,19 @@ abstract final class AppCadence {
   /// could read. The `- 1` is not decoration: the ticker decrements before it
   /// asks, so the first second of the routine is second 299 of 300, and without
   /// it every step boundary would land one second late.
-  static int guidedStretchStepFor({required int secondsRemaining}) {
-    final elapsed = guidedStretchSeconds - 1 - secondsRemaining;
-    return (elapsed ~/ guidedStretchStepSeconds).clamp(
-      0,
-      guidedStretchStepCount - 1,
-    );
+  ///
+  /// [totalSeconds] defaults to the standard routine so every existing caller
+  /// keeps the behaviour it had, and it exists for long breaks. The steps *repeat*
+  /// rather than stretching: a ten-minute break is the five movements twice,
+  /// whereas a movement that lasted two minutes would silently change what the
+  /// routine asks the user to do. For the five-minute routine the modulo is a
+  /// no-op — five steps, five slots, nothing to wrap.
+  static int guidedStretchStepFor({
+    required int secondsRemaining,
+    int totalSeconds = guidedStretchSeconds,
+  }) {
+    final elapsed = totalSeconds - 1 - secondsRemaining;
+    if (elapsed <= 0) return 0;
+    return (elapsed ~/ guidedStretchStepSeconds) % guidedStretchStepCount;
   }
 }

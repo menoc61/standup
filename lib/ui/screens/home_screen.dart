@@ -427,6 +427,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
+                // Says "long" before the break arrives, not while the user is
+                // already in it: a ten-minute routine that turns up unannounced
+                // is not a longer break, it is an appointment they did not know
+                // they had.
+                if (widget.appState.isLongBreakDue) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    appString(context, 'Long break'),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1017,7 +1031,15 @@ class _HomeScreenState extends State<HomeScreen> {
           // in English at 320px without a flex constraint.
           Flexible(
             child: Text(
-              appString(context, 'Start 5-Min Guided Stretch Routine'),
+              appStringArgs(
+                context,
+                'Start {minutes}-Min Guided Stretch Routine',
+                {
+                  'minutes': widget.appState.isCurrentWindowLongBreak
+                      ? '${widget.appState.longBreakMinutes}'
+                      : '${AppCadence.guidedStretchMinutes}',
+                },
+              ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,

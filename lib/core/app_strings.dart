@@ -195,11 +195,14 @@ const Map<String, String> _french = {
   'Start stretch': 'Commencer les étirements',
 
   'A MOMENT TO RESET': 'UNE PAUSE POUR SE RECHARGER',
-  'Start 5-Min Guided Stretch Routine':
-      'Commencer les étirements guidés (5 min)',
+  // The three stretch labels state the routine's own length, because a long
+  // break runs for longer and a button that names five minutes on a ten-minute
+  // break is wrong in the one place the user is about to spend the time.
+  'Start {minutes}-Min Guided Stretch Routine':
+      'Commencer les étirements guidés ({minutes} min)',
   "Today's Activity": 'Activité du jour',
-  '5-Min Guided Stretch': 'Étirements guidés (5 min)',
-  'Guided 5-minute stretch': 'Étirement guidé de 5 minutes',
+  '{minutes}-Min Guided Stretch': 'Étirements guidés ({minutes} min)',
+  'Guided {minutes}-minute stretch': 'Étirement guidé de {minutes} minutes',
   'Finish & Log Stand': 'Terminer et enregistrer',
   'Unable to save the completed stretch':
       'Impossible d’enregistrer la pause terminée',
@@ -539,6 +542,11 @@ const Map<String, String> _french = {
   'Escalate after ignored breaks': 'Escalader après des pauses ignorées',
   'If this many breaks close in a row while you are at your desk, the break screen appears by itself.': 'Si ce nombre de pauses se terminent d’affilée sans que vous agissiez, l’écran de pause apparaît de lui-même.',
   'Never': 'Jamais',
+  // Long breaks
+  'Long break': 'Pause longue',
+  'Every few breaks is longer, so you stand up for more than a moment.': 'Une pause plus longue de temps en temps, pour se lever plus qu’un instant.',
+  'Every {count} breaks': 'Toutes les {count} pauses',
+  'How long the long break runs': 'Durée de la pause longue',
   'Needs presence detection, which this device cannot report. Escalation stays off here.': 'Nécessite la détection de présence, que cet appareil ne peut pas fournir. L’escalade reste désactivée ici.',
   // Daily cut-off
   'Daily limit': 'Limite quotidienne',

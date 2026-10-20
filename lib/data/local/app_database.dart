@@ -65,6 +65,12 @@ class UserPreferencesTable extends Table {
   /// itself. Zero is off and is the default; see `AppCadence.escalationOptions`.
   IntColumn get escalationPromptLimit =>
       integer().withDefault(const Constant(0))();
+
+  /// How many windows apart the long breaks are, or zero for none.
+  IntColumn get longBreakEvery => integer().withDefault(const Constant(0))();
+
+  /// How long a long break runs, in minutes.
+  IntColumn get longBreakMinutes => integer().withDefault(const Constant(10))();
   // What the employee said about the guidance they were shown. Stored as text
   // rather than an index so a later category is a Dart change, not a table
   // rewrite; an unrecognised value reads back as `none`.
@@ -144,7 +150,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -256,6 +262,17 @@ class AppDatabase extends _$AppDatabase {
         // was ignored is still an interruption, so an upgrade must not arm it.
         await customStatement(
           'ALTER TABLE user_preferences_table ADD COLUMN escalation_prompt_limit INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+      if (from < 13) {
+        // Long breaks. Both columns arrive together and both default to "no long
+        // breaks": the period is what turns the feature on, so a length alone
+        // does nothing, and neither may be applied by an upgrade.
+        await customStatement(
+          'ALTER TABLE user_preferences_table ADD COLUMN long_break_every INTEGER NOT NULL DEFAULT 0',
+        );
+        await customStatement(
+          'ALTER TABLE user_preferences_table ADD COLUMN long_break_minutes INTEGER NOT NULL DEFAULT 10',
         );
       }
     },

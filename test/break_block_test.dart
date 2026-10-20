@@ -272,6 +272,26 @@ void main() {
       expect(find.text('I stood up'), findsOneWidget);
     });
 
+    testWidgets('states the length of the routine it offers', (tester) async {
+      // A long-break window offers a longer routine. A button promising five
+      // minutes on a ten-minute break is wrong exactly where the user is about
+      // to spend the time, so the cover is told the length rather than assuming
+      // the default.
+      await tester.pumpWidget(
+        wrap(
+          BreakBlockScreen(
+            endsAt: endsAt,
+            stretchMinutes: 10,
+            onStoodUp: () {},
+            onStartStretch: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Guided 10-minute stretch'), findsOneWidget);
+      expect(find.text('Guided 5-minute stretch'), findsNothing);
+    });
+
     testWidgets('renders French copy when the locale is French', (
       tester,
     ) async {
@@ -385,7 +405,7 @@ void main() {
         'Unlocks in {time}',
         'Please step away from your desk ({seconds}s)',
         'I stood up',
-        'Guided 5-minute stretch',
+        'Guided {minutes}-minute stretch',
       ]) {
         expect(
           hasFrenchTranslation(literal),

@@ -136,6 +136,8 @@ class LocalDatabaseRepository {
       escalationPromptLimit: AppCadence.clampEscalationPromptLimit(
         row.escalationPromptLimit,
       ),
+      longBreakEvery: AppCadence.clampLongBreakEvery(row.longBreakEvery),
+      longBreakMinutes: AppCadence.clampLongBreakMinutes(row.longBreakMinutes),
       guidanceFeedback: GuidanceFeedback.parse(row.guidanceFeedback),
       dailyLimitMinutes: AppCadence.clampDailyLimit(row.dailyLimitMinutes),
       workDays: row.workDays,
@@ -169,6 +171,8 @@ class LocalDatabaseRepository {
             preludeMinutes: Value(prefs.preludeMinutes),
             breakBlockingEnabled: Value(prefs.breakBlockingEnabled),
             escalationPromptLimit: Value(prefs.escalationPromptLimit),
+            longBreakEvery: Value(prefs.longBreakEvery),
+            longBreakMinutes: Value(prefs.longBreakMinutes),
             guidanceFeedback: Value(prefs.guidanceFeedback.name),
             dailyLimitMinutes: Value(prefs.dailyLimitMinutes),
             workDays: Value(prefs.workDays),

@@ -221,7 +221,9 @@ class _GuidedStretchPanelState extends State<GuidedStretchPanel> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              appString(context, '5-Min Guided Stretch'),
+              appStringArgs(context, '{minutes}-Min Guided Stretch', {
+                'minutes': '${widget.appState.breakTotalSeconds ~/ 60}',
+              }),
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w800,
               ),

@@ -358,6 +358,15 @@ query rather than an aggregation over raw logs. The legacy field name
   begins at the end of a window necessarily finishes after it, so its completion
   is honoured via `_breakWindowKey`. Without that binding the completion would be
   refused by the gate that protects a *new* stand action.
+- **A long break is a longer routine, not a new one.** `StandWindow.isLongBreakWindow`
+  decides it from the boundary's ordinal since local midnight, so the answer is a
+  property of the window rather than of the session: the same window is long
+  wherever the app was launched and however many breaks were actually taken, and
+  no stored counter can drift from the clock. `AppCadence.guidedStretchStepFor`
+  takes the break's total and *cycles* the five movements, so a ten-minute break
+  is the routine twice; a movement that lasted two minutes would silently change
+  what the routine asks the user to do. `AppState.breakTotalSeconds` is what lets
+  the panel state its own length instead of hard-coding "5-Min".
 - **Completion is deduplicated per window, durably.** The write path is a Drift
   transaction that refuses a second completion for the same window, so a restart
   mid-window cannot let a user bank the same break twice. Credit and the *forced

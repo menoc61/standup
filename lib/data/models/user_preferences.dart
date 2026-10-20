@@ -66,6 +66,15 @@ class UserPreferences {
   /// what keeps it inside the opt-in rule the block itself follows.
   final int escalationPromptLimit;
 
+  /// How many windows apart the long breaks are. Zero (the default) means there
+  /// are none and every break is the standard length.
+  final int longBreakEvery;
+
+  /// How long a long break runs, in minutes. Ignored while [longBreakEvery] is
+  /// zero, and kept rather than cleared so turning long breaks back on restores
+  /// the length the user last chose.
+  final int longBreakMinutes;
+
   /// What the employee last said about the guidance they were shown.
   ///
   /// Persisted so the signal keeps steering later sessions: a "too frequent"
@@ -110,6 +119,8 @@ class UserPreferences {
     this.preludeMinutes = AppCadence.defaultPreludeMinutes,
     this.breakBlockingEnabled = false,
     this.escalationPromptLimit = AppCadence.defaultEscalationPromptLimit,
+    this.longBreakEvery = AppCadence.defaultLongBreakEvery,
+    this.longBreakMinutes = AppCadence.defaultLongBreakMinutes,
     this.guidanceFeedback = GuidanceFeedback.none,
     this.dailyLimitMinutes = AppCadence.defaultDailyLimitMinutes,
     this.workDays = '1,2,3,4,5',
@@ -139,6 +150,8 @@ class UserPreferences {
     int? preludeMinutes,
     bool? breakBlockingEnabled,
     int? escalationPromptLimit,
+    int? longBreakEvery,
+    int? longBreakMinutes,
     GuidanceFeedback? guidanceFeedback,
     int? dailyLimitMinutes,
     String? workDays,
@@ -168,6 +181,8 @@ class UserPreferences {
       breakBlockingEnabled: breakBlockingEnabled ?? this.breakBlockingEnabled,
       escalationPromptLimit:
           escalationPromptLimit ?? this.escalationPromptLimit,
+      longBreakEvery: longBreakEvery ?? this.longBreakEvery,
+      longBreakMinutes: longBreakMinutes ?? this.longBreakMinutes,
       guidanceFeedback: guidanceFeedback ?? this.guidanceFeedback,
       dailyLimitMinutes: dailyLimitMinutes ?? this.dailyLimitMinutes,
       workDays: workDays ?? this.workDays,
@@ -198,6 +213,8 @@ class UserPreferences {
       'prelude_minutes': preludeMinutes,
       'break_blocking_enabled': breakBlockingEnabled,
       'escalation_prompt_limit': escalationPromptLimit,
+      'long_break_every': longBreakEvery,
+      'long_break_minutes': longBreakMinutes,
       'guidance_feedback': guidanceFeedback.name,
       'daily_limit_minutes': dailyLimitMinutes,
       'work_days': workDays,
@@ -241,6 +258,13 @@ class UserPreferences {
         json['escalation_prompt_limit'] as int? ??
             AppCadence.defaultEscalationPromptLimit,
       ),
+      longBreakEvery: AppCadence.clampLongBreakEvery(
+        json['long_break_every'] as int? ?? AppCadence.defaultLongBreakEvery,
+      ),
+      longBreakMinutes: AppCadence.clampLongBreakMinutes(
+        json['long_break_minutes'] as int? ??
+            AppCadence.defaultLongBreakMinutes,
+      ),
       guidanceFeedback: GuidanceFeedback.parse(
         json['guidance_feedback'] as String?,
       ),
@@ -276,6 +300,8 @@ class UserPreferences {
       preludeMinutes: AppCadence.defaultPreludeMinutes,
       breakBlockingEnabled: false,
       escalationPromptLimit: AppCadence.defaultEscalationPromptLimit,
+      longBreakEvery: AppCadence.defaultLongBreakEvery,
+      longBreakMinutes: AppCadence.defaultLongBreakMinutes,
     );
   }
 }

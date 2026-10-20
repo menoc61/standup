@@ -176,7 +176,7 @@ Collected **per day**, with a day selector, and reported for day, week and month
 | Capability | Workrave | StandUp | StandUp location / verdict |
 | --- | --- | --- | --- |
 | Activity model | Active/idle clocks driven by real input | Wall-clock windows anchored to local midnight | `data/models/stand_window.dart` — deliberate (see decision 2) |
-| Break types | Microbreak + restbreak + daily limit | One 5-minute break per boundary, optional stretch inside | `core/app_cadence.dart` — deliberate (decision 3) |
+| Break types | Microbreak + restbreak + daily limit | One break per boundary, and every Nth window is a **long** one (10/15/20 min, default off); the routine repeats rather than growing new movements | `core/app_cadence.dart`, `StandWindow.isLongBreakWindow` — see gap #1 for what remains |
 | Default cadence | ~3 min micro / ~45 min rest | 60 min (30/60/90 offered) | `AppCadence.defaultCadenceMinutes`, `cadenceOptions` |
 | Gentle pre-break notice | Non-intrusive window that moves itself away, escalates orange → red → disappears | Advisory prelude banner, 1/2/5/10 min, on by default, never traps input | `defaultPreludeMinutes`, `ui/widgets/prelude_alert.dart` |
 | Escalation after ignored prompts | Configurable max prompts, then forced break | A configurable limit (2/3/5, default off) after which the cover raises itself; counts only windows that closed unacted **while the user was present** | `core/escalation.dart`, `AppCadence.escalationOptions` — see gap #3 for what remains |
@@ -284,12 +284,16 @@ Linux is the whole promise, and the docs say so.
 
 ## What is genuinely still missing
 
-Ordered by value per unit of work. None of these are started.
+Ordered by value per unit of work.
 
-1. **A long break every Nth window.** The cheapest way to approximate Workrave's
-   microbreak/restbreak split on top of the existing cadence: every *n*th window
-   is long (walk away) instead of the standard one. Pure `AppCadence` arithmetic
-   plus one flag in the window rules — no new data model, no new screen.
+1. **A long break every Nth window: the shape is there, the content is not.**
+   Every Nth window is now a long one (2/3/4, off by default) and its guided break
+   runs for 10/15/20 minutes instead of five. Two things are still Workrave's and
+   not StandUp's. First, the long break runs *the same five movements, repeated* —
+   Workrave shows different, longer exercises for a restbreak, which is gap #4.
+   Second, the period is a window property counted from local midnight rather than
+   a schedule the user can align to their own day (Workrave's restbreak is a
+   separate interval, not a multiple of the microbreak).
 2. **Accounting for windows that expire untouched.** StandUp records completed,
    snoozed and skipped, so a silently expired window is invisible — not a
    completion, not a skip, not a miss. A `missed` concept makes the analytics

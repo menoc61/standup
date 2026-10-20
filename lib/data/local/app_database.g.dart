@@ -770,6 +770,30 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _longBreakEveryMeta = const VerificationMeta(
+    'longBreakEvery',
+  );
+  @override
+  late final GeneratedColumn<int> longBreakEvery = GeneratedColumn<int>(
+    'long_break_every',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _longBreakMinutesMeta = const VerificationMeta(
+    'longBreakMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> longBreakMinutes = GeneratedColumn<int>(
+    'long_break_minutes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(10),
+  );
   static const VerificationMeta _guidanceFeedbackMeta = const VerificationMeta(
     'guidanceFeedback',
   );
@@ -863,6 +887,8 @@ class $UserPreferencesTableTable extends UserPreferencesTable
     preludeMinutes,
     breakBlockingEnabled,
     escalationPromptLimit,
+    longBreakEvery,
+    longBreakMinutes,
     guidanceFeedback,
     dailyLimitMinutes,
     workDays,
@@ -1039,6 +1065,24 @@ class $UserPreferencesTableTable extends UserPreferencesTable
         ),
       );
     }
+    if (data.containsKey('long_break_every')) {
+      context.handle(
+        _longBreakEveryMeta,
+        longBreakEvery.isAcceptableOrUnknown(
+          data['long_break_every']!,
+          _longBreakEveryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('long_break_minutes')) {
+      context.handle(
+        _longBreakMinutesMeta,
+        longBreakMinutes.isAcceptableOrUnknown(
+          data['long_break_minutes']!,
+          _longBreakMinutesMeta,
+        ),
+      );
+    }
     if (data.containsKey('guidance_feedback')) {
       context.handle(
         _guidanceFeedbackMeta,
@@ -1175,6 +1219,14 @@ class $UserPreferencesTableTable extends UserPreferencesTable
         DriftSqlType.int,
         data['${effectivePrefix}escalation_prompt_limit'],
       )!,
+      longBreakEvery: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}long_break_every'],
+      )!,
+      longBreakMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}long_break_minutes'],
+      )!,
       guidanceFeedback: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}guidance_feedback'],
@@ -1232,6 +1284,12 @@ class UserPreferencesTableData extends DataClass
   /// How many ignored breaks in a row it takes before the break screen raises
   /// itself. Zero is off and is the default; see `AppCadence.escalationOptions`.
   final int escalationPromptLimit;
+
+  /// How many windows apart the long breaks are, or zero for none.
+  final int longBreakEvery;
+
+  /// How long a long break runs, in minutes.
+  final int longBreakMinutes;
   final String guidanceFeedback;
   final int dailyLimitMinutes;
   final String workDays;
@@ -1258,6 +1316,8 @@ class UserPreferencesTableData extends DataClass
     required this.preludeMinutes,
     required this.breakBlockingEnabled,
     required this.escalationPromptLimit,
+    required this.longBreakEvery,
+    required this.longBreakMinutes,
     required this.guidanceFeedback,
     required this.dailyLimitMinutes,
     required this.workDays,
@@ -1289,6 +1349,8 @@ class UserPreferencesTableData extends DataClass
     map['prelude_minutes'] = Variable<int>(preludeMinutes);
     map['break_blocking_enabled'] = Variable<bool>(breakBlockingEnabled);
     map['escalation_prompt_limit'] = Variable<int>(escalationPromptLimit);
+    map['long_break_every'] = Variable<int>(longBreakEvery);
+    map['long_break_minutes'] = Variable<int>(longBreakMinutes);
     map['guidance_feedback'] = Variable<String>(guidanceFeedback);
     map['daily_limit_minutes'] = Variable<int>(dailyLimitMinutes);
     map['work_days'] = Variable<String>(workDays);
@@ -1321,6 +1383,8 @@ class UserPreferencesTableData extends DataClass
       preludeMinutes: Value(preludeMinutes),
       breakBlockingEnabled: Value(breakBlockingEnabled),
       escalationPromptLimit: Value(escalationPromptLimit),
+      longBreakEvery: Value(longBreakEvery),
+      longBreakMinutes: Value(longBreakMinutes),
       guidanceFeedback: Value(guidanceFeedback),
       dailyLimitMinutes: Value(dailyLimitMinutes),
       workDays: Value(workDays),
@@ -1367,6 +1431,8 @@ class UserPreferencesTableData extends DataClass
       escalationPromptLimit: serializer.fromJson<int>(
         json['escalationPromptLimit'],
       ),
+      longBreakEvery: serializer.fromJson<int>(json['longBreakEvery']),
+      longBreakMinutes: serializer.fromJson<int>(json['longBreakMinutes']),
       guidanceFeedback: serializer.fromJson<String>(json['guidanceFeedback']),
       dailyLimitMinutes: serializer.fromJson<int>(json['dailyLimitMinutes']),
       workDays: serializer.fromJson<String>(json['workDays']),
@@ -1398,6 +1464,8 @@ class UserPreferencesTableData extends DataClass
       'preludeMinutes': serializer.toJson<int>(preludeMinutes),
       'breakBlockingEnabled': serializer.toJson<bool>(breakBlockingEnabled),
       'escalationPromptLimit': serializer.toJson<int>(escalationPromptLimit),
+      'longBreakEvery': serializer.toJson<int>(longBreakEvery),
+      'longBreakMinutes': serializer.toJson<int>(longBreakMinutes),
       'guidanceFeedback': serializer.toJson<String>(guidanceFeedback),
       'dailyLimitMinutes': serializer.toJson<int>(dailyLimitMinutes),
       'workDays': serializer.toJson<String>(workDays),
@@ -1427,6 +1495,8 @@ class UserPreferencesTableData extends DataClass
     int? preludeMinutes,
     bool? breakBlockingEnabled,
     int? escalationPromptLimit,
+    int? longBreakEvery,
+    int? longBreakMinutes,
     String? guidanceFeedback,
     int? dailyLimitMinutes,
     String? workDays,
@@ -1453,6 +1523,8 @@ class UserPreferencesTableData extends DataClass
     preludeMinutes: preludeMinutes ?? this.preludeMinutes,
     breakBlockingEnabled: breakBlockingEnabled ?? this.breakBlockingEnabled,
     escalationPromptLimit: escalationPromptLimit ?? this.escalationPromptLimit,
+    longBreakEvery: longBreakEvery ?? this.longBreakEvery,
+    longBreakMinutes: longBreakMinutes ?? this.longBreakMinutes,
     guidanceFeedback: guidanceFeedback ?? this.guidanceFeedback,
     dailyLimitMinutes: dailyLimitMinutes ?? this.dailyLimitMinutes,
     workDays: workDays ?? this.workDays,
@@ -1515,6 +1587,12 @@ class UserPreferencesTableData extends DataClass
       escalationPromptLimit: data.escalationPromptLimit.present
           ? data.escalationPromptLimit.value
           : this.escalationPromptLimit,
+      longBreakEvery: data.longBreakEvery.present
+          ? data.longBreakEvery.value
+          : this.longBreakEvery,
+      longBreakMinutes: data.longBreakMinutes.present
+          ? data.longBreakMinutes.value
+          : this.longBreakMinutes,
       guidanceFeedback: data.guidanceFeedback.present
           ? data.guidanceFeedback.value
           : this.guidanceFeedback,
@@ -1554,6 +1632,8 @@ class UserPreferencesTableData extends DataClass
           ..write('preludeMinutes: $preludeMinutes, ')
           ..write('breakBlockingEnabled: $breakBlockingEnabled, ')
           ..write('escalationPromptLimit: $escalationPromptLimit, ')
+          ..write('longBreakEvery: $longBreakEvery, ')
+          ..write('longBreakMinutes: $longBreakMinutes, ')
           ..write('guidanceFeedback: $guidanceFeedback, ')
           ..write('dailyLimitMinutes: $dailyLimitMinutes, ')
           ..write('workDays: $workDays, ')
@@ -1585,6 +1665,8 @@ class UserPreferencesTableData extends DataClass
     preludeMinutes,
     breakBlockingEnabled,
     escalationPromptLimit,
+    longBreakEvery,
+    longBreakMinutes,
     guidanceFeedback,
     dailyLimitMinutes,
     workDays,
@@ -1615,6 +1697,8 @@ class UserPreferencesTableData extends DataClass
           other.preludeMinutes == this.preludeMinutes &&
           other.breakBlockingEnabled == this.breakBlockingEnabled &&
           other.escalationPromptLimit == this.escalationPromptLimit &&
+          other.longBreakEvery == this.longBreakEvery &&
+          other.longBreakMinutes == this.longBreakMinutes &&
           other.guidanceFeedback == this.guidanceFeedback &&
           other.dailyLimitMinutes == this.dailyLimitMinutes &&
           other.workDays == this.workDays &&
@@ -1644,6 +1728,8 @@ class UserPreferencesTableCompanion
   final Value<int> preludeMinutes;
   final Value<bool> breakBlockingEnabled;
   final Value<int> escalationPromptLimit;
+  final Value<int> longBreakEvery;
+  final Value<int> longBreakMinutes;
   final Value<String> guidanceFeedback;
   final Value<int> dailyLimitMinutes;
   final Value<String> workDays;
@@ -1671,6 +1757,8 @@ class UserPreferencesTableCompanion
     this.preludeMinutes = const Value.absent(),
     this.breakBlockingEnabled = const Value.absent(),
     this.escalationPromptLimit = const Value.absent(),
+    this.longBreakEvery = const Value.absent(),
+    this.longBreakMinutes = const Value.absent(),
     this.guidanceFeedback = const Value.absent(),
     this.dailyLimitMinutes = const Value.absent(),
     this.workDays = const Value.absent(),
@@ -1699,6 +1787,8 @@ class UserPreferencesTableCompanion
     this.preludeMinutes = const Value.absent(),
     this.breakBlockingEnabled = const Value.absent(),
     this.escalationPromptLimit = const Value.absent(),
+    this.longBreakEvery = const Value.absent(),
+    this.longBreakMinutes = const Value.absent(),
     this.guidanceFeedback = const Value.absent(),
     this.dailyLimitMinutes = const Value.absent(),
     this.workDays = const Value.absent(),
@@ -1728,6 +1818,8 @@ class UserPreferencesTableCompanion
     Expression<int>? preludeMinutes,
     Expression<bool>? breakBlockingEnabled,
     Expression<int>? escalationPromptLimit,
+    Expression<int>? longBreakEvery,
+    Expression<int>? longBreakMinutes,
     Expression<String>? guidanceFeedback,
     Expression<int>? dailyLimitMinutes,
     Expression<String>? workDays,
@@ -1762,6 +1854,8 @@ class UserPreferencesTableCompanion
         'break_blocking_enabled': breakBlockingEnabled,
       if (escalationPromptLimit != null)
         'escalation_prompt_limit': escalationPromptLimit,
+      if (longBreakEvery != null) 'long_break_every': longBreakEvery,
+      if (longBreakMinutes != null) 'long_break_minutes': longBreakMinutes,
       if (guidanceFeedback != null) 'guidance_feedback': guidanceFeedback,
       if (dailyLimitMinutes != null) 'daily_limit_minutes': dailyLimitMinutes,
       if (workDays != null) 'work_days': workDays,
@@ -1792,6 +1886,8 @@ class UserPreferencesTableCompanion
     Value<int>? preludeMinutes,
     Value<bool>? breakBlockingEnabled,
     Value<int>? escalationPromptLimit,
+    Value<int>? longBreakEvery,
+    Value<int>? longBreakMinutes,
     Value<String>? guidanceFeedback,
     Value<int>? dailyLimitMinutes,
     Value<String>? workDays,
@@ -1822,6 +1918,8 @@ class UserPreferencesTableCompanion
       breakBlockingEnabled: breakBlockingEnabled ?? this.breakBlockingEnabled,
       escalationPromptLimit:
           escalationPromptLimit ?? this.escalationPromptLimit,
+      longBreakEvery: longBreakEvery ?? this.longBreakEvery,
+      longBreakMinutes: longBreakMinutes ?? this.longBreakMinutes,
       guidanceFeedback: guidanceFeedback ?? this.guidanceFeedback,
       dailyLimitMinutes: dailyLimitMinutes ?? this.dailyLimitMinutes,
       workDays: workDays ?? this.workDays,
@@ -1898,6 +1996,12 @@ class UserPreferencesTableCompanion
         escalationPromptLimit.value,
       );
     }
+    if (longBreakEvery.present) {
+      map['long_break_every'] = Variable<int>(longBreakEvery.value);
+    }
+    if (longBreakMinutes.present) {
+      map['long_break_minutes'] = Variable<int>(longBreakMinutes.value);
+    }
     if (guidanceFeedback.present) {
       map['guidance_feedback'] = Variable<String>(guidanceFeedback.value);
     }
@@ -1944,6 +2048,8 @@ class UserPreferencesTableCompanion
           ..write('preludeMinutes: $preludeMinutes, ')
           ..write('breakBlockingEnabled: $breakBlockingEnabled, ')
           ..write('escalationPromptLimit: $escalationPromptLimit, ')
+          ..write('longBreakEvery: $longBreakEvery, ')
+          ..write('longBreakMinutes: $longBreakMinutes, ')
           ..write('guidanceFeedback: $guidanceFeedback, ')
           ..write('dailyLimitMinutes: $dailyLimitMinutes, ')
           ..write('workDays: $workDays, ')
@@ -3431,6 +3537,8 @@ typedef $$UserPreferencesTableTableCreateCompanionBuilder =
       Value<int> preludeMinutes,
       Value<bool> breakBlockingEnabled,
       Value<int> escalationPromptLimit,
+      Value<int> longBreakEvery,
+      Value<int> longBreakMinutes,
       Value<String> guidanceFeedback,
       Value<int> dailyLimitMinutes,
       Value<String> workDays,
@@ -3460,6 +3568,8 @@ typedef $$UserPreferencesTableTableUpdateCompanionBuilder =
       Value<int> preludeMinutes,
       Value<bool> breakBlockingEnabled,
       Value<int> escalationPromptLimit,
+      Value<int> longBreakEvery,
+      Value<int> longBreakMinutes,
       Value<String> guidanceFeedback,
       Value<int> dailyLimitMinutes,
       Value<String> workDays,
@@ -3570,6 +3680,16 @@ class $$UserPreferencesTableTableFilterComposer
 
   ColumnFilters<int> get escalationPromptLimit => $composableBuilder(
     column: $table.escalationPromptLimit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get longBreakEvery => $composableBuilder(
+    column: $table.longBreakEvery,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get longBreakMinutes => $composableBuilder(
+    column: $table.longBreakMinutes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3708,6 +3828,16 @@ class $$UserPreferencesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get longBreakEvery => $composableBuilder(
+    column: $table.longBreakEvery,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get longBreakMinutes => $composableBuilder(
+    column: $table.longBreakMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get guidanceFeedback => $composableBuilder(
     column: $table.guidanceFeedback,
     builder: (column) => ColumnOrderings(column),
@@ -3837,6 +3967,16 @@ class $$UserPreferencesTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get longBreakEvery => $composableBuilder(
+    column: $table.longBreakEvery,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get longBreakMinutes => $composableBuilder(
+    column: $table.longBreakMinutes,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get guidanceFeedback => $composableBuilder(
     column: $table.guidanceFeedback,
     builder: (column) => column,
@@ -3926,6 +4066,8 @@ class $$UserPreferencesTableTableTableManager
                 Value<int> preludeMinutes = const Value.absent(),
                 Value<bool> breakBlockingEnabled = const Value.absent(),
                 Value<int> escalationPromptLimit = const Value.absent(),
+                Value<int> longBreakEvery = const Value.absent(),
+                Value<int> longBreakMinutes = const Value.absent(),
                 Value<String> guidanceFeedback = const Value.absent(),
                 Value<int> dailyLimitMinutes = const Value.absent(),
                 Value<String> workDays = const Value.absent(),
@@ -3953,6 +4095,8 @@ class $$UserPreferencesTableTableTableManager
                 preludeMinutes: preludeMinutes,
                 breakBlockingEnabled: breakBlockingEnabled,
                 escalationPromptLimit: escalationPromptLimit,
+                longBreakEvery: longBreakEvery,
+                longBreakMinutes: longBreakMinutes,
                 guidanceFeedback: guidanceFeedback,
                 dailyLimitMinutes: dailyLimitMinutes,
                 workDays: workDays,
@@ -3982,6 +4126,8 @@ class $$UserPreferencesTableTableTableManager
                 Value<int> preludeMinutes = const Value.absent(),
                 Value<bool> breakBlockingEnabled = const Value.absent(),
                 Value<int> escalationPromptLimit = const Value.absent(),
+                Value<int> longBreakEvery = const Value.absent(),
+                Value<int> longBreakMinutes = const Value.absent(),
                 Value<String> guidanceFeedback = const Value.absent(),
                 Value<int> dailyLimitMinutes = const Value.absent(),
                 Value<String> workDays = const Value.absent(),
@@ -4009,6 +4155,8 @@ class $$UserPreferencesTableTableTableManager
                 preludeMinutes: preludeMinutes,
                 breakBlockingEnabled: breakBlockingEnabled,
                 escalationPromptLimit: escalationPromptLimit,
+                longBreakEvery: longBreakEvery,
+                longBreakMinutes: longBreakMinutes,
                 guidanceFeedback: guidanceFeedback,
                 dailyLimitMinutes: dailyLimitMinutes,
                 workDays: workDays,

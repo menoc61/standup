@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/core/break_block.dart';
@@ -93,6 +94,13 @@ class _BreakBlockOverlayState extends State<BreakBlockOverlay> {
                         endsAt: window!.end,
                         standing: widget.appState.isBreakActive,
                         minWaitSeconds: BreakBlockScreen.defaultMinWaitSeconds,
+                        // The label must describe the routine this tap would
+                        // actually start, so it reads the *open* window: outside
+                        // a window `startGuidedStretch` runs the standard routine
+                        // whichever break happens to be next.
+                        stretchMinutes: widget.appState.isCurrentWindowLongBreak
+                            ? widget.appState.longBreakMinutes
+                            : AppCadence.guidedStretchMinutes,
                         onStoodUp: () => widget.appState.completeReminder(),
                         onStartStretch: () {
                           setState(() => _stretchRequested = true);
@@ -175,10 +183,18 @@ class BreakBlockScreen extends StatefulWidget {
 
   final VoidCallback onStoodUp;
 
-  /// Optional: offers the five-minute guided routine instead of a plain stand.
-  /// Null keeps the cover to its single authoritative action, which is what the
-  /// widget tests render.
+  /// Optional: offers the guided routine instead of a plain stand. Null keeps
+  /// the cover to its single authoritative action, which is what the widget
+  /// tests render.
   final VoidCallback? onStartStretch;
+
+  /// How long the routine this cover offers runs, in minutes.
+  ///
+  /// The label has to state it, because a long-break window offers a longer
+  /// routine and a button promising five minutes on a ten-minute break is wrong
+  /// exactly where the user is about to spend the time. Defaults to the standard
+  /// routine, so a caller that does not know keeps the old copy.
+  final int stretchMinutes;
 
   /// Anti-cheat delay in seconds before the confirmation button unlocks.
   final int minWaitSeconds;
@@ -189,6 +205,7 @@ class BreakBlockScreen extends StatefulWidget {
     required this.onStoodUp,
     this.standing = false,
     this.onStartStretch,
+    this.stretchMinutes = AppCadence.guidedStretchMinutes,
     this.minWaitSeconds = 0,
   });
 
@@ -352,7 +369,11 @@ class _BreakBlockScreenState extends State<BreakBlockScreen> {
                           vertical: 12,
                         ),
                         child: Text(
-                          appString(context, 'Guided 5-minute stretch'),
+                          appStringArgs(
+                            context,
+                            'Guided {minutes}-minute stretch',
+                            {'minutes': '${widget.stretchMinutes}'},
+                          ),
                         ),
                       ),
                     ],

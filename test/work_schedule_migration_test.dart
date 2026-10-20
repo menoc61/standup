@@ -107,6 +107,11 @@ void main() {
         migrated.escalationPromptLimit,
         AppCadence.defaultEscalationPromptLimit,
       );
+      // Long breaks arrive at v13, also off: a break that is longer than the
+      // cadence the user chose is a change to their day, not a bug fix.
+      expect(migrated.longBreakEvery, AppCadence.defaultLongBreakEvery);
+      expect(migrated.longBreakEvery, 0);
+      expect(migrated.longBreakMinutes, AppCadence.defaultLongBreakMinutes);
 
       final edited = migrated.copyWith(
         aiGuidanceOptIn: true,
@@ -119,6 +124,8 @@ void main() {
         guidanceFeedback: GuidanceFeedback.suggestionsTooFrequent,
         dailyLimitMinutes: 6 * 60,
         escalationPromptLimit: 3,
+        longBreakEvery: 3,
+        longBreakMinutes: 15,
       );
       await repository.saveUserPreferences(edited);
       final reloaded = await repository.getUserPreferences('local_legacy');
@@ -134,6 +141,11 @@ void main() {
       // And so does the escalation limit: a streak rule that forgot itself on
       // restart would be a promise the app cannot keep.
       expect(reloaded?.escalationPromptLimit, 3);
+      // The long-break period and its length are a pair: a period that survived
+      // a restart while its length reset would silently shorten every long
+      // break the user configured.
+      expect(reloaded?.longBreakEvery, 3);
+      expect(reloaded?.longBreakMinutes, 15);
       // So does the feedback the employee gave, which is the whole point of
       // storing it: it has to survive the process that collected it.
       expect(

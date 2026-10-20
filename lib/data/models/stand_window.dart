@@ -264,6 +264,43 @@ class StandWindow {
     return count;
   }
 
+  /// Whether the window that closes at [boundary] is a long break.
+  ///
+  /// [everyNth] is the period: every third window, every fourth. Zero or one
+  /// means there are no long breaks at all.
+  ///
+  /// The ordinal is counted from the device's own midnight, which is the same
+  /// anchor [activeWindow] builds its boundaries from. That makes the answer a
+  /// property of the *window* rather than of the session: it does not matter when
+  /// the app was launched, whether it was running an hour ago, or how many breaks
+  /// the user actually took, so the same window is a long break for everyone and
+  /// the OS queue can schedule it ahead of time. Counting completed breaks in a
+  /// row instead would make the next long break depend on the user's own history,
+  /// and a stored counter could drift from the clock.
+  static bool isLongBreakWindow({
+    required DateTime boundary,
+    required int everyNth,
+    int cadenceMinutes = defaultCadenceMinutes,
+  }) {
+    if (everyNth <= 1) return false;
+    _validate(defaultActionWindowMinutes, cadenceMinutes);
+
+    final midnight = boundary.isUtc
+        ? DateTime.utc(boundary.year, boundary.month, boundary.day)
+        : DateTime(boundary.year, boundary.month, boundary.day);
+    final cadenceMs = cadenceMinutes * 60 * 1000;
+    final elapsedMs = boundary.difference(midnight).inMilliseconds;
+    // The midnight boundary itself belongs to the previous day's sequence, so it
+    // has no ordinal here and is never a long break.
+    if (elapsedMs <= 0) return false;
+
+    // Dividing the elapsed span by the cadence recovers exactly the step count
+    // `_boundaryAtOrAfter` multiplied, including across a clock change, because
+    // both use the same construction from the same local midnight.
+    final ordinal = elapsedMs ~/ cadenceMs;
+    return ordinal % everyNth == 0;
+  }
+
   /// The first cadence-aligned boundary at or after [now].
   ///
   /// Boundaries are anchored to **local midnight**, not to the current hour.

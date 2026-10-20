@@ -87,6 +87,14 @@ class AppState extends ChangeNotifier {
   bool _preludeAlertPlayed = false;
   int _activeBreakStep = 0;
   int _breakSecondsRemaining = AppCadence.guidedStretchSeconds;
+
+  /// How long the break now running was meant to last, in seconds.
+  ///
+  /// Kept separately from [_breakSecondsRemaining] because the routine's header
+  /// and its step count both need the *total*, and a ten-minute long break
+  /// labelled "5-Min Guided Stretch" is the kind of small lie that makes every
+  /// other number on the screen suspect.
+  int _breakTotalSeconds = AppCadence.guidedStretchSeconds;
   Timer? _breakTimer;
 
   /// The window key a guided stretch was started under, so its completion is
@@ -188,6 +196,9 @@ class AppState extends ChangeNotifier {
   bool get isBreakActive => _isBreakActive;
   int get activeBreakStep => _activeBreakStep;
   int get breakSecondsRemaining => _breakSecondsRemaining;
+
+  /// How long the break now running was meant to last, in seconds.
+  int get breakTotalSeconds => _breakTotalSeconds;
   SyncStatus get syncStatus => _syncStatus;
   String get languageCode => _languageCode;
   GuidanceInput get _guidanceInput => GuidanceInput(
@@ -424,6 +435,47 @@ class AppState extends ChangeNotifier {
     final now = DateTime.now();
     if (activeWindow != null) return Duration.zero;
     return (_nextEligibleWindow(now)?.start ?? now).difference(now);
+  }
+
+  /// The number of windows between long breaks, clamped to the offered set.
+  /// Zero, the default, means every break is the standard length.
+  int get longBreakEvery =>
+      AppCadence.clampLongBreakEvery(preferences.longBreakEvery);
+
+  /// How long a long break runs, in minutes.
+  int get longBreakMinutes =>
+      AppCadence.clampLongBreakMinutes(preferences.longBreakMinutes);
+
+  /// Whether the window now open is a long break.
+  ///
+  /// This is the one the guided break asks, because a break that starts in a
+  /// window belongs to it. A break started with no window open — the dashboard
+  /// button does not refuse — is therefore never a long one.
+  bool get isCurrentWindowLongBreak {
+    final active = activeWindow;
+    return active != null &&
+        StandWindow.isLongBreakWindow(
+          boundary: active.end,
+          everyNth: longBreakEvery,
+          cadenceMinutes: _cadenceMinutes,
+        );
+  }
+
+  /// Whether the break the user is looking at is a long one: the open window, or
+  /// the next window when none is open.
+  ///
+  /// The dashboard reads this so the length is known *before* the break arrives.
+  /// A ten-minute routine that turns up unannounced is not a longer break, it is
+  /// an appointment the user did not know they had.
+  bool get isLongBreakDue {
+    if (activeWindow != null) return isCurrentWindowLongBreak;
+    final upcoming = _nextEligibleWindow(DateTime.now());
+    return upcoming != null &&
+        StandWindow.isLongBreakWindow(
+          boundary: upcoming.end,
+          everyNth: longBreakEvery,
+          cadenceMinutes: _cadenceMinutes,
+        );
   }
 
   /// The actionable window currently open, for the UI to render.
@@ -1395,11 +1447,19 @@ class AppState extends ChangeNotifier {
   /// the window closes. The stretch is therefore bound to the window it began
   /// in ([_breakWindowKey]) so its completion is still honoured, rather than
   /// being refused by the gate that guards a *new* stand action.
+  ///
+  /// On a long-break window it runs for the longer length instead. The five
+  /// movements repeat, which is what the routine actually contains (see
+  /// `AppCadence.breakSecondsFor`).
   void startGuidedStretch() {
     unawaited(audioService.playClick());
     _isBreakActive = true;
     _activeBreakStep = 0;
-    _breakSecondsRemaining = AppCadence.guidedStretchSeconds;
+    _breakTotalSeconds = AppCadence.breakSecondsFor(
+      longBreak: isCurrentWindowLongBreak,
+      longBreakMinutes: longBreakMinutes,
+    );
+    _breakSecondsRemaining = _breakTotalSeconds;
     _breakWindowKey = _currentWindowKey();
 
     // The break has started, so the countdown to it has nothing left to say.
@@ -1412,6 +1472,7 @@ class AppState extends ChangeNotifier {
         _breakSecondsRemaining--;
         _activeBreakStep = AppCadence.guidedStretchStepFor(
           secondsRemaining: _breakSecondsRemaining,
+          totalSeconds: _breakTotalSeconds,
         );
         notifyListeners();
         return;
@@ -1475,6 +1536,8 @@ class AppState extends ChangeNotifier {
     int? preludeMinutes,
     bool? breakBlockingEnabled,
     int? escalationPromptLimit,
+    int? longBreakEvery,
+    int? longBreakMinutes,
     GuidanceFeedback? guidanceFeedback,
     int? dailyLimitMinutes,
     String? workDays,
@@ -1535,6 +1598,12 @@ class AppState extends ChangeNotifier {
       escalationPromptLimit: escalationPromptLimit == null
           ? null
           : AppCadence.clampEscalationPromptLimit(escalationPromptLimit),
+      longBreakEvery: longBreakEvery == null
+          ? null
+          : AppCadence.clampLongBreakEvery(longBreakEvery),
+      longBreakMinutes: longBreakMinutes == null
+          ? null
+          : AppCadence.clampLongBreakMinutes(longBreakMinutes),
       guidanceFeedback: guidanceFeedback,
       dailyLimitMinutes: dailyLimitMinutes,
       workDays: workDays,

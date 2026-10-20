@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/core/app_identity.dart';
+import 'package:standup_app/data/models/stand_window.dart';
 import 'package:standup_app/data/models/user_preferences.dart';
 
 /// Locks `AppCadence` to every other layer that has to agree with it.
@@ -391,6 +392,171 @@ void main() {
         );
       }
       expect(AppCadence.guidedStretchStepCount, 5);
+    });
+
+    test('a long break repeats the routine instead of stretching it', () {
+      // Ten minutes is the five movements twice. A movement that lasted two
+      // minutes would silently change what the routine asks the user to do.
+      int step(int remaining) => AppCadence.guidedStretchStepFor(
+        secondsRemaining: remaining,
+        totalSeconds: 600,
+      );
+
+      expect(step(600), 0);
+      expect(step(539), 1);
+      expect(step(301), 4);
+      // The last second of the first pass is still step 4, and the second after
+      // it starts the routine again from the top.
+      expect(step(300), 4);
+      expect(step(299), 0);
+      expect(step(1), 4);
+    });
+
+    test('the step is renderable whatever length the break has', () {
+      for (final minutes in AppCadence.longBreakMinutesOptions) {
+        final total = minutes * 60;
+        for (var remaining = 0; remaining <= total; remaining++) {
+          final index = AppCadence.guidedStretchStepFor(
+            secondsRemaining: remaining,
+            totalSeconds: total,
+          );
+          expect(
+            index,
+            inInclusiveRange(0, AppCadence.guidedStretchStepCount - 1),
+          );
+        }
+      }
+    });
+
+    group('long breaks', () {
+      test('are off by default, and off is the first offered period', () {
+        expect(AppCadence.defaultLongBreakEvery, 0);
+        expect(AppCadence.longBreakEveryOptions.first, 0);
+      });
+
+      test('a period of one rounds up rather than meaning every break', () {
+        // "Every break" is not one of the offered periods, and quietly turning
+        // every break into a ten-minute one is a far bigger change than the user
+        // asked for.
+        expect(AppCadence.clampLongBreakEvery(0), 0);
+        expect(AppCadence.clampLongBreakEvery(-2), 0);
+        expect(AppCadence.clampLongBreakEvery(1), 2);
+        expect(AppCadence.clampLongBreakEvery(3), 3);
+        expect(
+          AppCadence.clampLongBreakEvery(9),
+          AppCadence.longBreakEveryOptions.last,
+        );
+      });
+
+      test('a broken length falls back to the default, never to zero', () {
+        // A break with no length is not a smaller break, it is a broken one.
+        expect(AppCadence.clampLongBreakMinutes(10), 10);
+        expect(
+          AppCadence.clampLongBreakMinutes(0),
+          AppCadence.defaultLongBreakMinutes,
+        );
+        expect(
+          AppCadence.clampLongBreakMinutes(7),
+          AppCadence.defaultLongBreakMinutes,
+        );
+      });
+
+      test('the break is the standard routine unless the window is long', () {
+        expect(
+          AppCadence.breakSecondsFor(longBreak: false),
+          AppCadence.guidedStretchSeconds,
+        );
+        expect(
+          AppCadence.breakSecondsFor(longBreak: true, longBreakMinutes: 15),
+          900,
+        );
+      });
+    });
+  });
+
+  group('StandWindow.isLongBreakWindow', () {
+    // Boundaries are anchored to local midnight and spaced by the cadence, so a
+    // boundary's ordinal is how many cadence steps past midnight it sits.
+    final midnight = DateTime(2026, 5, 6);
+
+    test('a period of zero or one means there are no long breaks', () {
+      for (final hour in [1, 2, 3, 6]) {
+        for (final period in [0, 1]) {
+          expect(
+            StandWindow.isLongBreakWindow(
+              boundary: midnight.add(Duration(hours: hour)),
+              everyNth: period,
+            ),
+            isFalse,
+          );
+        }
+      }
+    });
+
+    test('every third window is a long break', () {
+      bool isLong(int hour) => StandWindow.isLongBreakWindow(
+        boundary: midnight.add(Duration(hours: hour)),
+        everyNth: 3,
+      );
+
+      expect(isLong(1), isFalse);
+      expect(isLong(2), isFalse);
+      expect(isLong(3), isTrue);
+      expect(isLong(4), isFalse);
+      expect(isLong(5), isFalse);
+      expect(isLong(6), isTrue);
+      expect(isLong(9), isTrue);
+    });
+
+    test('the answer belongs to the window, not to the session', () {
+      // Counting from midnight rather than from the last break taken makes the
+      // same window a long break for everyone, whenever the app was launched and
+      // however many breaks were actually taken — which is what lets the OS queue
+      // schedule it ahead of time and what stops a stored counter drifting from
+      // the clock.
+      expect(
+        StandWindow.isLongBreakWindow(
+          boundary: DateTime(2026, 5, 6, 3),
+          everyNth: 3,
+        ),
+        isTrue,
+      );
+      expect(
+        StandWindow.isLongBreakWindow(
+          boundary: DateTime(2026, 5, 7, 3),
+          everyNth: 3,
+        ),
+        isTrue,
+      );
+    });
+
+    test('midnight itself has no ordinal and is never a long break', () {
+      expect(
+        StandWindow.isLongBreakWindow(boundary: midnight, everyNth: 3),
+        isFalse,
+      );
+    });
+
+    test('the period follows the cadence, not the hour', () {
+      // A 90-minute cadence puts its boundaries at 00:00, 01:30, 03:00, 04:30…,
+      // so its third window closes at 04:30, where a 60-minute cadence's third
+      // closes at 03:00. Reading the cadence is what keeps the two agreeing.
+      expect(
+        StandWindow.isLongBreakWindow(
+          boundary: DateTime(2026, 5, 6, 4, 30),
+          everyNth: 3,
+          cadenceMinutes: 90,
+        ),
+        isTrue,
+      );
+      expect(
+        StandWindow.isLongBreakWindow(
+          boundary: DateTime(2026, 5, 6, 3),
+          everyNth: 3,
+          cadenceMinutes: 90,
+        ),
+        isFalse,
+      );
     });
   });
 

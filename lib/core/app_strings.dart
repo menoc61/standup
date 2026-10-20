@@ -553,6 +553,8 @@ const Map<String, String> _french = {
   'Time to stand up': 'Debout !',
   'Stand, stretch and breathe. This screen lifts when the break ends or when you log it.': 'Levez-vous, étirez-vous et respirez. Cet écran disparaît à la fin de la pause ou dès que vous l’enregistrez.',
   'Unlocks in {time}': 'Déblocage dans {time}',
+  'Please step away from your desk ({seconds}s)':
+      'Éloignez-vous de votre écran ({seconds}s)',
   'I stood up': 'Je me suis levé·e',
   // Device profile
   'Device & app': 'Appareil et application',

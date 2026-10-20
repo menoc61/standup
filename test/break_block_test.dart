@@ -239,11 +239,100 @@ void main() {
       );
     });
 
+    testWidgets(
+      'anti-cheat delay disables "I stood up" until minWaitSeconds passes',
+      (tester) async {
+        var logged = 0;
+        await tester.pumpWidget(
+          wrap(
+            BreakBlockScreen(
+              endsAt: endsAt,
+              minWaitSeconds: 30,
+              onStoodUp: () => logged++,
+            ),
+          ),
+        );
+
+        // Initially locked with warning message
+        expect(
+          find.text('Please step away from your desk (30s)'),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('I stood up'));
+        await tester.pump();
+        expect(logged, 0);
+
+        // Advance 30 seconds
+        await tester.pump(const Duration(seconds: 30));
+        await tester.pump();
+        expect(
+          find.text('Please step away from your desk (30s)'),
+          findsNothing,
+        );
+
+        // Now unlocked and tap succeeds
+        await tester.tap(find.text('I stood up'));
+        await tester.pump();
+        expect(logged, 1);
+      },
+    );
+
+    testWidgets('a late arrival never waits past the closing window', (
+      tester,
+    ) async {
+      // The cover lifts when the window closes, so a wait longer than the
+      // window would leave the countdown pointing at a button that disappears
+      // before it unlocks.
+      var logged = 0;
+      await tester.pumpWidget(
+        wrap(
+          BreakBlockScreen(
+            endsAt: DateTime.now().add(const Duration(seconds: 20)),
+            minWaitSeconds: 30,
+            onStoodUp: () => logged++,
+          ),
+        ),
+      );
+
+      expect(find.text('Please step away from your desk (30s)'), findsNothing);
+      expect(
+        find.textContaining('Please step away from your desk ('),
+        findsOneWidget,
+      );
+
+      await tester.pump(const Duration(seconds: 40));
+      await tester.pump();
+      await tester.tap(find.text('I stood up'));
+      await tester.pump();
+      expect(logged, 1);
+    });
+
+    testWidgets('a window that has already closed skips the delay', (
+      tester,
+    ) async {
+      var logged = 0;
+      await tester.pumpWidget(
+        wrap(
+          BreakBlockScreen(
+            endsAt: DateTime.now().subtract(const Duration(minutes: 1)),
+            minWaitSeconds: 30,
+            onStoodUp: () => logged++,
+          ),
+        ),
+      );
+
+      expect(find.textContaining('Please step away'), findsNothing);
+      await tester.tap(find.text('I stood up'));
+      await tester.pump();
+      expect(logged, 1);
+    });
+
     test('every visible string has a French entry', () {
       for (final literal in [
         'Time to stand up',
         'Stand, stretch and breathe. This screen lifts when the break ends or when you log it.',
         'Unlocks in {time}',
+        'Please step away from your desk ({seconds}s)',
         'I stood up',
         'Guided 5-minute stretch',
       ]) {

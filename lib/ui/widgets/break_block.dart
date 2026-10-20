@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
@@ -28,10 +30,8 @@ import 'package:standup_app/ui/widgets/spring_button.dart';
 ///
 /// The one moment a guided stretch is unambiguously the right action is the
 /// forced break, and the cover cannot push it: this widget sits *above* the
-/// navigator, so a bottom sheet opened from here would render underneath the
-/// cover that asked for it. The routine is therefore swapped in place — the
-/// cover's secondary button replaces the cover with [GuidedStretchPanel] and the
-/// same tap path back out restores it.
+/// navigator, so pushing would put the routine *underneath* the barrier that is
+/// supposed to show it. Nesting it inside the cover keeps the action visible.
 class BreakBlockOverlay extends StatefulWidget {
   final AppState appState;
 
@@ -92,6 +92,7 @@ class _BreakBlockOverlayState extends State<BreakBlockOverlay> {
                     : BreakBlockScreen(
                         endsAt: window!.end,
                         standing: widget.appState.isBreakActive,
+                        minWaitSeconds: BreakBlockScreen.defaultMinWaitSeconds,
                         onStoodUp: () => widget.appState.completeReminder(),
                         onStartStretch: () {
                           setState(() => _stretchRequested = true);
@@ -149,13 +150,23 @@ class _EmbeddedStretch extends StatelessWidget {
   }
 }
 
-/// The cover itself: pure presentation, so it is testable without an `AppState`.
+/// The cover itself: pure presentation, with an optional anti-cheat timer.
 ///
 /// [endsAt] is the instant the break window closes, which is also the moment the
 /// cover lifts on its own. There is intentionally no dismiss button: the two
 /// honest ways out are standing up (which logs the break) and the window simply
 /// ending, and a third escape hatch would turn the block into a suggestion.
-class BreakBlockScreen extends StatelessWidget {
+///
+/// [minWaitSeconds] enforces a mandatory anti-cheat delay (e.g. 30 seconds)
+/// before the user is allowed to confirm "I stood up", ensuring real physical
+/// movement rather than an instant dismissal.
+class BreakBlockScreen extends StatefulWidget {
+  /// The delay the forced break uses before it accepts a confirmation.
+  ///
+  /// Deliberately short: it exists to stop a reflexive two-second dismissal,
+  /// not to hold anyone hostage. A later setting can make it configurable.
+  static const int defaultMinWaitSeconds = 30;
+
   final DateTime endsAt;
 
   /// True while the completion is being written, so the button cannot be
@@ -169,21 +180,73 @@ class BreakBlockScreen extends StatelessWidget {
   /// widget tests render.
   final VoidCallback? onStartStretch;
 
+  /// Anti-cheat delay in seconds before the confirmation button unlocks.
+  final int minWaitSeconds;
+
   const BreakBlockScreen({
     super.key,
     required this.endsAt,
     required this.onStoodUp,
     this.standing = false,
     this.onStartStretch,
+    this.minWaitSeconds = 0,
   });
+
+  @override
+  State<BreakBlockScreen> createState() => _BreakBlockScreenState();
+}
+
+class _BreakBlockScreenState extends State<BreakBlockScreen> {
+  Timer? _ticker;
+  int _secondsElapsed = 0;
+  late final int _requiredSeconds;
+
+  @override
+  void initState() {
+    super.initState();
+    // The cover disappears when the window closes, so waiting longer than the
+    // window would show an unlock countdown that can never be acted on. A user
+    // who arrives in the last ten seconds of the window gets those ten seconds,
+    // not a thirty-second wait followed by the cover vanishing.
+    final windowSeconds = widget.endsAt.difference(DateTime.now()).inSeconds;
+    _requiredSeconds = windowSeconds <= 0
+        ? 0
+        : (windowSeconds < widget.minWaitSeconds
+              ? windowSeconds
+              : widget.minWaitSeconds);
+    if (_requiredSeconds > 0) {
+      _ticker = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted) return;
+        setState(() {
+          _secondsElapsed++;
+          if (_secondsElapsed >= _requiredSeconds) {
+            _ticker?.cancel();
+          }
+        });
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  bool get _unlockable => _secondsElapsed >= _requiredSeconds;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final remaining = endsAt.difference(DateTime.now());
+    final remaining = widget.endsAt.difference(DateTime.now());
     // A window that has already closed shows zero rather than a negative time.
     final clock = formatClock(remaining.isNegative ? Duration.zero : remaining);
+    final canStand = !widget.standing && _unlockable;
+    final delayRemaining = (_requiredSeconds - _secondsElapsed).clamp(
+      0,
+      _requiredSeconds,
+    );
 
     return Semantics(
       // Marks this as the screen a screen reader should treat as a new route.
@@ -246,23 +309,42 @@ class BreakBlockScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 28),
+                    if (!_unlockable) ...[
+                      Text(
+                        appStringArgs(
+                          context,
+                          'Please step away from your desk ({seconds}s)',
+                          {'seconds': '$delayRemaining'},
+                        ),
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     SpringButton(
-                      onTap: standing ? null : onStoodUp,
-                      backgroundColor: scheme.primary,
-                      foregroundColor: scheme.onPrimary,
+                      onTap: canStand ? widget.onStoodUp : null,
+                      backgroundColor: canStand
+                          ? scheme.primary
+                          : scheme.surfaceContainerHighest,
+                      foregroundColor: canStand
+                          ? scheme.onPrimary
+                          : scheme.onSurfaceVariant.withValues(alpha: 0.5),
                       padding: const EdgeInsets.symmetric(
                         horizontal: 32,
                         vertical: 16,
                       ),
                       child: Text(appString(context, 'I stood up')),
                     ),
-                    if (onStartStretch != null) ...[
+                    if (widget.onStartStretch != null) ...[
                       const SizedBox(height: 12),
                       // Secondary on purpose: standing up is the action that
                       // counts, and the routine is a longer way of doing the
                       // same thing rather than an alternative to it.
                       SpringButton(
-                        onTap: standing ? null : onStartStretch,
+                        onTap: widget.standing ? null : widget.onStartStretch,
                         backgroundColor: scheme.primary.withValues(alpha: 0.12),
                         foregroundColor: scheme.primary,
                         padding: const EdgeInsets.symmetric(

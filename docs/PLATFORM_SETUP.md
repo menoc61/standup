@@ -201,6 +201,14 @@ not "locks the screen". An OS-level lock remains a separate, unstarted tier.
 directions are only sent on a transition, so a normal run never touches the
 channel at all.
 
+The cover also waits a short anti-cheat delay before it accepts "I stood up":
+`BreakBlockScreen.defaultMinWaitSeconds` (30 seconds), so a reflexive two-second
+dismissal no longer counts as a break. The delay is capped by the remaining
+window: someone who arrives with ten seconds left waits ten, not thirty, because
+the cover lifts when the window closes and a longer wait would point at a button
+that disappears before it unlocks. A window that has already closed skips the
+delay entirely. The value is a constant rather than a setting for now.
+
 ### Reminder delivery on Windows
 
 Windows uses scheduled toast notifications, so a reminder can fire while the app

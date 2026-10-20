@@ -251,6 +251,16 @@ and the artefact falls back to the on-device database exactly as before. With bo
 `--dart-define=SUPABASE_URL=... --dart-define=SUPABASE_PUBLISHABLE_KEY=...` to
 the Android, Web, Windows, Linux and Apple builds.
 
+CI also compiles one bundle with **no** defines (`build-web-offline`) and fails if
+the project URL or publishable key appears in the emitted JavaScript. That is what
+keeps the offline build honest: the unit tests prove the code path, and this job
+proves the artefact that ships without credentials cannot reach the cloud.
+
+Company AI guidance is not part of the binary contract. It is an Edge Function
+that needs its own server-side secrets (or Vault entries); see
+[`AI_INTEGRATION.md`](AI_INTEGRATION.md). Without them the function answers
+`503 ai_not_configured` and the app keeps using the deterministic local guidance.
+
 The release body states which case a given release is, because the credentials
 are baked in at compile time and there is no way to tell from the binary:
 

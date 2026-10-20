@@ -299,7 +299,9 @@ SELECT
     p.department,
     a.date,
     COUNT(DISTINCT a.user_id) AS active_users,
+    COALESCE(SUM(a.reminders_sent), 0)      AS total_sent,
     COALESCE(SUM(a.reminders_completed), 0) AS total_completed,
+    COALESCE(SUM(a.reminders_snoozed), 0)   AS total_snoozed,
     COALESCE(SUM(a.reminders_skipped), 0)   AS total_skipped,
     CASE
         WHEN COALESCE(SUM(a.reminders_sent), 0) = 0 THEN 0

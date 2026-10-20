@@ -196,4 +196,66 @@ void main() {
       expect(match!.group(1), contains('user_id'));
     });
   });
+
+  group('admin dashboard queries', () {
+    /// The select list of the newest `CREATE ... VIEW org_department_analytics`.
+    String departmentViewBody(String source) {
+      final body = RegExp(
+        r'CREATE\s+(?:OR\s+REPLACE\s+)?VIEW\s+public\.org_department_analytics\s+'
+        r'WITH\s*\([^)]*\)\s+AS\s+SELECT(.*?)\bFROM\b',
+        dotAll: true,
+        caseSensitive: false,
+      ).firstMatch(_uncommented(source))?.group(1);
+      expect(body, isNotNull, reason: 'the department view is not declared');
+      return body!;
+    }
+
+    test('both scripts expose the department columns the client selects', () {
+      // SupabaseService asks for these by name. A view recreated without one of
+      // them fails the whole admin query with "column does not exist", which the
+      // dashboard reports as "insights unavailable" — indistinguishable from an
+      // RLS refusal.
+      const required = [
+        'department',
+        'active_users',
+        'total_sent',
+        'total_completed',
+        'total_snoozed',
+        'total_skipped',
+        'adherence_rate',
+      ];
+      for (final entry in {
+        'supabase_schema.sql': schema,
+        'supabase_validation.sql': validation,
+      }.entries) {
+        final body = departmentViewBody(entry.value);
+        for (final column in required) {
+          expect(
+            RegExp('\\b$column\\b').hasMatch(body),
+            isTrue,
+            reason: '${entry.key} no longer exposes department.$column',
+          );
+        }
+      }
+    });
+
+    test('joining a workspace checks the email domain when restricted', () {
+      // The invite code is shareable; the email domain is not. Without this
+      // check, a leaked code lets any account read the organisation aggregates.
+      final body = RegExp(
+        r'CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.join_organization.*?'
+        r'RETURN\s+jsonb_build_object',
+        dotAll: true,
+        caseSensitive: false,
+      ).firstMatch(_uncommented(schema))?.group(0);
+      expect(body, isNotNull, reason: 'join_organization is gone');
+      expect(body!, contains('restrict_email_domain'));
+      expect(
+        body,
+        contains("split_part"),
+        reason: 'the domain comparison must use the address from auth.users',
+      );
+      expect(body, contains('RAISE EXCEPTION'));
+    });
+  });
 }

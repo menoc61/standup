@@ -12,8 +12,15 @@ CREATE TABLE IF NOT EXISTS public.organizations (
     name TEXT NOT NULL,
     domain TEXT NOT NULL UNIQUE,
     code TEXT NOT NULL UNIQUE,
+    -- When true, only addresses at `domain` may join this workspace, even with
+    -- a valid invite code. The administrator controls this per organisation.
+    restrict_email_domain BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Existing projects created before the domain rule was introduced.
+ALTER TABLE public.organizations
+    ADD COLUMN IF NOT EXISTS restrict_email_domain BOOLEAN NOT NULL DEFAULT true;
 
 -- 3. Profiles Table (Extends Supabase auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -240,12 +247,20 @@ SET search_path = ''
 AS $$
 DECLARE
   current_user_id UUID := (SELECT auth.uid());
+  current_email TEXT;
   matched_org_id UUID;
   matched_org_name TEXT;
+  matched_domain TEXT;
+  restrict_domain BOOLEAN;
 BEGIN
   IF current_user_id IS NULL THEN
     RAISE EXCEPTION 'Sign in before joining a workspace';
   END IF;
+
+  SELECT u.email
+    INTO current_email
+    FROM auth.users AS u
+   WHERE u.id = current_user_id;
 
   IF NOT EXISTS (
     SELECT 1 FROM auth.users AS u
@@ -255,13 +270,22 @@ BEGIN
     RAISE EXCEPTION 'Confirm your email before joining a workspace';
   END IF;
 
-  SELECT o.id, o.name
-    INTO matched_org_id, matched_org_name
+  SELECT o.id, o.name, o.domain, o.restrict_email_domain
+    INTO matched_org_id, matched_org_name, matched_domain, restrict_domain
     FROM public.organizations AS o
    WHERE upper(trim(o.code)) = upper(trim(invite_code));
 
   IF matched_org_id IS NULL THEN
     RAISE EXCEPTION 'That workspace invite code is not valid';
+  END IF;
+
+  -- A leaked invite code must not be enough for an outsider. When the workspace
+  -- enforces its domain, the account's own address has to match it; the client
+  -- cannot influence this because the email comes from auth.users.
+  IF restrict_domain
+     AND lower(split_part(coalesce(current_email, ''), '@', 2))
+         <> lower(matched_domain) THEN
+    RAISE EXCEPTION 'This workspace only accepts @% email addresses', matched_domain;
   END IF;
 
   INSERT INTO public.profiles (id, name)
@@ -322,7 +346,9 @@ SELECT
     p.department,
     ad.date,
     COUNT(DISTINCT ad.user_id) AS active_users,
+    SUM(ad.reminders_sent) AS total_sent,
     SUM(ad.reminders_completed) AS total_completed,
+    SUM(ad.reminders_snoozed) AS total_snoozed,
     SUM(ad.reminders_skipped) AS total_skipped,
     ROUND((SUM(ad.reminders_completed)::NUMERIC / NULLIF(SUM(ad.reminders_sent), 0)) * 100, 1) AS adherence_rate
 FROM public.analytics_daily ad

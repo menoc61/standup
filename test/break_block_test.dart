@@ -18,6 +18,7 @@ void main() {
       bool alreadyCompleted = false,
       bool breakInProgress = false,
       bool quiet = false,
+      bool escalationDue = false,
     }) => shouldBlockBreak(
       blockingEnabled: blockingEnabled,
       userAway: userAway,
@@ -25,6 +26,7 @@ void main() {
       alreadyCompleted: alreadyCompleted,
       breakInProgress: breakInProgress,
       quiet: quiet,
+      escalationDue: escalationDue,
     );
 
     test('blocks only when every condition is met', () {
@@ -59,6 +61,55 @@ void main() {
       // A demo, a call, a presentation: the moment a takeover would be most
       // damaging is the moment the user asked for quiet.
       expect(block(quiet: true), isFalse);
+    });
+
+    group('escalation', () {
+      test('a streak of ignored breaks raises the cover on its own', () {
+        // The employee armed this one; it is a second opt-in, not an exception
+        // to the first.
+        expect(block(blockingEnabled: false, escalationDue: true), isTrue);
+      });
+
+      test('two opt-ins that are both off still never cover', () {
+        expect(block(blockingEnabled: false, escalationDue: false), isFalse);
+      });
+
+      test(
+        'an empty desk vetoes an escalation exactly as it vetoes a block',
+        () {
+          // This is the case the whole presence subsystem exists for: a streak
+          // must never seize the screen of somebody who is not there.
+          expect(
+            block(blockingEnabled: false, escalationDue: true, userAway: true),
+            isFalse,
+          );
+        },
+      );
+
+      test('quiet mode silences an escalation too', () {
+        expect(
+          block(blockingEnabled: false, escalationDue: true, quiet: true),
+          isFalse,
+        );
+      });
+
+      test('an escalation outside a window cannot cover anything', () {
+        expect(
+          block(blockingEnabled: false, escalationDue: true, windowOpen: false),
+          isFalse,
+        );
+      });
+
+      test('a logged break lifts an escalated cover immediately', () {
+        expect(
+          block(
+            blockingEnabled: false,
+            escalationDue: true,
+            alreadyCompleted: true,
+          ),
+          isFalse,
+        );
+      });
     });
   });
 

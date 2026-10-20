@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/core/app_colors.dart';
 import 'package:standup_app/core/break_block.dart';
+import 'package:standup_app/core/escalation.dart';
 import 'package:standup_app/core/presence.dart';
 import 'package:standup_app/data/local/local_repository.dart';
 import 'package:standup_app/data/local/widget_snapshot.dart';
@@ -128,6 +129,11 @@ class AppState extends ChangeNotifier {
 
   /// Counts ticks so the idle reading is polled at human speed, not 1 Hz.
   int _presenceTicks = 0;
+
+  /// Counts break windows that closed with nothing recorded, so the cover can
+  /// raise itself after a streak the employee chose to arm. See
+  /// [IgnoredPromptTracker].
+  final IgnoredPromptTracker _escalation = IgnoredPromptTracker();
 
   /// The keep-above state last sent to the platform. Starts false because that
   /// is how a window is created, so the channel is crossed on transitions only —
@@ -493,6 +499,25 @@ class AppState extends ChangeNotifier {
   /// How long the user has been away as of now, or zero while present.
   Duration get timeAway => _presence.awayDuration(DateTime.now());
 
+  /// The escalation limit the employee armed, clamped to the offered set. Zero,
+  /// the default, means escalation is off.
+  int get escalationPromptLimit =>
+      AppCadence.clampEscalationPromptLimit(preferences.escalationPromptLimit);
+
+  /// How many breaks in a row have closed with nothing recorded while the user
+  /// was at the desk.
+  int get ignoredPromptStreak => _escalation.ignoredStreak;
+
+  /// Whether a streak of ignored breaks is long enough to raise the cover on its
+  /// own, without the user having just tapped anything.
+  ///
+  /// Requires a working presence reading. Where the platform cannot report idle
+  /// time, the app cannot tell an ignored break from an empty chair, and the
+  /// honest answer is to do nothing rather than charge somebody for walking away
+  /// — which is the behaviour the whole presence subsystem exists to encourage.
+  bool get isEscalationDue =>
+      presenceDetectionAvailable && _escalation.isDue(escalationPromptLimit);
+
   /// Whether the forced-break screen should be covering the app right now.
   ///
   /// Delegates to the pure rule in `core/break_block.dart` so the decision can
@@ -502,6 +527,7 @@ class AppState extends ChangeNotifier {
     final window = activeWindow;
     return shouldBlockBreak(
       blockingEnabled: preferences.breakBlockingEnabled,
+      escalationDue: isEscalationDue,
       quiet: _quietMode,
       userAway: isUserAway,
       windowOpen: window != null,
@@ -777,6 +803,17 @@ class AppState extends ChangeNotifier {
       if (!isInterruptionPaused) unawaited(audioService.playNudge());
     }
 
+    // Escalation counts windows that closed with nothing recorded while the user
+    // was at the desk. Fed on every tick because a window's close is only
+    // visible as a change of key — there is no "window closed" event to hang it
+    // on, and a ticker that skipped the transition would never notice the streak.
+    _escalation.observe(
+      windowKey: activeWindow?.end.millisecondsSinceEpoch,
+      away: isUserAway,
+      presenceAvailable: presenceDetectionAvailable,
+      wasActed: _actedWindows.contains,
+    );
+
     // Presence moves at human speed, so the OS reading is polled every few
     // seconds rather than every tick.
     _presenceTicks++;
@@ -798,6 +835,9 @@ class AppState extends ChangeNotifier {
     if (today != _analyticsDate) {
       _analyticsDate = today;
       _actedWindows.clear();
+      // A streak that began yesterday must not hold today's screen: the day
+      // boundary is a fresh start, not a debt.
+      _escalation.reset();
       unawaited(_loadAnalyticsForDate(today));
     }
     notifyListeners();
@@ -1163,6 +1203,9 @@ class AppState extends ChangeNotifier {
 
     _lastActionRejection = null;
     _consecutiveSkips = 0;
+    // Recorded immediately rather than at the next window close, so a cover the
+    // streak raised lifts on the same tap that satisfies it.
+    _escalation.acted();
     _isBreakActive = false;
     _breakTimer?.cancel();
     _breakTimer = null;
@@ -1224,6 +1267,7 @@ class AppState extends ChangeNotifier {
     unawaited(HapticsService.medium());
     _isBreakActive = false;
     _consecutiveSkips = 0;
+    _escalation.acted();
     _breakTimer?.cancel();
     _breakTimer = null;
     _breakWindowKey = null;
@@ -1255,6 +1299,9 @@ class AppState extends ChangeNotifier {
     unawaited(audioService.playClick());
     HapticsService.light();
     _consecutiveSkips++;
+    // A skip is a response, so it clears the ignored streak even though it does
+    // not clear the day's counters.
+    _escalation.acted();
     _isBreakActive = false;
     _breakTimer?.cancel();
     _breakTimer = null;
@@ -1370,6 +1417,7 @@ class AppState extends ChangeNotifier {
     bool? preludeEnabled,
     int? preludeMinutes,
     bool? breakBlockingEnabled,
+    int? escalationPromptLimit,
     GuidanceFeedback? guidanceFeedback,
     int? dailyLimitMinutes,
     String? workDays,
@@ -1390,8 +1438,15 @@ class AppState extends ChangeNotifier {
     // Enabling the forced break without a heads-up would cover the screen with
     // no warning at all. The prelude toggle sits directly above it in Settings,
     // so turning the block on quietly re-arms the warning instead of trapping
-    // the user behind a screen they never saw coming.
-    final effectivePreludeEnabled = breakBlockingEnabled == true
+    // the user behind a screen they never saw coming. Escalation gets the same
+    // treatment for the same reason: a cover that appears because a *previous*
+    // break was ignored is the one case where a warning is most necessary, and
+    // the employee can always turn the prelude back off once it is quiet here.
+    final escalationWanted = escalationPromptLimit != null
+        ? AppCadence.clampEscalationPromptLimit(escalationPromptLimit) > 0
+        : preferences.escalationPromptLimit > 0;
+    final effectivePreludeEnabled =
+        breakBlockingEnabled == true || escalationWanted
         ? true
         : preludeEnabled;
     final preludeChanged =
@@ -1420,6 +1475,9 @@ class AppState extends ChangeNotifier {
       preludeEnabled: effectivePreludeEnabled,
       preludeMinutes: preludeMinutes,
       breakBlockingEnabled: breakBlockingEnabled,
+      escalationPromptLimit: escalationPromptLimit == null
+          ? null
+          : AppCadence.clampEscalationPromptLimit(escalationPromptLimit),
       guidanceFeedback: guidanceFeedback,
       dailyLimitMinutes: dailyLimitMinutes,
       workDays: workDays,

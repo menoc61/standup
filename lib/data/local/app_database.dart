@@ -60,6 +60,11 @@ class UserPreferencesTable extends Table {
       integer().withDefault(const Constant(AppCadence.defaultPreludeMinutes))();
   BoolColumn get breakBlockingEnabled =>
       boolean().withDefault(const Constant(false))();
+
+  /// How many ignored breaks in a row it takes before the break screen raises
+  /// itself. Zero is off and is the default; see `AppCadence.escalationOptions`.
+  IntColumn get escalationPromptLimit =>
+      integer().withDefault(const Constant(0))();
   // What the employee said about the guidance they were shown. Stored as text
   // rather than an index so a later category is a Dart change, not a table
   // rewrite; an unrecognised value reads back as `none`.
@@ -139,7 +144,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -243,6 +248,14 @@ class AppDatabase extends _$AppDatabase {
         // would end someone's afternoon without them asking for it.
         await customStatement(
           'ALTER TABLE user_preferences_table ADD COLUMN daily_limit_minutes INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+      if (from < 12) {
+        // Escalation. Defaults to 0 (off) for the same reason the forced break
+        // does: an interruption that arrives because a *previous* interruption
+        // was ignored is still an interruption, so an upgrade must not arm it.
+        await customStatement(
+          'ALTER TABLE user_preferences_table ADD COLUMN escalation_prompt_limit INTEGER NOT NULL DEFAULT 0',
         );
       }
     },

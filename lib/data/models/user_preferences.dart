@@ -60,6 +60,12 @@ class UserPreferences {
   /// screen, so it is opted into rather than switched on for the user.
   final bool breakBlockingEnabled;
 
+  /// How many breaks in a row may be ignored while the user is at the desk
+  /// before the break screen raises itself. Zero (the default) means escalation
+  /// is off; a positive value is the employee arming it deliberately, which is
+  /// what keeps it inside the opt-in rule the block itself follows.
+  final int escalationPromptLimit;
+
   /// What the employee last said about the guidance they were shown.
   ///
   /// Persisted so the signal keeps steering later sessions: a "too frequent"
@@ -103,6 +109,7 @@ class UserPreferences {
     this.preludeEnabled = true,
     this.preludeMinutes = AppCadence.defaultPreludeMinutes,
     this.breakBlockingEnabled = false,
+    this.escalationPromptLimit = AppCadence.defaultEscalationPromptLimit,
     this.guidanceFeedback = GuidanceFeedback.none,
     this.dailyLimitMinutes = AppCadence.defaultDailyLimitMinutes,
     this.workDays = '1,2,3,4,5',
@@ -131,6 +138,7 @@ class UserPreferences {
     bool? preludeEnabled,
     int? preludeMinutes,
     bool? breakBlockingEnabled,
+    int? escalationPromptLimit,
     GuidanceFeedback? guidanceFeedback,
     int? dailyLimitMinutes,
     String? workDays,
@@ -158,6 +166,8 @@ class UserPreferences {
       preludeEnabled: preludeEnabled ?? this.preludeEnabled,
       preludeMinutes: preludeMinutes ?? this.preludeMinutes,
       breakBlockingEnabled: breakBlockingEnabled ?? this.breakBlockingEnabled,
+      escalationPromptLimit:
+          escalationPromptLimit ?? this.escalationPromptLimit,
       guidanceFeedback: guidanceFeedback ?? this.guidanceFeedback,
       dailyLimitMinutes: dailyLimitMinutes ?? this.dailyLimitMinutes,
       workDays: workDays ?? this.workDays,
@@ -187,6 +197,7 @@ class UserPreferences {
       'prelude_enabled': preludeEnabled,
       'prelude_minutes': preludeMinutes,
       'break_blocking_enabled': breakBlockingEnabled,
+      'escalation_prompt_limit': escalationPromptLimit,
       'guidance_feedback': guidanceFeedback.name,
       'daily_limit_minutes': dailyLimitMinutes,
       'work_days': workDays,
@@ -226,6 +237,10 @@ class UserPreferences {
       preludeMinutes:
           json['prelude_minutes'] as int? ?? AppCadence.defaultPreludeMinutes,
       breakBlockingEnabled: json['break_blocking_enabled'] as bool? ?? false,
+      escalationPromptLimit: AppCadence.clampEscalationPromptLimit(
+        json['escalation_prompt_limit'] as int? ??
+            AppCadence.defaultEscalationPromptLimit,
+      ),
       guidanceFeedback: GuidanceFeedback.parse(
         json['guidance_feedback'] as String?,
       ),
@@ -260,6 +275,7 @@ class UserPreferences {
       preludeEnabled: true,
       preludeMinutes: AppCadence.defaultPreludeMinutes,
       breakBlockingEnabled: false,
+      escalationPromptLimit: AppCadence.defaultEscalationPromptLimit,
     );
   }
 }

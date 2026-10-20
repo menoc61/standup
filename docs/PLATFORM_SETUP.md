@@ -164,7 +164,11 @@ Nothing read here is uploaded: see the local-only boundary in
 
 **What presence does and does not silence.** It withholds the in-app chime and
 the five-minute cue, and it vetoes the forced break, so an empty desk is never
-nagged or covered. It does **not** withdraw a notification the OS has already
+nagged or covered. The same veto governs **escalation**: a streak of ignored
+breaks only ever counts while a presence reading is available, so on any platform
+that reports no idle time the feature is inert rather than guessing, and it never
+charges a window that closed while nobody was there. It does **not** withdraw a
+notification the OS has already
 been asked to deliver: the reminder and prelude series are scheduled ahead of
 time and fire on the platform's clock, with their sound. On Windows and Linux a
 scheduled reminder can therefore still appear while nobody is at the machine.
@@ -178,6 +182,11 @@ chime rather than to reminders in general.
 It is authoritative *inside* the app — no tap, scroll or drag reaches the screen
 underneath — but on its own it cannot stop the user switching to another
 application.
+
+Escalation shows the same cover. It is not a stronger form of the block and it is
+no closer to an OS lock: it changes *when* the cover may appear (after a streak of
+ignored breaks, on a limit the employee sets), never what the cover can do, and it
+is subject to every veto above, presence included.
 
 Two platforms now also raise the window while the block is active, over the
 `standup/window` channel (`setKeepAbove`):

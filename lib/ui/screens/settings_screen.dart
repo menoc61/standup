@@ -1821,7 +1821,98 @@ class _PreludeSection extends StatelessWidget {
           ],
         ),
         const Divider(height: AppSpace.section),
+        _EscalationSection(appState: appState, accent: accent),
+        const Divider(height: AppSpace.section),
         _DailyLimitSection(appState: appState, accent: accent),
+      ],
+    );
+  }
+}
+
+/// Escalation: how many ignored breaks it takes before the screen appears on its
+/// own.
+///
+/// This is the one place StandUp borrows Workrave's "maximum number of prompts"
+/// idea, and it is off by default. Unlike Workrave's, it can never fire for an
+/// absent user: a window that closed while nobody was at the desk is not an
+/// ignored break, and `IgnoredPromptTracker` refuses to count it. On a platform
+/// that cannot report presence the control still shows, with a line saying why —
+/// silently doing nothing would be worse than saying so.
+class _EscalationSection extends StatelessWidget {
+  final AppState appState;
+  final Color accent;
+
+  const _EscalationSection({required this.appState, required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final limit = appState.escalationPromptLimit;
+    // A hand-edited value outside the offered set would make the dropdown throw,
+    // so fall back for display without rewriting storage — the same treatment
+    // `_PreludeSection` gives its own dropdown.
+    final value = AppCadence.escalationOptions.contains(limit)
+        ? limit
+        : AppCadence.defaultEscalationPromptLimit;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    appString(context, 'Escalate after ignored breaks'),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: AppFontSize.small,
+                    ),
+                  ),
+                  Text(
+                    appString(
+                      context,
+                      'If this many breaks close in a row while you are at your desk, the break screen appears by itself.',
+                    ),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            DropdownButton<int>(
+              value: value,
+              underline: const SizedBox.shrink(),
+              items: AppCadence.escalationOptions
+                  .map(
+                    (n) => DropdownMenuItem(
+                      value: n,
+                      child: Text(n == 0 ? appString(context, 'Never') : '$n'),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (next) {
+                if (next != null) {
+                  appState.updatePreferences(escalationPromptLimit: next);
+                }
+              },
+            ),
+          ],
+        ),
+        if (limit > 0 && !appState.presenceDetectionAvailable) ...[
+          const SizedBox(height: AppSpace.sm),
+          Text(
+            appString(
+              context,
+              'Needs presence detection, which this device cannot report. Escalation stays off here.',
+            ),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.error,
+            ),
+          ),
+        ],
       ],
     );
   }

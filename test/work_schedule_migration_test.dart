@@ -99,6 +99,14 @@ void main() {
       // The daily cut-off arrives at v11 and must default to off: a limit
       // applied by an upgrade would end somebody's afternoon unasked.
       expect(migrated.dailyLimitMinutes, AppCadence.defaultDailyLimitMinutes);
+      // Escalation arrives at v12 for the same reason, only more so: it is the
+      // setting that lets the break screen raise itself, so an upgrade must
+      // never arm it on somebody's behalf.
+      expect(migrated.escalationPromptLimit, 0);
+      expect(
+        migrated.escalationPromptLimit,
+        AppCadence.defaultEscalationPromptLimit,
+      );
 
       final edited = migrated.copyWith(
         aiGuidanceOptIn: true,
@@ -110,6 +118,7 @@ void main() {
         breakBlockingEnabled: true,
         guidanceFeedback: GuidanceFeedback.suggestionsTooFrequent,
         dailyLimitMinutes: 6 * 60,
+        escalationPromptLimit: 3,
       );
       await repository.saveUserPreferences(edited);
       final reloaded = await repository.getUserPreferences('local_legacy');
@@ -122,6 +131,9 @@ void main() {
       // So does the cut-off, which is meaningless unless it outlives the
       // session that set it.
       expect(reloaded?.dailyLimitMinutes, 6 * 60);
+      // And so does the escalation limit: a streak rule that forgot itself on
+      // restart would be a promise the app cannot keep.
+      expect(reloaded?.escalationPromptLimit, 3);
       // So does the feedback the employee gave, which is the whole point of
       // storing it: it has to survive the process that collected it.
       expect(

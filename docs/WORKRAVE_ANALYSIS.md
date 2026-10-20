@@ -179,7 +179,7 @@ Collected **per day**, with a day selector, and reported for day, week and month
 | Break types | Microbreak + restbreak + daily limit | One 5-minute break per boundary, optional stretch inside | `core/app_cadence.dart` — deliberate (decision 3) |
 | Default cadence | ~3 min micro / ~45 min rest | 60 min (30/60/90 offered) | `AppCadence.defaultCadenceMinutes`, `cadenceOptions` |
 | Gentle pre-break notice | Non-intrusive window that moves itself away, escalates orange → red → disappears | Advisory prelude banner, 1/2/5/10 min, on by default, never traps input | `defaultPreludeMinutes`, `ui/widgets/prelude_alert.dart` |
-| Escalation after ignored prompts | Configurable max prompts, then forced break | **Binary**: forced break is opt-in only, default off | `UserPreferences.breakBlockingEnabled`; gap #3 |
+| Escalation after ignored prompts | Configurable max prompts, then forced break | A configurable limit (2/3/5, default off) after which the cover raises itself; counts only windows that closed unacted **while the user was present** | `core/escalation.dart`, `AppCadence.escalationOptions` — see gap #3 for what remains |
 | Forced break | Block input / block input+screen / none, at OS level | In-app `ModalBarrier` cover for the window, opt-in; window kept above on Windows/Linux | `core/break_block.dart`, `services/window_chrome.dart` — deliberate (decision 4) |
 | Working through a break | Orange border + break timer freezes | Cover has no dismiss; the block simply lifts when the window ends | `ui/widgets/break_block.dart` |
 | "I did it instantly" | Break timer only advances while idle, so input freezes it | 30-second anti-cheat wait, **capped by the remaining window** | `BreakBlockScreen.defaultMinWaitSeconds` |
@@ -296,10 +296,20 @@ Ordered by value per unit of work. None of these are started.
    honest and gives the AI guidance a fourth signal to learn from.
    `StandWindow.windowsBetween` already computes the denominator needed to derive
    it, so the missing piece is a recorded counter, not new arithmetic.
-3. **Escalation instead of a binary forced break.** Workrave's "maximum number of
-   prompts" turns ignored reminders into a forced break. StandUp's cover is
-   all-or-nothing per user, so the softer middle ground — warn harder, then
-   escalate — is missing. This is the highest-value *behavioural* gap.
+3. **Escalation: partially closed.** The setting now exists — *Settings → Reminder
+   Cadence* offers 2, 3 or 5 ignored breaks in a row (or never), after which the
+   cover raises itself, and `IgnoredPromptTracker` (`core/escalation.dart`) does the
+   counting. Two deliberate differences from Workrave remain. First, it is a
+   *separate* opt-in from the forced break rather than a property of the prompt
+   warning: an interruption that appears because a previous interruption was
+   ignored is still an interruption, so nothing may arm it but the employee.
+   Second, and more consequentially, only windows that closed with **no recorded
+   action while the user was at the desk** are counted. Workrave escalates on a
+   timer that ignores presence; StandUp cannot, because charging an empty chair is
+   the exact failure the presence work exists to prevent, and where presence is
+   unavailable (Android, iOS, web) the feature is inert rather than approximate.
+   What is still missing is Workrave's *middle* step — an escalation that makes the
+   existing prompt harder to miss (orange → red) before it becomes a cover.
 4. **An exercise library.** Workrave ships illustrated exercises with
    next/pause navigation. StandUp has 5 timed steps, reachable from both the
    dashboard and the forced-break cover. Adding a real library means storing

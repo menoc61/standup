@@ -535,6 +535,11 @@ const Map<String, String> _french = {
   'Forced break': 'Pause forcée',
   'Block the screen during the break': 'Bloquer l’écran pendant la pause',
   'Cover the app until you stand up. The break still ends when the window closes.': 'Couvrir l’application jusqu’à ce que vous vous leviez. La pause se termine tout de même à la fermeture de la fenêtre.',
+  // Escalation
+  'Escalate after ignored breaks': 'Escalader après des pauses ignorées',
+  'If this many breaks close in a row while you are at your desk, the break screen appears by itself.': 'Si ce nombre de pauses se terminent d’affilée sans que vous agissiez, l’écran de pause apparaît de lui-même.',
+  'Never': 'Jamais',
+  'Needs presence detection, which this device cannot report. Escalation stays off here.': 'Nécessite la détection de présence, que cet appareil ne peut pas fournir. L’escalade reste désactivée ici.',
   // Daily cut-off
   'Daily limit': 'Limite quotidienne',
   'Stop offering breaks after a set number of hours, so a long day does not become endless reminders.': 'Arrêter de proposer des pauses après un nombre d’heures défini, pour qu’une longue journée ne devienne pas une succession de rappels.',

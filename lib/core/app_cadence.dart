@@ -190,6 +190,35 @@ abstract final class AppCadence {
     return minutes.clamp(minDailyLimitMinutes, maxDailyLimitMinutes);
   }
 
+  // ── Escalation ─────────────────────────────────────────────────────────────
+
+  /// How many breaks in a row may be ignored before the break screen raises
+  /// itself. Zero means escalation is off, which is the default.
+  ///
+  /// This is the one place StandUp borrows Workrave's "maximum number of
+  /// prompts" idea. It stays off until the employee asks for it: an interruption
+  /// that appears because a *previous* interruption was ignored is still an
+  /// interruption the employee chose to arm, never one an upgrade armed for them.
+  static const int defaultEscalationPromptLimit = 0;
+
+  /// The limits the UI offers. Zero is "off"; the rest say how many ignored
+  /// breaks in a row it takes before the screen appears on its own.
+  static const List<int> escalationOptions = [0, 2, 3, 5];
+
+  /// Bounds a stored escalation limit to the offered set.
+  ///
+  /// A hand-edited value outside the set is rounded *up* to the next offered
+  /// limit rather than falling back to zero. For a setting whose entire purpose
+  /// is enforcement, the safe direction to fail is "still enforced", not "quietly
+  /// disabled".
+  static int clampEscalationPromptLimit(int limit) {
+    if (limit <= 0) return 0;
+    for (final option in escalationOptions) {
+      if (option >= limit) return option;
+    }
+    return escalationOptions.last;
+  }
+
   // ── Reminder scheduling ────────────────────────────────────────────────────
 
   /// How many upcoming reminders the OS queue holds.

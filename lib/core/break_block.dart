@@ -12,6 +12,9 @@
 ///
 /// * `blockingEnabled` — an intrusive feature is opt-in, never forced on a user
 ///   by an upgrade.
+/// * `escalationDue` — the second, independently armed way the cover may appear:
+///   the employee asked for it to raise itself after a streak of ignored breaks.
+///   It is a different opt-in, not an exception to one.
 /// * `quiet` — "do not interrupt me" outranks every other reason to cover the
 ///   screen: a demo, a call or a presentation is exactly when a takeover would
 ///   be most damaging, and it is the one veto the user sets by hand.
@@ -31,8 +34,14 @@ bool shouldBlockBreak({
   required bool alreadyCompleted,
   required bool breakInProgress,
   bool quiet = false,
+  bool escalationDue = false,
 }) {
-  if (!blockingEnabled) return false;
+  // Escalation is the second, independently armed reason the cover may appear:
+  // the employee asked for it to raise itself after a streak of ignored breaks.
+  // It is not a loophole around the opt-in — it *is* an opt-in, a different one
+  // — so the remaining vetoes below apply to it exactly as they do to a block
+  // the user switched on by hand.
+  if (!blockingEnabled && !escalationDue) return false;
   if (quiet) return false;
   if (userAway) return false;
   if (!windowOpen) return false;

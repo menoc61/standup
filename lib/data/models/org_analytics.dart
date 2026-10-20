@@ -56,14 +56,18 @@ class OrgAnalytics {
 class DepartmentMetric {
   final String department;
   final int activeUsers;
+  final int totalSent;
   final int totalCompleted;
+  final int totalSnoozed;
   final int totalSkipped;
   final double adherenceRate;
 
   DepartmentMetric({
     required this.department,
     required this.activeUsers,
+    this.totalSent = 0,
     required this.totalCompleted,
+    this.totalSnoozed = 0,
     required this.totalSkipped,
     required this.adherenceRate,
   });
@@ -72,11 +76,72 @@ class DepartmentMetric {
     return DepartmentMetric(
       department: json['department'] as String? ?? 'General',
       activeUsers: json['active_users'] as int? ?? 0,
+      totalSent: json['total_sent'] as int? ?? 0,
       totalCompleted: json['total_completed'] as int? ?? 0,
+      totalSnoozed: json['total_snoozed'] as int? ?? 0,
       totalSkipped: json['total_skipped'] as int? ?? 0,
       adherenceRate: (json['adherence_rate'] as num?)?.toDouble() ?? 0.0,
     );
   }
+}
+
+/// What happened to every reminder the organisation sent.
+///
+/// The completion rate says how many reminders ended in a stand, which is the
+/// headline number. It cannot say whether the rest were deferred (the teammate
+/// still intends to move) or declined (the teammate has stopped), and those are
+/// different signals for whoever runs the workspace. Splitting the outcomes out
+/// also makes the arithmetic visible: `sent` is not required to equal
+/// completed + snoozed + skipped, because a reminder can be dismissed or missed,
+/// so the remainder is reported rather than folded into a neighbour.
+class OrgActivityMix {
+  final int sent;
+  final int completed;
+  final int snoozed;
+  final int skipped;
+
+  /// Sent reminders with no recorded outcome.
+  final int unanswered;
+
+  const OrgActivityMix({
+    required this.sent,
+    required this.completed,
+    required this.snoozed,
+    required this.skipped,
+    required this.unanswered,
+  });
+
+  factory OrgActivityMix.from(OrgAnalytics org) {
+    // The server treats a row whose outcomes exceed its sends as untrusted and
+    // withholds it, but a stored row can still be inconsistent after a manual
+    // correction. Clamping keeps the bar chart drawable; it does not hide the
+    // figures, which are shown as recorded.
+    final remainder =
+        org.totalSent -
+        org.totalCompleted -
+        org.totalSnoozed -
+        org.totalSkipped;
+    return OrgActivityMix(
+      sent: org.totalSent,
+      completed: org.totalCompleted,
+      snoozed: org.totalSnoozed,
+      skipped: org.totalSkipped,
+      unanswered: remainder < 0 ? 0 : remainder,
+    );
+  }
+
+  /// The denominator for the shares.
+  ///
+  /// A row with no sends but recorded outcomes is possible only for legacy data;
+  /// falling back to the outcomes keeps the percentages meaningful instead of
+  /// dividing by zero.
+  int get denominator {
+    if (sent > 0) return sent;
+    return completed + snoozed + skipped;
+  }
+
+  /// [value] as a fraction of [denominator], safe at zero.
+  double shareOf(int value) => denominator <= 0 ? 0 : value / denominator;
 }
 
 class HourlySkipMetric {

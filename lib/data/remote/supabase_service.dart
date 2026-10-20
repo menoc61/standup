@@ -339,7 +339,8 @@ class SupabaseService {
       final departmentRows = await client!
           .from('org_department_analytics')
           .select(
-            'department, active_users, total_completed, total_skipped, adherence_rate',
+            'department, active_users, total_sent, total_completed, '
+            'total_snoozed, total_skipped, adherence_rate',
           )
           .eq('organization_id', orgId)
           .eq('date', latestDate);

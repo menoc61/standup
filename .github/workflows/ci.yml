@@ -210,6 +210,66 @@ jobs:
           retention-days: 14
 
   # ---------------------------------------------------------------------------
+  # Offline web build. Every other build may carry the Supabase credentials, and
+  # a local-only fallback that is only exercised by unit tests can rot without
+  # anyone noticing: this compiles the same app with no defines and asserts the
+  # bundle really is local-only.
+  # ---------------------------------------------------------------------------
+  build-web-offline:
+    name: Web release (offline, no cloud credentials)
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      # No --dart-define on purpose. The app reads SUPABASE_URL and
+      # SUPABASE_PUBLISHABLE_KEY through String.fromEnvironment, so an empty
+      # default means the cloud client is never constructed and every feature
+      # runs on Drift/SQLite alone. This is the documented offline fallback.
+      - name: Build web without cloud credentials
+        run: flutter build web --release
+
+      - name: Copy Drift web assets
+        run: bash ./scripts/standup.sh build web release --skip-build
+
+      - name: Prove the bundle carries no cloud credential
+        env:
+          EXPECTED_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          EXPECTED_URL: ${{ secrets.SUPABASE_URL }}
+        run: |
+          test -f build/web/sqlite3.wasm || (echo "::error::sqlite3.wasm missing" && exit 1)
+          test -f build/web/drift_worker.js || (echo "::error::drift_worker.js missing" && exit 1)
+          # The SDK itself mentions key prefixes, so grep for the real values
+          # rather than for a shape. A fork without the secrets skips the check.
+          if [ -n "$EXPECTED_KEY" ] && grep -qF "$EXPECTED_KEY" build/web/main.dart.js; then
+            echo "::error::the offline build embeds the project's publishable key"
+            exit 1
+          fi
+          if [ -n "$EXPECTED_URL" ] && grep -qF "$EXPECTED_URL" build/web/main.dart.js; then
+            echo "::error::the offline build embeds the project URL"
+            exit 1
+          fi
+          echo "Offline bundle built and carries neither the URL nor the key."
+
+      - name: Upload offline web bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: standup-web-offline
+          path: build/web
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
   # Linux desktop. The Flutter engine links against GTK, so the same build
   # packages the TUI installs via `setup --linux-deps` are required here.
   # ---------------------------------------------------------------------------

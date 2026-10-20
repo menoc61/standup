@@ -57,6 +57,9 @@ CREATE TABLE IF NOT EXISTS public.analytics_daily (
 CREATE INDEX IF NOT EXISTS idx_reminder_logs_user_time ON public.reminder_logs(user_id, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_analytics_daily_user_date ON public.analytics_daily(user_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_analytics_daily_org_date ON public.analytics_daily(organization_id, date DESC);
+-- Every RLS read of profiles and every aggregation joins on organization_id, and
+-- the foreign key does not create a covering index on its own.
+CREATE INDEX IF NOT EXISTS idx_profiles_organization ON public.profiles(organization_id);
 
 -- ==============================================================================
 -- 6. Helper Security Functions
@@ -115,20 +118,20 @@ DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 CREATE POLICY "Users can view their own profile"
     ON public.profiles FOR SELECT
     TO authenticated
-    USING (auth.uid() = id);
+    USING ((SELECT auth.uid()) = id);
 
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 CREATE POLICY "Users can update their own profile"
     ON public.profiles FOR UPDATE
     TO authenticated
-    USING (auth.uid() = id)
-    WITH CHECK (auth.uid() = id);
+    USING ((SELECT auth.uid()) = id)
+    WITH CHECK ((SELECT auth.uid()) = id);
 
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile"
     ON public.profiles FOR INSERT
     TO authenticated
-    WITH CHECK (auth.uid() = id);
+    WITH CHECK ((SELECT auth.uid()) = id);
 
 -- A client must never grant itself an administrator role or move itself into
 -- an arbitrary organization. Membership changes belong in a trusted invite flow.
@@ -144,13 +147,13 @@ DROP POLICY IF EXISTS "Users can view own reminder logs" ON public.reminder_logs
 CREATE POLICY "Users can view own reminder logs"
     ON public.reminder_logs FOR SELECT
     TO authenticated
-    USING (auth.uid() = user_id);
+    USING ((SELECT auth.uid()) = user_id);
 
 DROP POLICY IF EXISTS "Users can insert own reminder logs" ON public.reminder_logs;
 CREATE POLICY "Users can insert own reminder logs"
     ON public.reminder_logs FOR INSERT
     TO authenticated
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK ((SELECT auth.uid()) = user_id);
 GRANT SELECT, INSERT ON public.reminder_logs TO authenticated;
 
 -- ANALYTICS DAILY POLICIES
@@ -161,14 +164,33 @@ DROP POLICY IF EXISTS "Users can view own daily analytics" ON public.analytics_d
 CREATE POLICY "Users can view own daily analytics"
     ON public.analytics_daily FOR SELECT
     TO authenticated
-    USING (auth.uid() = user_id);
+    USING ((SELECT auth.uid()) = user_id);
 
+-- Writes are separate policies rather than one FOR ALL policy: a FOR ALL policy
+-- also participates in SELECT, so Postgres evaluates two permissive policies for
+-- every read and the planner cannot use the single most selective one.
 DROP POLICY IF EXISTS "Users can insert/update own daily analytics" ON public.analytics_daily;
-CREATE POLICY "Users can insert/update own daily analytics"
-    ON public.analytics_daily FOR ALL
+DROP POLICY IF EXISTS "Users can insert own daily analytics" ON public.analytics_daily;
+DROP POLICY IF EXISTS "Users can update own daily analytics" ON public.analytics_daily;
+CREATE POLICY "Users can insert own daily analytics"
+    ON public.analytics_daily FOR INSERT
     TO authenticated
-    USING (auth.uid() = user_id)
-    WITH CHECK (auth.uid() = user_id);
+    WITH CHECK ((SELECT auth.uid()) = user_id);
+CREATE POLICY "Users can update own daily analytics"
+    ON public.analytics_daily FOR UPDATE
+    TO authenticated
+    USING ((SELECT auth.uid()) = user_id)
+    WITH CHECK ((SELECT auth.uid()) = user_id);
+
+-- Turning "Contribute Statistics" off deletes the user's shared daily totals
+-- (SupabaseService.syncLocalToCloud with optIn == false). RLS denies DELETE when
+-- no DELETE policy exists, and the client would see a successful no-op, so this
+-- policy is part of the privacy control rather than an optional extra.
+DROP POLICY IF EXISTS "Users can delete own daily analytics" ON public.analytics_daily;
+CREATE POLICY "Users can delete own daily analytics"
+    ON public.analytics_daily FOR DELETE
+    TO authenticated
+    USING ((SELECT auth.uid()) = user_id);
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.analytics_daily TO authenticated;
 
 -- Enable private per-user daily totals for Supabase Realtime clients. Row-level
@@ -264,6 +286,13 @@ GRANT EXECUTE ON FUNCTION public.join_organization(TEXT) TO authenticated;
 -- ==============================================================================
 -- 8. Organization Aggregate Views
 -- ==============================================================================
+
+-- Both aggregate views are dropped rather than replaced. supabase_validation.sql
+-- redefines them, and `CREATE OR REPLACE VIEW` refuses any change of column type
+-- or name, which turns every future tweak to these aggregates into a provisioning
+-- failure instead of a diff. A view holds no data; the grants are restored below.
+DROP VIEW IF EXISTS public.org_department_analytics;
+DROP VIEW IF EXISTS public.org_analytics_daily;
 
 CREATE OR REPLACE VIEW public.org_analytics_daily WITH (security_barrier = true) AS
 SELECT

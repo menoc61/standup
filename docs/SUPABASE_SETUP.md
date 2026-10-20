@@ -79,6 +79,15 @@ aggregate views so that only trusted rows are counted.
 
 Run each file with **Run** and confirm you see `Success. No rows returned`.
 
+Both files are idempotent and are meant to be re-run **as a pair, in this order**
+(schema, then validation). Re-running only the schema re-creates the aggregate
+views without the trust filter and re-grants direct writes to `analytics_daily`;
+the validation script is what removes both. Re-running only the validation script
+is always safe.
+
+If you apply them through the Supabase MCP/Management API instead of the SQL
+editor, apply each file as its own migration, in the same order.
+
 ---
 
 ## 3. What the schema enforces
@@ -107,6 +116,26 @@ Key guarantees:
   the payload says.
 - **Invite codes are only accepted through `join_organization(text)`**, a
   `SECURITY DEFINER` function, and are never readable through the table API.
+
+### Expected advisor findings
+
+**Database → Advisors → Security** reports two findings on a correctly
+provisioned project. Both are intentional; do not "fix" them:
+
+- **Security Definer View** (`org_analytics_daily`, `org_department_analytics`).
+  A Postgres view runs as its owner, which is what lets an admin read an
+  aggregate spanning other employees. Access is constrained at read time instead
+  of by RLS on the base table: every definition filters with
+  `private.is_org_admin(organization_id)` and refuses cohorts smaller than five
+  distinct users (`HAVING COUNT(DISTINCT ...) >= 5`). Switching to
+  `security_invoker` would reduce each dashboard to the admin's own row.
+- **Signed-In Users Can Execute SECURITY DEFINER Function**
+  (`join_organization`, `record_daily_analytics`). Both are the only write paths
+  for their tables, and both derive the user id and organisation from the JWT and
+  the private profile, never from the payload.
+
+The performance advisor also lists unused indexes on an empty project; that is
+expected until the app has synced real data.
 
 ---
 

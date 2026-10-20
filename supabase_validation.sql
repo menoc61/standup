@@ -34,6 +34,7 @@ CREATE OR REPLACE FUNCTION private.analytics_daily_ceiling()
 RETURNS INTEGER
 LANGUAGE sql
 IMMUTABLE
+SET search_path = ''
 AS $$
   SELECT 200;
 $$;
@@ -44,6 +45,7 @@ CREATE OR REPLACE FUNCTION private.analytics_daily_revision_ceiling()
 RETURNS INTEGER
 LANGUAGE sql
 IMMUTABLE
+SET search_path = ''
 AS $$
   SELECT 400;
 $$;
@@ -190,7 +192,7 @@ BEGIN
         UPDATE public.analytics_daily
         SET trusted = false,
             trust_note = 'excessive revisions for a single day'
-        WHERE id = v_result.id;
+        WHERE id = v_result.id
         RETURNING * INTO v_result;
     END IF;
 
@@ -231,22 +233,44 @@ COMMENT ON COLUMN public.analytics_daily.clock_suspect IS
 REVOKE INSERT, UPDATE ON public.analytics_daily FROM anon, authenticated;
 GRANT SELECT, DELETE ON public.analytics_daily TO authenticated;
 
+-- Supabase installs a public.rls_auto_enable() event-trigger helper in every
+-- project. Nothing calls it through the API, but functions are executable by
+-- PUBLIC by default, so it is reachable at /rest/v1/rpc/rls_auto_enable. Revoke
+-- that; the event trigger itself keeps running as the table owner.
+DO $$
+BEGIN
+    IF to_regprocedure('public.rls_auto_enable()') IS NOT NULL THEN
+        REVOKE ALL ON FUNCTION public.rls_auto_enable()
+            FROM PUBLIC, anon, authenticated;
+    END IF;
+END;
+$$;
+
 -- -----------------------------------------------------------------------------
 -- 5. Trust filtering in the aggregate views
 -- -----------------------------------------------------------------------------
 -- Recreate both views so untrusted rows never reach a leaderboard. This is the
 -- whole point of the validation above.
-CREATE OR REPLACE VIEW public.org_analytics_daily
+--
+-- These are DROP + CREATE rather than CREATE OR REPLACE so the two scripts can
+-- run in either order: `CREATE OR REPLACE VIEW` refuses a change of column type
+-- or name, which turns any future tweak to these aggregates into a provisioning
+-- failure instead of a diff. A view holds no data, so dropping it is safe; the
+-- SELECT grants are restored at the end of this section.
+DROP VIEW IF EXISTS public.org_department_analytics;
+DROP VIEW IF EXISTS public.org_analytics_daily;
+
+CREATE VIEW public.org_analytics_daily
 WITH (security_barrier = true) AS
 SELECT
     a.organization_id,
     a.date,
-    COUNT(DISTINCT a.user_id)::INTEGER AS active_users,
-    COALESCE(SUM(a.reminders_sent), 0)::INTEGER      AS total_sent,
-    COALESCE(SUM(a.reminders_completed), 0)::INTEGER AS total_completed,
-    COALESCE(SUM(a.reminders_snoozed), 0)::INTEGER   AS total_snoozed,
-    COALESCE(SUM(a.reminders_skipped), 0)::INTEGER   AS total_skipped,
-    COALESCE(SUM(a.total_stand_time), 0)::INTEGER AS total_stand_minutes,
+    COUNT(DISTINCT a.user_id) AS active_users,
+    COALESCE(SUM(a.reminders_sent), 0)      AS total_sent,
+    COALESCE(SUM(a.reminders_completed), 0) AS total_completed,
+    COALESCE(SUM(a.reminders_snoozed), 0)   AS total_snoozed,
+    COALESCE(SUM(a.reminders_skipped), 0)   AS total_skipped,
+    COALESCE(SUM(a.total_stand_time), 0) AS total_stand_minutes,
     CASE
         WHEN COALESCE(SUM(a.reminders_sent), 0) = 0 THEN 0
         ELSE ROUND(
@@ -268,15 +292,15 @@ WHERE a.organization_id IS NOT NULL
 GROUP BY a.organization_id, a.date
 HAVING COUNT(DISTINCT a.user_id) >= 5;
 
-CREATE OR REPLACE VIEW public.org_department_analytics
+CREATE VIEW public.org_department_analytics
 WITH (security_barrier = true) AS
 SELECT
     a.organization_id,
-    a.date,
     p.department,
-    COUNT(DISTINCT a.user_id)::INTEGER AS active_users,
-    COALESCE(SUM(a.reminders_completed), 0)::INTEGER AS total_completed,
-    COALESCE(SUM(a.reminders_skipped), 0)::INTEGER   AS total_skipped,
+    a.date,
+    COUNT(DISTINCT a.user_id) AS active_users,
+    COALESCE(SUM(a.reminders_completed), 0) AS total_completed,
+    COALESCE(SUM(a.reminders_skipped), 0)   AS total_skipped,
     CASE
         WHEN COALESCE(SUM(a.reminders_sent), 0) = 0 THEN 0
         ELSE ROUND(
@@ -292,6 +316,15 @@ WHERE a.organization_id IS NOT NULL
   AND private.is_org_admin(a.organization_id)
 GROUP BY a.organization_id, a.date, p.department
 HAVING COUNT(DISTINCT a.user_id) >= 5;
+
+-- Dropping and recreating the views discards their grants, and Supabase's
+-- default privileges may hand new objects in `public` to `anon`. Restore the
+-- same access as supabase_schema.sql: no PUBLIC/anon access, SELECT for signed-in
+-- users only.
+REVOKE ALL ON public.org_analytics_daily, public.org_department_analytics
+    FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.org_analytics_daily, public.org_department_analytics
+    TO authenticated;
 
 -- -----------------------------------------------------------------------------
 -- 6. Verification

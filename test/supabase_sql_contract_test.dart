@@ -172,4 +172,28 @@ void main() {
       expect(_insertValueCount(validation), _insertColumns(validation).length);
     });
   });
+
+  group('cloud opt-out path', () {
+    test('analytics_daily lets a user delete their own rows', () {
+      // SupabaseService.syncLocalToCloud() deletes the user's analytics_daily
+      // rows when "Contribute Statistics" is turned off. RLS denies DELETE when
+      // no DELETE policy exists, and the client cannot tell a no-op from a
+      // success, so the totals would stay in the organisation views.
+      final match = RegExp(
+        r'CREATE\s+POLICY\s+"Users can delete own daily analytics"\s+'
+        r'ON\s+public\.analytics_daily\s+FOR\s+DELETE\s+'
+        r'TO\s+authenticated\s+USING\s*\(([^;]*)\)\s*;',
+        dotAll: true,
+        caseSensitive: false,
+      ).firstMatch(_uncommented(schema));
+      expect(
+        match,
+        isNotNull,
+        reason:
+            'supabase_schema.sql has no DELETE policy on analytics_daily, so '
+            'opting out of cloud sync silently keeps the shared totals.',
+      );
+      expect(match!.group(1), contains('user_id'));
+    });
+  });
 }

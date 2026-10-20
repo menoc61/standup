@@ -409,6 +409,18 @@ class ProfileSetupSlide extends StatelessWidget {
   final ValueChanged<String?> onDepartmentChanged;
   final Color accentColor;
 
+  /// Inline validation messages, or null before the first attempt to continue.
+  ///
+  /// The step cannot be skipped, so the messages appear only after the person
+  /// taps Continue with a field missing: showing red text on an untouched form
+  /// reads as an accusation rather than help.
+  final String? nameError;
+  final String? designationError;
+  final String? emailError;
+
+  /// Called on every keystroke so the parent can clear a stale error.
+  final ValueChanged<String>? onChanged;
+
   const ProfileSetupSlide({
     super.key,
     required this.nameController,
@@ -417,6 +429,10 @@ class ProfileSetupSlide extends StatelessWidget {
     required this.selectedDepartment,
     required this.onDepartmentChanged,
     required this.accentColor,
+    this.nameError,
+    this.designationError,
+    this.emailError,
+    this.onChanged,
   });
 
   @override
@@ -457,6 +473,10 @@ class ProfileSetupSlide extends StatelessWidget {
             label: 'Full Name',
             controller: nameController,
             hint: 'e.g. Alex Morgan',
+            error: nameError,
+            onChanged: onChanged,
+            textInputAction: TextInputAction.next,
+            textCapitalization: TextCapitalization.words,
           ),
           const SizedBox(height: 14),
           _buildInput(
@@ -464,6 +484,10 @@ class ProfileSetupSlide extends StatelessWidget {
             label: 'Designation / Role',
             controller: designationController,
             hint: 'e.g. Senior Software Engineer',
+            error: designationError,
+            onChanged: onChanged,
+            textInputAction: TextInputAction.next,
+            textCapitalization: TextCapitalization.sentences,
           ),
           const SizedBox(height: 14),
           _buildInput(
@@ -471,6 +495,10 @@ class ProfileSetupSlide extends StatelessWidget {
             label: 'Work Email (Optional)',
             controller: emailController,
             hint: 'name@company.com',
+            error: emailError,
+            onChanged: onChanged,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.done,
           ),
           const SizedBox(height: 14),
           Text(
@@ -516,6 +544,11 @@ class ProfileSetupSlide extends StatelessWidget {
     required String label,
     required TextEditingController controller,
     required String hint,
+    String? error,
+    ValueChanged<String>? onChanged,
+    TextInputType? keyboardType,
+    TextInputAction? textInputAction,
+    TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -530,9 +563,17 @@ class ProfileSetupSlide extends StatelessWidget {
         const SizedBox(height: AppSpace.sm),
         TextField(
           controller: controller,
+          onChanged: onChanged,
+          keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          textCapitalization: textCapitalization,
+          autofillHints: keyboardType == TextInputType.emailAddress
+              ? const [AutofillHints.email]
+              : const [AutofillHints.name],
           decoration: InputDecoration(
             hintText: hint,
             filled: true,
+            errorText: error == null ? null : appString(context, error),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: AppSpace.xl,
@@ -551,15 +592,80 @@ class ProfileSetupSlide extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Slide 6: Organization Link
 // ---------------------------------------------------------------------------
-class OrganizationLinkSlide extends StatelessWidget {
-  final String detectedOrgName;
+class OrganizationLinkSlide extends StatefulWidget {
+  /// The workspace already on the profile, if the device is signed in to one.
+  final String joinedOrganizationName;
+
+  /// Whether an account session exists. Joining is a server call, so the slide
+  /// can only offer it when the app has an authenticated client.
+  final bool signedIn;
+
+  /// Joins with the code and returns the workspace name, or throws with the
+  /// server's message (wrong code, wrong email domain, unconfirmed address).
+  final Future<String> Function(String inviteCode) onJoin;
+
   final Color accentColor;
 
   const OrganizationLinkSlide({
     super.key,
-    required this.detectedOrgName,
+    required this.joinedOrganizationName,
+    required this.signedIn,
+    required this.onJoin,
     required this.accentColor,
   });
+
+  @override
+  State<OrganizationLinkSlide> createState() => _OrganizationLinkSlideState();
+}
+
+class _OrganizationLinkSlideState extends State<OrganizationLinkSlide> {
+  late final TextEditingController _codeController;
+  late String _joinedName;
+  bool _joining = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _codeController = TextEditingController();
+    _joinedName = widget.joinedOrganizationName;
+  }
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _join() async {
+    final code = _codeController.text.trim();
+    if (code.isEmpty) {
+      setState(() => _error = 'Enter the invite code from your administrator.');
+      return;
+    }
+    setState(() {
+      _joining = true;
+      _error = null;
+    });
+    try {
+      final name = await widget.onJoin(code);
+      if (!mounted) return;
+      setState(() {
+        _joinedName = name;
+        _joining = false;
+        _codeController.clear();
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _joining = false;
+        // The server explains the refusal precisely ("this workspace only
+        // accepts @cnps.cm..."); replacing it with a generic failure would hide
+        // the one sentence the person can act on.
+        _error = '$error';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -583,17 +689,19 @@ class OrganizationLinkSlide extends StatelessWidget {
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: AppSpace.section),
-          if (detectedOrgName.isNotEmpty) ...[
+          if (_joinedName.isNotEmpty) ...[
             Container(
               padding: const EdgeInsets.all(AppSpace.xxl),
               decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.1),
+                color: widget.accentColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: widget.accentColor.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.verified, color: accentColor, size: 28),
+                  Icon(Icons.verified, color: widget.accentColor, size: 28),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
@@ -607,7 +715,7 @@ class OrganizationLinkSlide extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          detectedOrgName,
+                          _joinedName,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: AppFontSize.label,
@@ -620,30 +728,102 @@ class OrganizationLinkSlide extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpace.huge),
-          ],
-          Container(
-            padding: const EdgeInsets.all(AppSpace.xxl),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(
-                alpha: 0.45,
+          ] else if (widget.signedIn) ...[
+            Text(
+              appString(context, 'Invite code'),
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: AppFontSize.small,
               ),
-              borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline),
-                SizedBox(width: AppSpace.xl),
-                Expanded(
-                  child: Text(
-                    appString(
-                      context,
-                      'After onboarding, connect your account in Settings and use the invite code provided by your organization.',
+            const SizedBox(height: AppSpace.sm),
+            TextField(
+              controller: _codeController,
+              enabled: !_joining,
+              autocorrect: false,
+              textCapitalization: TextCapitalization.characters,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _joining ? null : _join(),
+              decoration: InputDecoration(
+                hintText: 'CNPS-XXXX-XXXX',
+                filled: true,
+                errorText: _error == null ? null : appString(context, _error!),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: AppSpace.xl,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpace.xl),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _joining ? null : _join,
+                icon: _joining
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.group_add_outlined, size: 18),
+                label: Text(
+                  appString(context, _joining ? 'Joining…' : 'Join workspace'),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpace.section),
+            Container(
+              padding: const EdgeInsets.all(AppSpace.xxl),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.45,
+                ),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline),
+                  const SizedBox(width: AppSpace.xl),
+                  Expanded(
+                    child: Text(
+                      appString(
+                        context,
+                        'You can also join later from Settings → Organization Workspace.',
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(AppSpace.xxl),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.45,
+                ),
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline),
+                  const SizedBox(width: AppSpace.xl),
+                  Expanded(
+                    child: Text(
+                      appString(
+                        context,
+                        'Connect your account in Settings → Cloud Sync & Privacy, then enter the invite code from your administrator. You can keep using the app offline meanwhile.',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: AppSpace.xl),
           Text(
             appString(

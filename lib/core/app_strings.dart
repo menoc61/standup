@@ -335,6 +335,22 @@ const Map<String, String> _french = {
   'Enter your work details to unlock department wellness benchmarks.': 'Renseignez votre profil professionnel pour consulter les indicateurs de bien-être de votre service.',
   'Join your company workspace to see collective progress and contribute only the daily totals you choose to share.': 'Rejoignez l’espace de votre organisation pour suivre les progrès collectifs et choisir les totaux quotidiens que vous partagez.',
   'Detected Workspace:': 'Espace détecté :',
+  'Invite code': 'Code d’invitation',
+  'Joining…': 'Connexion…',
+  'Enter the invite code from your administrator.':
+      'Saisissez le code d’invitation fourni par votre administrateur.',
+  'You can also join later from Settings → Organization Workspace.': 'Vous pourrez aussi rejoindre l’espace plus tard depuis Paramètres → Espace de travail.',
+  'Connect your account in Settings → Cloud Sync & Privacy, then enter the invite code from your administrator. You can keep using the app offline meanwhile.': 'Connectez votre compte dans Paramètres → Synchronisation et confidentialité, puis saisissez le code d’invitation de votre administrateur. Vous pouvez continuer à utiliser l’application hors ligne entre-temps.',
+  'Complete your profile to continue.':
+      'Complétez votre profil pour continuer.',
+  'Enter your full name.': 'Saisissez votre nom complet.',
+  'Your name is too short.': 'Votre nom est trop court.',
+  'Your name is too long.': 'Votre nom est trop long.',
+  'Enter your role or designation.': 'Saisissez votre poste ou votre fonction.',
+  'Your role is too short.': 'Votre fonction est trop courte.',
+  'Your role is too long.': 'Votre fonction est trop longue.',
+  'Enter a valid work email address.':
+      'Saisissez une adresse e-mail professionnelle valide.',
   'After onboarding, connect your account in Settings and use the invite code provided by your organization.': 'Après la présentation, connectez votre compte dans les paramètres et saisissez le code d’invitation de votre organisation.',
   'Customize your reminder schedule, audio tones, and color palette.': 'Choisissez la fréquence des rappels, les sons et la couleur de l’application.',
   'We believe employee health monitoring must never compromise personal autonomy.': 'Le suivi du bien-être ne doit jamais porter atteinte à votre vie privée.',

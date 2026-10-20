@@ -7,6 +7,7 @@ import 'package:standup_app/core/app_colors.dart';
 import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
 import 'package:standup_app/core/platform_motion.dart';
+import 'package:standup_app/core/profile_validation.dart';
 import 'package:standup_app/providers/app_state.dart';
 import 'package:standup_app/services/haptics_service.dart';
 import 'package:standup_app/ui/layout/adaptive.dart';
@@ -38,7 +39,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   late TextEditingController _emailController;
 
   String _department = 'Engineering';
-  final String _detectedOrgName = '';
+
+  /// The profile step is page 5 of 10 and is the only page that may not be
+  /// left empty: a blank name used to be saved as "Employee", which produced an
+  /// account the administrator could not match to a person.
+  static const int _profilePage = 4;
+
+  /// Set on the first failed attempt so the fields can explain what is missing.
+  /// Empty fields are not marked red before the person has done anything.
+  bool _showProfileErrors = false;
+
   int _frequency = 60;
   String _themeMode = 'system';
   String _colorSystem = AppColors.defaultAccentId;
@@ -116,10 +126,57 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  String? get _nameError =>
+      _showProfileErrors ? profileNameError(_nameController.text) : null;
+
+  String? get _designationError => _showProfileErrors
+      ? profileDesignationError(_designationController.text)
+      : null;
+
+  String? get _emailError =>
+      _showProfileErrors ? profileEmailError(_emailController.text) : null;
+
+  bool get _profileIsValid => profileDraftIsComplete(
+    name: _nameController.text,
+    designation: _designationController.text,
+    email: _emailController.text,
+  );
+
+  /// Blocks the two ways out of onboarding until the profile is usable.
+  ///
+  /// Finish is checked too, not just the profile page's Continue: the progress
+  /// dots can jump straight to the last page, and a user who does that would
+  /// otherwise complete setup with an empty account.
+  bool _ensureProfileIsValid() {
+    if (_profileIsValid) return true;
+    setState(() => _showProfileErrors = true);
+    if (_currentPage != _profilePage) {
+      _pageController.animateToPage(
+        _profilePage,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : PlatformMotion.pageDuration,
+        curve: PlatformMotion.pageForward(Theme.of(context).platform),
+      );
+    }
+    unawaited(HapticsService.medium());
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            appString(context, 'Complete your profile to continue.'),
+          ),
+        ),
+      );
+    return false;
+  }
+
   /// Asks before abandoning onboarding, which would otherwise be silent because
   /// the app cannot be popped from this screen.
   void _goToNextPage() {
     unawaited(widget.appState.audioService.playClick());
+    if (_currentPage == _profilePage && !_ensureProfileIsValid()) return;
     if (_currentPage < _totalPages - 1) {
       _pageController.nextPage(
         duration: MediaQuery.disableAnimationsOf(context)
@@ -146,13 +203,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Future<void> _completeOnboarding() async {
     if (_isCompleting) return;
+    if (!_ensureProfileIsValid()) return;
     setState(() => _isCompleting = true);
     widget.appState.audioService.playSuccess();
     try {
       await widget.appState.updateProfile(
-        name: _nameController.text.trim().isNotEmpty
-            ? _nameController.text.trim()
-            : 'Employee',
+        name: _nameController.text.trim(),
         designation: _designationController.text.trim(),
         department: _department,
         email: _emailController.text.trim(),
@@ -236,16 +292,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               minHeight: AppSpace.xs,
             ),
           ),
-          actions: [
-            if (_currentPage < _totalPages - 1)
-              TextButton(
-                onPressed: _completeOnboarding,
-                child: Text(
-                  appString(context, 'Skip'),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-          ],
         ),
         body: SafeArea(
           child: Column(
@@ -322,9 +368,38 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   () => _department = v ?? _department,
                                 ),
                                 accentColor: accent,
+                                nameError: _nameError,
+                                designationError: _designationError,
+                                emailError: _emailError,
+                                // Rebuilds on every keystroke so an error
+                                // disappears the moment the field becomes valid.
+                                onChanged: (_) {
+                                  if (_showProfileErrors) setState(() {});
+                                },
                               ),
                               OrganizationLinkSlide(
-                                detectedOrgName: _detectedOrgName,
+                                joinedOrganizationName:
+                                    widget
+                                        .appState
+                                        .userProfile
+                                        ?.organizationName ??
+                                    '',
+                                signedIn:
+                                    widget
+                                        .appState
+                                        .supabaseService
+                                        .signedInUserId !=
+                                    null,
+                                onJoin: (inviteCode) async {
+                                  await widget.appState.joinOrganization(
+                                    inviteCode,
+                                  );
+                                  return widget
+                                          .appState
+                                          .userProfile
+                                          ?.organizationName ??
+                                      '';
+                                },
                                 accentColor: accent,
                               ),
                               PreferencesSlide(

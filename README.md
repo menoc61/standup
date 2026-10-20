@@ -88,8 +88,8 @@ sessions.
    - **Slide 2: The Sedentary Trap** — Medical breakdown of prolonged sitting risks (spinal compression, circulation drop, fatigue).
    - **Slide 3: The 5-Minute Solution** — Science-backed benefits (+32% focus, lumbar decompression, stabilizer activation).
    - **Slide 4: How It Works** — Walkthrough of reminders, snooze, skips, and analytics.
-   - **Slide 5: Employee Profile Setup** — Name, role/designation, department selection, work email.
-   - **Slide 6: Organization Link** — Explains private workspace membership; connect an account and join with an invite code from Settings.
+   - **Slide 5: Employee Profile Setup** — Required name and role/designation (inline validation; it cannot be skipped), department selection, optional work email.
+   - **Slide 6: Organization Link** — Explains private workspace membership; when already signed in, the invite code joins the workspace on the spot, otherwise it points to Settings.
    - **Slide 7: Preferences & Cadence** — Frequency interval (30/60/90 mins), theme (System/Light/Dark), accent color (Emerald, Teal, Amber, Indigo, Coral), and sound preview.
    - **Slide 8: System Permissions** — Notification alerts and exact system timers.
    - **Slide 9: Privacy by Design** — Explains local Drift database vs. anonymized aggregates with opt-in toggle.

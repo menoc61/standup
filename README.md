@@ -392,13 +392,19 @@ log does not explain.
 
 ## 📚 Further documentation
 
+The full documentation map is [docs/README.md](docs/README.md). The most-used
+entries:
+
 | Document | Covers |
 | --- | --- |
+| [docs/ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md) | Admin console access, invite code, email-domain rule, what each figure means, desktop vs phone layouts |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layering, state management, adaptive layout, the reminder state machine, testing |
 | [docs/PLATFORM_SETUP.md](docs/PLATFORM_SETUP.md) | Per-platform prerequisites, WidgetKit target install, the widget action round trip |
 | [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md) | Environment variables, schema, validation queries |
+| [docs/AI_INTEGRATION.md](docs/AI_INTEGRATION.md) | The company-guidance privacy boundary and the cheapest provider configuration |
 | [docs/INSTALL_AND_LAUNCH.md](docs/INSTALL_AND_LAUNCH.md) | Getting the app running on a device |
 | [docs/WORKRAVE_ANALYSIS.md](docs/WORKRAVE_ANALYSIS.md) | Feature-by-feature comparison with Workrave, the three deliberate differences, and what is still missing |
+| [docs/DEFECT_BACKLOG.md](docs/DEFECT_BACKLOG.md) | Known gaps, recorded rather than hidden |
 
 ## 🎨 Branding and app icons
 

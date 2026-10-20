@@ -80,6 +80,71 @@ used by `supabase/functions/ai-guidance/index.ts`, return
 and enforce its own request quotas. Use a server endpoint accessible over TLS;
 an on-premises host must be reachable from the deployed Edge Function network.
 
+## Cheapest workable setup
+
+The function is deliberately provider-agnostic: it speaks the OpenAI
+chat-completions shape, so switching providers is **three secrets and no code
+change**. That is the cheap path — there is no provider SDK, no client key, and
+no new dependency to keep current.
+
+Any of these satisfies the contract. Prices move; check the provider's current
+page before budgeting, and treat the free tiers as rate-limited rather than
+unlimited.
+
+| Provider | Endpoint | Model | Order of magnitude |
+| --- | --- | --- | --- |
+| Groq | `https://api.groq.com/openai/v1/chat/completions` | `llama-3.1-8b-instant` | Free tier with rate limits; paid tokens are fractions of a cent per thousand |
+| Google Gemini (OpenAI-compatible) | `https://generativelanguage.googleapis.com/v1beta/openai/chat/completions` | `gemini-2.0-flash` | Free tier; paid input around $0.10 per million tokens |
+| OpenRouter | `https://openrouter.ai/api/v1/chat/completions` | any `:free` model | $0 within the free-model rate limits |
+| OpenAI | `https://api.openai.com/v1/chat/completions` | `gpt-4o-mini` | Roughly $0.15 input / $0.60 output per million tokens |
+
+### What a pilot actually costs
+
+The request is tiny by design: today's three counts, a goal, a cadence, one
+feedback enum, a fixed consent string, and a prompt that asks for two short
+enum values. Budget roughly 500–1,000 tokens per request.
+
+- 50 employees × one manual request per working day × 800 tokens ≈
+  40,000 tokens/day ≈ **1.2 million tokens/month**;
+- at `gpt-4o-mini` prices that is well under **$1/month**;
+- on the Groq or Gemini free tiers it is **$0**, provided the rate limits are
+  respected (they are per minute, not per month).
+
+The feature is deliberately behind a manual button, default-off, with no
+startup, scheduled or retry calls, so this is the realistic upper bound rather
+than an average.
+
+### Configure it
+
+```bash
+supabase secrets set \
+  AI_GUIDANCE_COMPLETIONS_URL="https://api.groq.com/openai/v1/chat/completions" \
+  AI_GUIDANCE_API_KEY="<provider key>" \
+  AI_GUIDANCE_MODEL="llama-3.1-8b-instant"
+
+supabase functions deploy ai-guidance
+```
+
+Then confirm in the app: **Settings → Cloud Sync & Privacy → Company AI
+guidance** stays off until the employee turns it on, and **Ask company AI**
+appears only when signed in. Remove the secrets to return to the local
+deterministic guidance; the function fails closed and the client falls back.
+
+### Two cheap improvements, in order
+
+1. **A per-user daily cap.** The function has no quota today (recorded in
+   `docs/DEFECT_BACKLOG.md`). A small table keyed by `auth.uid()` and the local
+   date, incremented inside the function, turns "the gateway's rate limit" into
+   a company-owned budget. It is the difference between a free tier that lasts
+   and one that is exhausted by a single curious account.
+2. **Cache the answer for the day.** The inputs change only when the employee
+   completes, snoozes or skips a reminder, so a request repeated with identical
+   inputs should return the stored result. That cuts usage without changing
+   behaviour or the privacy boundary.
+
+Neither is required for the pilot; both are cheap and neither adds a provider
+dependency.
+
 ## Local verification and deployment
 
 1. Install the current Supabase CLI and Deno supported by the project.
@@ -92,7 +157,9 @@ an on-premises host must be reachable from the deployed Edge Function network.
 5. Set production function secrets through the Supabase Dashboard or CLI, then
    deploy `ai-guidance`. Keep `verify_jwt = true`.
 
-This repository contains the client and proxy scaffold, but has no configured
-company model endpoint or Supabase project credentials. The proxy is therefore
-fail-closed until the three server-side values are configured and the function
-is deployed. Its offline fallback remains active meanwhile.
+The client and proxy scaffold are complete, and the Supabase project
+(`tcgtvokcndfiizdoidhv`) is configured for auth and organisation analytics. The
+`ai-guidance` function is **not deployed** and no model endpoint or key is set,
+so the proxy is fail-closed and the local deterministic guidance is the only
+active path. Configure the three server-side values above and deploy the
+function to enable the optional company guidance; no client change is needed.

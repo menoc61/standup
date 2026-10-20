@@ -176,17 +176,27 @@ codes must be created by someone you trust, using the SQL editor or the service
 role in a controlled backend. Never from the client.
 
 ```sql
--- 1. Create the organisation
-INSERT INTO public.organizations (name, domain)
-VALUES ('CNPS Cameroon', 'CNPS.cm')
-RETURNING id;
-
--- 2. Generate an invite code
-SELECT encode(gen_random_bytes(9), 'hex') AS invite_code;
+-- 1. Create the organisation. `code` is required and unique; generate one
+--    rather than inventing a guessable phrase.
+INSERT INTO public.organizations (name, domain, code, restrict_email_domain)
+VALUES (
+  'CNPS Cameroon',
+  'cnps.cm',
+  'CNPS-' || upper(substr(md5(random()::text), 1, 4)) || '-' ||
+            upper(substr(md5(random()::text), 1, 4)),
+  true
+)
+RETURNING id, code;
 ```
 
-Store the generated code and distribute it out of band. Anyone with the code can
-call `join_organization(code)`; that is the intended behaviour.
+Store the generated code and distribute it out of band.
+
+`restrict_email_domain` defaults to `true` and is the per-workspace control over
+who may join: when it is on, `join_organization(code)` compares the domain of the
+**account's own address** (read from `auth.users`, never from the request) with
+`organizations.domain` and refuses a mismatch. The code alone is therefore not
+enough for an outsider. See [ADMIN_GUIDE.md](ADMIN_GUIDE.md#5-who-may-join-the-email-domain-rule)
+for the toggle and the rotation SQL.
 
 Promote an initial administrator by setting the role directly in the database,
 because the API cannot:
@@ -194,6 +204,11 @@ because the API cannot:
 ```sql
 UPDATE public.profiles SET role = 'admin' WHERE id = '<user-uuid>';
 ```
+
+The CNPS pilot's designated administrator is `mony.aye@cnps.cm`; the promotion
+must run after that account has signed up, because a profile row cannot exist
+before the account. The exact, idempotent statement is in
+[ADMIN_GUIDE.md](ADMIN_GUIDE.md#the-default-administrator).
 
 ---
 

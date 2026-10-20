@@ -746,7 +746,7 @@ class AppState extends ChangeNotifier {
         supabaseService.signedInEmail,
       );
     }
-    if (signedInId != null) await _refreshRemoteProfile();
+    if (signedInId != null) await _reconcileProfileWithCloud();
 
     // 2. Load Preferences
     _preferences = await localRepo.getUserPreferences(_userProfile!.id);
@@ -781,6 +781,13 @@ class AppState extends ChangeNotifier {
       _userProfile!.id,
       3,
     )).length;
+
+    // 4. Local-first catch-up. A session restored after an offline period has
+    // rows that never reached the server. Authentication at launch is the first
+    // moment they can be sent, so push them now instead of waiting for the next
+    // reminder action. `triggerCloudSync` is idempotent and reuses an in-flight
+    // operation, so a later auth event cannot race this one.
+    if (signedInId != null) unawaited(triggerCloudSync());
 
     // Never show fabricated organization metrics. Only admins in a configured
     // and authenticated workspace can load the aggregate dashboard.
@@ -974,6 +981,12 @@ class AppState extends ChangeNotifier {
     await drainPendingWidgetAction();
     // The launcher may have missed a state change while the app was away.
     await syncWidget();
+    // Coming back from sleep or the background is when the network usually
+    // returns. Retry anything recorded offline; the sync is idempotent and
+    // reuses an in-flight operation.
+    if (supabaseService.signedInUserId != null) {
+      unawaited(triggerCloudSync());
+    }
   }
 
   /// Marks the open window as already logged when the database says it was.
@@ -1760,13 +1773,17 @@ class AppState extends ChangeNotifier {
       throw StateError('Sign in did not return an active session.');
     }
     await _adoptAuthenticatedAccount(id, supabaseService.signedInEmail);
-    await supabaseService.syncProfileToCloud(_userProfile!);
-    await _refreshRemoteProfile();
+    // Read the account's profile before writing anything: the local copy may be
+    // this device's untouched "Employee" placeholder, and pushing it first would
+    // erase the name and department set on another device.
+    await _reconcileProfileWithCloud();
     if (preferences.statisticsOptIn) {
       await localRepo.markAllAnalyticsAsUnsynced(_userProfile!.id);
-      await triggerCloudSync();
       await _startRealtimeAnalytics();
     }
+    // Local-first, cloud when possible: whatever was recorded before the
+    // account existed is pushed now, on the authentication event itself.
+    await triggerCloudSync();
     notifyListeners();
   }
 
@@ -1782,9 +1799,9 @@ class AppState extends ChangeNotifier {
     final id = supabaseService.signedInUserId;
     if (id == null) throw StateError('There is no active account session.');
     await _adoptAuthenticatedAccount(id, supabaseService.signedInEmail);
-    await supabaseService.syncProfileToCloud(_userProfile!);
-    await _refreshRemoteProfile();
+    await _reconcileProfileWithCloud();
     if (preferences.statisticsOptIn) await _startRealtimeAnalytics();
+    await triggerCloudSync();
     notifyListeners();
   }
 
@@ -1890,38 +1907,53 @@ class AppState extends ChangeNotifier {
         accountId,
         supabaseService.signedInEmail,
       );
-      await supabaseService.syncProfileToCloud(_userProfile!);
-      await _refreshRemoteProfile();
-      if (preferences.statisticsOptIn) {
-        await triggerCloudSync();
-        await _startRealtimeAnalytics();
-      }
+      await _reconcileProfileWithCloud();
+      if (preferences.statisticsOptIn) await _startRealtimeAnalytics();
+      // Authentication is the moment the cloud becomes reachable again for a
+      // device that recorded breaks offline; push them instead of waiting for
+      // the next reminder action.
+      await triggerCloudSync();
       notifyListeners();
     } catch (error) {
       debugPrint('Unable to attach the authenticated account: $error');
     }
   }
 
-  Future<void> _refreshRemoteProfile() async {
+  /// Pulls the account's profile, merges it over the local copy and pushes only
+  /// the fields the server is missing.
+  ///
+  /// Replaces the old "push then pull" order, which made every sign-in from a
+  /// fresh device write the placeholder name over the real one. A network
+  /// failure leaves the local copy untouched: the next authentication, resume or
+  /// manual sync tries again.
+  Future<void> _reconcileProfileWithCloud() async {
+    final local = _userProfile;
+    if (local == null || supabaseService.signedInUserId != local.id) return;
     try {
       final remote = await supabaseService.fetchMyProfile();
-      if (remote == null) return;
-      final organizationId = remote['organization_id'] as String?;
-      final organizationName = organizationId == null
-          ? null
-          : await supabaseService.fetchOrganizationName(organizationId);
-      _userProfile = _userProfile!.copyWith(
-        name: remote['name'] as String?,
-        designation: remote['designation'] as String?,
-        department: remote['department'] as String?,
-        organizationId: organizationId,
-        organizationName: organizationName,
-        clearOrganization: organizationId == null,
-        role: remote['role'] as String?,
-      );
-      await localRepo.saveUserProfile(_userProfile!);
+      if (remote == null) {
+        // No profile row yet (an account created before it joined a workspace,
+        // or a project without the join function): seed it from this device so
+        // the workspace has something to read.
+        await supabaseService.syncProfileToCloud(local);
+        return;
+      }
+      var merged = mergeRemoteProfile(local, remote);
+      final organizationId = merged.organizationId;
+      if (organizationId != null && merged.organizationName == null) {
+        merged = merged.copyWith(
+          organizationName: await supabaseService.fetchOrganizationName(
+            organizationId,
+          ),
+        );
+      }
+      _userProfile = merged;
+      await localRepo.saveUserProfile(merged);
+      if (profileNeedsPush(merged, remote)) {
+        await supabaseService.syncProfileToCloud(merged);
+      }
     } catch (error) {
-      debugPrint('Unable to refresh account profile: $error');
+      debugPrint('Unable to reconcile the account profile: $error');
     }
   }
 

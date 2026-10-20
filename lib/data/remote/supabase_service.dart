@@ -273,13 +273,36 @@ class SupabaseService {
   Future<void> syncProfileToCloud(UserProfile profile) async {
     if (!_isInitialized || client == null) return;
     if (client!.auth.currentUser?.id != profile.id) return;
+    final fields = {
+      'name': profile.name,
+      'designation': profile.designation,
+      'department': profile.department,
+    };
     try {
-      await client!.from('profiles').upsert({
-        'id': profile.id,
-        'name': profile.name,
-        'designation': profile.designation,
-        'department': profile.department,
-      });
+      // An `upsert` is rejected by the live project: PostgREST's ON CONFLICT
+      // DO UPDATE also writes the conflict target (`id`), and the client has
+      // UPDATE only on name, designation, department and updated_at. That
+      // column boundary is deliberate — a client may never move its row to
+      // another account — so the write is an update followed by an insert
+      // instead, which produces the same result inside the existing grants.
+      final updated = await client!
+          .from('profiles')
+          .update(fields)
+          .eq('id', profile.id)
+          .select('id');
+      if ((updated as List).isNotEmpty) return;
+      try {
+        await client!.from('profiles').insert({'id': profile.id, ...fields});
+      } on PostgrestException catch (error) {
+        // Another device created the row between the update and the insert.
+        // Retry the update rather than reporting a lost profile.
+        if (error.code != '23505') rethrow;
+        await client!
+            .from('profiles')
+            .update(fields)
+            .eq('id', profile.id)
+            .select('id');
+      }
     } catch (e) {
       debugPrint('Failed to sync profile: $e');
     }

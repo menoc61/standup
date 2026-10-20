@@ -78,3 +78,49 @@ class UserProfile {
     );
   }
 }
+
+String? _remoteText(Object? value) {
+  if (value is! String) return null;
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? null : trimmed;
+}
+
+/// Applies a remote `profiles` row over the device's copy.
+///
+/// The local profile is a copy that starts as `Employee`, with no department, on
+/// any device that has not seen this account before. Pushing it before reading
+/// the remote row erases the name, designation and department the person set
+/// elsewhere — so authentication has to merge remote first, then write back only
+/// what the remote lacks.
+///
+/// Organisation and role are server-authoritative: the client never writes them,
+/// so a remote `organization_id` of null means the person was removed from the
+/// workspace and the local cache must follow rather than keep stale access.
+UserProfile mergeRemoteProfile(UserProfile local, Map<String, dynamic> remote) {
+  final organizationId = _remoteText(remote['organization_id']);
+  return UserProfile(
+    id: local.id,
+    name: _remoteText(remote['name']) ?? local.name,
+    designation: _remoteText(remote['designation']) ?? local.designation,
+    department: _remoteText(remote['department']) ?? local.department,
+    email: local.email,
+    organizationId: organizationId,
+    organizationName: organizationId == null ? null : local.organizationName,
+    role: _remoteText(remote['role']) ?? local.role,
+    createdAt: local.createdAt,
+  );
+}
+
+/// Whether the merged profile holds something the remote row is missing.
+///
+/// Only these three fields are client-writable, so this is also the list that
+/// may be pushed. An empty remote value that the local copy can fill is a first
+/// sign-in from a device that had a profile before the account existed.
+bool profileNeedsPush(UserProfile local, Map<String, dynamic> remote) {
+  final missingName = _remoteText(remote['name']) == null;
+  final missingDesignation = _remoteText(remote['designation']) == null;
+  final missingDepartment = _remoteText(remote['department']) == null;
+  return (missingName && local.name.trim().isNotEmpty) ||
+      (missingDesignation && (local.designation?.trim().isNotEmpty ?? false)) ||
+      (missingDepartment && (local.department?.trim().isNotEmpty ?? false));
+}

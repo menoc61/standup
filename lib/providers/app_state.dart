@@ -10,6 +10,7 @@ import 'package:standup_app/core/app_colors.dart';
 import 'package:standup_app/core/break_block.dart';
 import 'package:standup_app/core/escalation.dart';
 import 'package:standup_app/core/presence.dart';
+import 'package:standup_app/core/quiet_mode.dart';
 import 'package:standup_app/data/local/local_repository.dart';
 import 'package:standup_app/data/local/widget_snapshot.dart';
 import 'package:standup_app/data/models/daily_analytics.dart';
@@ -151,7 +152,10 @@ class AppState extends ChangeNotifier {
   /// failure mode — the user forgets it is on and gets no reminders, with
   /// nothing on screen explaining why. Restarting returns to normal, which is
   /// the safe direction to fail in.
-  bool _quietMode = false;
+  ///
+  /// Null means the user is not being quiet at all; [QuietPeriod.indefinite]
+  /// means only the user can end it; [QuietPeriod.until] ends on its own.
+  QuietPeriod? _quiet;
 
   AppState({
     required this.localRepo,
@@ -335,8 +339,22 @@ class AppState extends ChangeNotifier {
   /// when the queue is built.
   bool get isInQuietHours => _inQuietHours(preferences.quietHours);
 
-  /// Whether the user has paused interruptions by hand.
-  bool get isQuietMode => _quietMode;
+  /// Whether the user has paused interruptions by hand, for now or for good.
+  ///
+  /// Read through the clock rather than trusting a stored flag, so a timed pause
+  /// that has run out stops counting as quiet at the instant it ends — not one
+  /// tick later, and not at all if the ticker is not running.
+  bool get isQuietMode => _quietActive;
+
+  /// True while a pause the user asked for is still in force.
+  bool get _quietActive => _quiet?.isActiveAt(DateTime.now()) ?? false;
+
+  /// How long a timed pause still has to run.
+  ///
+  /// Null while the pause is indefinite or not running at all: the banner shows a
+  /// countdown in one case and "until you resume" in the other, and it must be
+  /// able to tell them apart.
+  Duration? get quietTimeRemaining => _quiet?.remainingAt(DateTime.now());
 
   /// Whether the app should stay silent right now, whether because the user
   /// asked for it or because the schedule says so.
@@ -344,18 +362,47 @@ class AppState extends ChangeNotifier {
   /// One getter so the cue, the warning, the cover and the queue cannot disagree
   /// about silence: an interruption the user suppressed must be suppressed
   /// everywhere, not in three places out of four.
-  bool get isInterruptionPaused => _quietMode || isInQuietHours;
+  bool get isInterruptionPaused => _quietActive || isInQuietHours;
 
-  /// Pauses or resumes every interruption at once.
+  /// Pauses every interruption until the user resumes — the indefinite pause the
+  /// banner's own Resume button undoes.
   ///
   /// Cues, the prelude banner, the OS queue, the live countdown and the forced
-  /// break all read [isQuietMode], so this is the single switch. The break
-  /// cadence keeps running underneath: the point is to stop being interrupted,
-  /// not to lose the day's rhythm, so the next window after resuming is simply
-  /// the next one due.
-  Future<void> setQuietMode(bool value) async {
-    if (_quietMode == value) return;
-    _quietMode = value;
+  /// break all read [isQuietMode], so there is one switch and these are the four
+  /// ways to work it. The break cadence keeps running underneath in every case:
+  /// the point is to stop being *interrupted*, not to lose the day's rhythm, so
+  /// the next window after resuming is simply the next one due.
+  Future<void> pauseReminders() => _setQuiet(const QuietPeriod.indefinite());
+
+  /// Pauses every interruption for [duration], then resumes on its own.
+  ///
+  /// This is Workrave's *Temporarily Quiet…*, and it exists because a forgotten
+  /// quiet mode is indistinguishable from a broken app: "I am in a meeting"
+  /// should not need a second visit to undo. A duration of zero or less is
+  /// treated as "do not pause", which is the only reading that cannot leave the
+  /// user silently quiet.
+  Future<void> pauseRemindersFor(Duration duration) => duration <= Duration.zero
+      ? resumeReminders()
+      : _setQuiet(QuietPeriod.until(DateTime.now().add(duration)));
+
+  /// Pauses every interruption until the next local day begins.
+  Future<void> pauseRemindersUntilTomorrow() => _setQuiet(
+    QuietPeriod.until(QuietPeriod.nextLocalMidnight(DateTime.now())),
+  );
+
+  /// Ends any pause, timed or indefinite, at once.
+  Future<void> resumeReminders() => _setQuiet(null);
+
+  Future<void> _setQuiet(QuietPeriod? next) async {
+    // The comparison is on the *effective* state rather than on the stored value,
+    // so a pause that has run out but not yet been cleared by the ticker does not
+    // block re-arming a new one. A different end instant is still a change even
+    // when the state has not changed, because "30 min" becoming "1 h" is not a
+    // no-op for the bar.
+    if (_quietActive == (next != null)) {
+      if (next == null || _quiet?.until == next.until) return;
+    }
+    _quiet = next;
     notifyListeners();
     await refreshReminderQueue();
     await _syncLiveCountdown();
@@ -453,7 +500,7 @@ class AppState extends ChangeNotifier {
   WindowSpan? get preludeWindow {
     // Quiet mode silences the warning too: a banner announcing a break the app
     // is under orders not to enforce would be an interruption with no purpose.
-    if (_quietMode) return null;
+    if (_quietActive) return null;
     if (!preferences.preludeEnabled) return null;
     final now = DateTime.now();
     if (activeWindow != null) return null;
@@ -528,7 +575,7 @@ class AppState extends ChangeNotifier {
     return shouldBlockBreak(
       blockingEnabled: preferences.breakBlockingEnabled,
       escalationDue: isEscalationDue,
-      quiet: _quietMode,
+      quiet: _quietActive,
       userAway: isUserAway,
       windowOpen: window != null,
       alreadyCompleted:
@@ -754,6 +801,16 @@ class AppState extends ChangeNotifier {
     final now = DateTime.now();
     final clockWasUnreliable = isClockUnreliable;
 
+    // A timed pause ends itself. Clearing it here rather than leaving the getter
+    // to go stale is what puts the bar away and brings the suppressed reminders
+    // back: the pause is over, so the queue and the ongoing notification have to
+    // be rebuilt, and neither of them runs on the getter alone.
+    if (_quiet != null && !_quiet!.isActiveAt(now)) {
+      _quiet = null;
+      unawaited(refreshReminderQueue());
+      unawaited(_syncLiveCountdown());
+    }
+
     // Watch for wall-clock manipulation by comparing it against a monotonic
     // stopwatch. Ordinary suspend/resume is classified separately, so a user
     // who sleeps is never flagged. The stopwatch is re-based each tick so it
@@ -977,7 +1034,7 @@ class AppState extends ChangeNotifier {
     }
     // A countdown to an interruption the user has suppressed is itself an
     // interruption, so quiet mode takes the ongoing notification down too.
-    if (_quietMode) {
+    if (_quietActive) {
       await liveCountdownService.cancel();
       return;
     }
@@ -1039,7 +1096,7 @@ class AppState extends ChangeNotifier {
           ? 'Prenez 5 minutes pour vous étirer, respirer et bouger.'
           : 'Take a 5-minute break to stretch, breathe, and move.',
       quietHours: preferences.quietHours,
-      quiet: _quietMode,
+      quiet: _quietActive,
       actionWindowMinutes: _actionWindowMinutes,
       preludeMinutes: preferences.preludeEnabled
           ? AppCadence.resolvePrelude(

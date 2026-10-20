@@ -188,7 +188,7 @@ Collected **per day**, with a day selector, and reported for day, week and month
 | Buttons on the break screen | Postpone/Skip can be hidden; daily-limit Skip lasts all day | The cover deliberately offers **neither** — the only exits are standing up or the window ending; snooze/skip live on the dashboard | `ui/widgets/break_block.dart` (doc comment), `AppState.skipReminder` |
 | Exercises | Illustrated library, N per restbreak, prev/pause/next/stop, manual start | Guided stretch, 5 timed steps (300 s), from dashboard and from the cover | `AppCadence.guidedStretch*`, `ui/widgets/guided_stretch.dart` — gap #4 (library) |
 | Machine off the desk | Lock / suspend / shutdown button; "start restbreak when the screen is locked" | Presence detection withholds cues and the cover while away | `core/presence.dart` — gap #5 (lock counts as rest) |
-| Quiet mode | Normal / Quiet / Suspended, **timed** and until-next-day | One session-only flag read by every path, not persisted | `isInterruptionPaused`, `ui/widgets/quiet_mode_banner.dart` — gap #7 (timed) |
+| Quiet mode | Normal / Quiet / Suspended, **timed** and until-next-day | Session-only by design, but timed as well as indefinite: 30 minutes / 1 hour / until tomorrow, or until the user resumes | `core/quiet_mode.dart`, `isInterruptionPaused` — gap #7 is now only the OS hook |
 | OS-driven quiet | Windows Focus Assist → Quiet/Suspended | None | gap #7 |
 | Reading mode | Starts timers on first input and keeps them running through the first restbreak | Not needed: the cadence does not depend on input | decision 2 |
 | Statistics | 8 compliance metrics + usage, per day/week/month | Completed/snoozed/skipped, completion rate, heatmap, weekly breakdown, stand-duration trend, distribution, streak, CSV copy | `data/models/daily_analytics.dart`, `ui/screens/analytics_screen.dart` — gaps in note below |
@@ -322,11 +322,15 @@ Ordered by value per unit of work. None of these are started.
 6. **Counting active minutes as a first-class metric.** The OS reading already
    exists on Windows and Linux; surfacing "you worked 5h 40m of screen time"
    would answer a question the current analytics cannot.
-7. **A timed quiet mode, ideally driven by the OS.** Workrave's *Temporarily
-   Quiet…* (30 minutes / 1 hour / until next day) and its Focus Assist integration
-   mean a presentation never has to be fought reminder by reminder. StandUp's
-   quiet mode is session-only and manual. A duration is a small change; the Focus
-   Assist hook is platform work but privacy-neutral.
+7. **A timed quiet mode: half done.** Workrave's *Temporarily Quiet…* (30 minutes
+   / 1 hour / until next day) and its Focus Assist integration mean a presentation
+   never has to be fought reminder by reminder. StandUp now offers the same three
+   durations from the dashboard button, with the remaining time on the bar and a
+   DST-safe "until tomorrow" (`core/quiet_mode.dart`). What is still missing is the
+   OS hook: quiet mode is entered by hand only, so Focus Assist, a full-screen
+   presentation or any other signal the platform already knows about still has to
+   be mirrored manually. The pause stays session-only on purpose — a persisted
+   quiet mode is a silent failure mode the user cannot see.
 8. **Desktop surfaces and sound control.** An always-on-top desktop timer window
    and tray icon (Workrave's most-used surface), plus a sound theme and a
    mute-during-break control. Lower value on a mobile-first product, higher value

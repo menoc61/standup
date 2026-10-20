@@ -340,10 +340,13 @@ query rather than an aggregation over raw logs. The legacy field name
   one who asked for the routine from the one who started it on the dashboard and
   already has it in a sheet.
 - **Quiet mode is one flag, read everywhere, stored nowhere.** `isInterruptionPaused`
-  (`quietMode || quietHours`) is the single question the chime, the nudge, the
+  (`quietActive || quietHours`) is the single question the chime, the nudge, the
   prelude getter, the forced-break rule (`shouldBlockBreak(quiet:)`) and the OS
   queue ask, so "do not interrupt me" cannot be honoured in three places out of
-  four. It is deliberately **not** persisted: unlike a preference, a suppressed
+  four. The flag is answered *through the clock* rather than read raw
+  (`core/quiet_mode.dart`, `QuietPeriod`), so a timed pause stops being quiet at
+  the instant it ends even if the ticker is between ticks. It is deliberately
+  **not** persisted: unlike a preference, a suppressed
   state survives silently — the user forgets it is on and the app looks broken —
   so a restart returns to normal and the bar in
   `ui/widgets/quiet_mode_banner.dart` says so in the meantime. Workrave

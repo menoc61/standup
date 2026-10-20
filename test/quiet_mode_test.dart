@@ -43,6 +43,58 @@ void main() {
     expect(resumes, 1);
   });
 
+  testWidgets('a timed pause says when the reminders come back', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        QuietModeBanner(
+          onResume: () {},
+          remaining: const Duration(minutes: 24),
+        ),
+      ),
+    );
+
+    expect(find.text('Paused. Reminders come back in 24 min.'), findsOneWidget);
+    // The indefinite sentence must not appear here: "until you resume or
+    // restart" is a promise a thirty-minute pause does not make.
+    expect(
+      find.text(
+        'Reminders and the forced break are paused until you resume or restart StandUp.',
+      ),
+      findsNothing,
+    );
+    expect(find.text('Resume'), findsOneWidget);
+  });
+
+  testWidgets('the last minute of a timed pause never reads 0 min', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      wrap(
+        QuietModeBanner(
+          onResume: () {},
+          remaining: const Duration(seconds: 20),
+        ),
+      ),
+    );
+
+    expect(find.text('Paused. Reminders come back in 1 min.'), findsOneWidget);
+  });
+
+  testWidgets('an hour-long pause is stated in hours', (tester) async {
+    await tester.pumpWidget(
+      wrap(
+        QuietModeBanner(
+          onResume: () {},
+          remaining: const Duration(minutes: 60),
+        ),
+      ),
+    );
+
+    expect(find.text('Paused. Reminders come back in 1 h.'), findsOneWidget);
+  });
+
   testWidgets('renders French copy when the locale is French', (tester) async {
     await tester.pumpWidget(
       wrap(QuietModeBanner(onResume: () {}), locale: const Locale('fr')),
@@ -56,9 +108,14 @@ void main() {
     for (final literal in [
       'Quiet mode',
       'Reminders and the forced break are paused until you resume or restart StandUp.',
+      'Paused. Reminders come back in {time}.',
       'Resume',
       'Pause reminders',
       'Resume reminders',
+      'Pause for 30 minutes',
+      'Pause for 1 hour',
+      'Pause until tomorrow',
+      'Pause until I resume',
     ]) {
       expect(
         hasFrenchTranslation(literal),

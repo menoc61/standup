@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:standup_app/core/app_cadence.dart';
 import 'package:standup_app/core/app_colors.dart';
 import 'package:standup_app/core/app_spacing.dart';
 import 'package:standup_app/core/app_strings.dart';
@@ -365,25 +366,34 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: AppSpace.md),
           // Quiet mode is the one control the user reaches for *during* an
           // interruption ("I am about to share my screen"), so it lives on the
-          // dashboard rather than two screens deep in Settings.
-          IconButton(
-            onPressed: () =>
-                widget.appState.setQuietMode(!widget.appState.isQuietMode),
-            tooltip: appString(
-              context,
-              widget.appState.isQuietMode
-                  ? 'Resume reminders'
-                  : 'Pause reminders',
+          // dashboard rather than two screens deep in Settings. While it is on,
+          // one tap ends it — the bar above already explains what is paused, so
+          // asking again would be the interruption it exists to prevent.
+          if (widget.appState.isQuietMode)
+            IconButton(
+              onPressed: widget.appState.resumeReminders,
+              tooltip: appString(context, 'Resume reminders'),
+              icon: Icon(
+                Icons.notifications_off_outlined,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            )
+          else
+            // Choosing a *duration* is what makes a forgotten quiet mode
+            // survivable, so the choice is in the menu rather than behind a
+            // long-press nobody would find.
+            PopupMenuButton<_QuietPause>(
+              tooltip: appString(context, 'Pause reminders'),
+              icon: Icon(Icons.notifications_active_outlined, color: accent),
+              onSelected: (choice) => choice.start(widget.appState),
+              itemBuilder: (context) => [
+                for (final choice in _QuietPause.values)
+                  PopupMenuItem(
+                    value: choice,
+                    child: Text(appString(context, choice.label)),
+                  ),
+              ],
             ),
-            icon: Icon(
-              widget.appState.isQuietMode
-                  ? Icons.notifications_off_outlined
-                  : Icons.notifications_active_outlined,
-              color: widget.appState.isQuietMode
-                  ? theme.colorScheme.onSurfaceVariant
-                  : accent,
-            ),
-          ),
           const SizedBox(width: AppSpace.xs),
           Container(
             padding: const EdgeInsets.symmetric(
@@ -1443,4 +1453,39 @@ class _CalmCanvasPainter extends CustomPainter {
   @override
   bool shouldRepaint(_CalmCanvasPainter old) =>
       old.accent != accent || old.isDark != isDark;
+}
+
+/// The pauses the dashboard offers behind its quiet-mode button.
+///
+/// Workrave calls this *Temporarily Quiet…*, and it exists because quiet mode
+/// without a duration has exactly one failure mode: the user forgets. A meeting
+/// ends, the afternoon continues, and nothing on screen brings the reminders
+/// back. Offering the end of the pause up front is what makes the state safe to
+/// enter in a hurry.
+///
+/// The indefinite entry stays, and stays last, because it is the one that needs
+/// remembering — the bar above the dashboard is what carries that job.
+enum _QuietPause {
+  thirtyMinutes('Pause for 30 minutes'),
+  oneHour('Pause for 1 hour'),
+  untilTomorrow('Pause until tomorrow'),
+  untilResumed('Pause until I resume');
+
+  const _QuietPause(this.label);
+
+  /// The English literal, which is also the translation dictionary key.
+  final String label;
+
+  void start(AppState appState) {
+    switch (this) {
+      case _QuietPause.thirtyMinutes:
+        appState.pauseRemindersFor(AppCadence.quietForThirtyMinutes);
+      case _QuietPause.oneHour:
+        appState.pauseRemindersFor(AppCadence.quietForOneHour);
+      case _QuietPause.untilTomorrow:
+        appState.pauseRemindersUntilTomorrow();
+      case _QuietPause.untilResumed:
+        appState.pauseReminders();
+    }
+  }
 }

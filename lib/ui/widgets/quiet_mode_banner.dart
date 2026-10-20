@@ -47,7 +47,8 @@ class QuietModeOverlay extends StatelessWidget {
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: QuietModeBanner(
-                    onResume: () => appState.setQuietMode(false),
+                    remaining: appState.quietTimeRemaining,
+                    onResume: () => appState.resumeReminders(),
                   ),
                 ),
               ),
@@ -63,12 +64,22 @@ class QuietModeOverlay extends StatelessWidget {
 class QuietModeBanner extends StatelessWidget {
   final VoidCallback onResume;
 
+  /// Time left on a *timed* pause, or null when the user paused indefinitely.
+  ///
+  /// The two cases need different sentences, not the same sentence with a number
+  /// bolted on: "until you resume or restart" is a promise a thirty-minute pause
+  /// does not make, and telling somebody reminders are paused with no mention
+  /// that they come back on their own is the silent-failure mode this banner
+  /// exists to prevent.
+  final Duration? remaining;
+
   /// Injected for tests; defaults to the platform's reduced-motion setting.
   final bool? reduceMotionOverride;
 
   const QuietModeBanner({
     super.key,
     required this.onResume,
+    this.remaining,
     this.reduceMotionOverride,
   });
 
@@ -136,10 +147,23 @@ class QuietModeBanner extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          appString(
-                            context,
-                            'Reminders and the forced break are paused until you resume or restart StandUp.',
-                          ),
+                          remaining == null
+                              ? appString(
+                                  context,
+                                  'Reminders and the forced break are paused until you resume or restart StandUp.',
+                                )
+                              // Rounded up so a pause that is still running
+                              // never reads "0 min" in its final minute.
+                              : appStringArgs(
+                                  context,
+                                  'Paused. Reminders come back in {time}.',
+                                  {
+                                    'time': formatDurationLabel(
+                                      context,
+                                      (remaining!.inSeconds / 60).ceil(),
+                                    ),
+                                  },
+                                ),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: scheme.onSurfaceVariant,
                           ),

@@ -609,4 +609,10 @@ const Map<String, String> _french = {
   'Resume reminders': 'Reprendre les rappels',
   'Resume': 'Reprendre',
   'Reminders and the forced break are paused until you resume or restart StandUp.': 'Les rappels et la pause forcée sont en suspens jusqu’à ce que vous repreniez ou relanciez StandUp.',
+  'Paused. Reminders come back in {time}.':
+      'En suspens. Les rappels reprennent dans {time}.',
+  'Pause for 30 minutes': 'Suspendre pendant 30 minutes',
+  'Pause for 1 hour': 'Suspendre pendant 1 heure',
+  'Pause until tomorrow': 'Suspendre jusqu’à demain',
+  'Pause until I resume': 'Suspendre jusqu’à ma reprise',
 };

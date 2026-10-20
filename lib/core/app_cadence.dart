@@ -219,6 +219,14 @@ abstract final class AppCadence {
     return escalationOptions.last;
   }
 
+  // ── Timed quiet mode ───────────────────────────────────────────────────────
+
+  /// The two timed pauses the dashboard offers, matching Workrave's
+  /// *Temporarily Quiet…* (30 minutes / 1 hour). "Until tomorrow" is computed
+  /// from the local day rather than stored, and "until I resume" is indefinite.
+  static const Duration quietForThirtyMinutes = Duration(minutes: 30);
+  static const Duration quietForOneHour = Duration(hours: 1);
+
   // ── Reminder scheduling ────────────────────────────────────────────────────
 
   /// How many upcoming reminders the OS queue holds.

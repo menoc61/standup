@@ -112,9 +112,28 @@ jobs:
 
       - name: Build release APK
         id: build
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          flutter build apk --release
-          flutter build appbundle --release
+          # Cloud features are compile-time (String.fromEnvironment), so the
+          # credentials have to be present here or the artefact ships local-only.
+          # Both are optional: a fork without a project still builds, and the
+          # publish job states which case this release is.
+          defines=()
+          if [ -n "$SUPABASE_URL" ]; then
+            defines+=("--dart-define=SUPABASE_URL=$SUPABASE_URL")
+          fi
+          if [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
+            defines+=("--dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY")
+          fi
+          if [ ${#defines[@]} -eq 2 ]; then
+            echo "Cloud features enabled."
+          else
+            echo "::warning::Supabase credentials are absent or incomplete; this release is local-only."
+          fi
+          flutter build apk --release "${defines[@]}"
+          flutter build appbundle --release "${defines[@]}"
 
       - name: Collect artefacts
         run: |
@@ -155,7 +174,23 @@ jobs:
         run: flutter pub get
 
       - name: Build web
-        run: flutter build web --release
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          defines=()
+          if [ -n "$SUPABASE_URL" ]; then
+            defines+=("--dart-define=SUPABASE_URL=$SUPABASE_URL")
+          fi
+          if [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
+            defines+=("--dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY")
+          fi
+          if [ ${#defines[@]} -eq 2 ]; then
+            echo "Cloud features enabled."
+          else
+            echo "::warning::Supabase credentials are absent or incomplete; this release is local-only."
+          fi
+          flutter build web --release "${defines[@]}"
 
       - name: Copy and verify Drift web assets
         run: |
@@ -202,7 +237,19 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows
-        run: flutter build windows --release
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          $defines = @()
+          if ($env:SUPABASE_URL) { $defines += "--dart-define=SUPABASE_URL=$env:SUPABASE_URL" }
+          if ($env:SUPABASE_PUBLISHABLE_KEY) { $defines += "--dart-define=SUPABASE_PUBLISHABLE_KEY=$env:SUPABASE_PUBLISHABLE_KEY" }
+          if ($defines.Count -eq 2) {
+            Write-Host "Cloud features enabled."
+          } else {
+            Write-Host "::warning::Supabase credentials are absent or incomplete; this release is local-only."
+          }
+          flutter build windows --release $defines
 
       - name: Package as a zip
         run: |
@@ -285,12 +332,27 @@ jobs:
         run: flutter pub get
 
       - name: Build Linux
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
+          defines=()
+          if [ -n "$SUPABASE_URL" ]; then
+            defines+=("--dart-define=SUPABASE_URL=$SUPABASE_URL")
+          fi
+          if [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
+            defines+=("--dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY")
+          fi
+          if [ ${#defines[@]} -eq 2 ]; then
+            echo "Cloud features enabled."
+          else
+            echo "::warning::Supabase credentials are absent or incomplete; this release is local-only."
+          fi
           # Same reason as the CI job: a link failure must not reach the release
           # log as a bare "linker command failed". If the build fails, the link
           # is re-run directly so the undefined symbol is in the log before
           # anyone goes looking for it.
-          if ! flutter build linux --release -v; then
+          if ! flutter build linux --release -v "${defines[@]}"; then
             echo "::error::Linux release build failed; re-running the link directly"
             if [ -d build/linux/x64/release ]; then
               cmake --build build/linux/x64/release --config Release --verbose || true
@@ -405,10 +467,32 @@ jobs:
         run: flutter pub get
 
       - name: Build iOS (no codesign)
-        run: flutter build ios --release --no-codesign
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          defines=()
+          if [ -n "$SUPABASE_URL" ]; then
+            defines+=("--dart-define=SUPABASE_URL=$SUPABASE_URL")
+          fi
+          if [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
+            defines+=("--dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY")
+          fi
+          flutter build ios --release --no-codesign "${defines[@]}"
 
       - name: Build macOS
-        run: flutter build macos --release
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          defines=()
+          if [ -n "$SUPABASE_URL" ]; then
+            defines+=("--dart-define=SUPABASE_URL=$SUPABASE_URL")
+          fi
+          if [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
+            defines+=("--dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY")
+          fi
+          flutter build macos --release "${defines[@]}"
 
       - name: Package iOS Runner.app
         run: |
@@ -479,11 +563,20 @@ jobs:
         id: platforms
         env:
           APPLE_RESULT: ${{ needs.apple.result }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         run: |
           {
             echo "## Artefacts in this release"
             echo
             for f in dist/*; do echo "- \`$(basename "$f")\`"; done
+            echo
+            # Cloud features are compiled in, so this line is the only way a
+            # reader can tell an account-capable build from a local-only one.
+            if [ -n "$SUPABASE_URL" ]; then
+              echo "**Cloud features:** enabled — this build can create accounts, sync and reach the organisation dashboards."
+            else
+              echo "**Cloud features:** not configured — this build is local-only. Reminders, history and analytics all run on the device; nothing is uploaded."
+            fi
             echo
             if [ "$APPLE_RESULT" = "success" ]; then
               echo "All six targets were built: Android, Web, Windows, Linux, iOS and macOS."

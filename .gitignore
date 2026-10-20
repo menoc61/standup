@@ -31,6 +31,11 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 supabase/functions/.env
+# Local credentials for scripts/standup.sh and the TUI. The client only ever
+# sees the publishable key, but an .env is still a secret-adjacent file.
+/.env
+# Supabase CLI scratch state (linked project ref, version cache).
+supabase/.temp/
 /build/
 /coverage/
 

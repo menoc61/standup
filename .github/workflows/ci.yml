@@ -116,7 +116,28 @@ jobs:
       # present. Without a keystore it falls back to the debug signing config,
       # which is enough to prove the build and the ProGuard rules work.
       - name: Build release APK
-        run: flutter build apk --release
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          # Cloud features are compile-time: the app reads these through
+          # String.fromEnvironment, so a build that is not given them can never
+          # sign in, sync or reach the organisation dashboards - it is local-only
+          # rather than broken, which is the documented fallback. Both values are
+          # optional here so a fork without a project still builds.
+          defines=()
+          if [ -n "$SUPABASE_URL" ]; then
+            defines+=("--dart-define=SUPABASE_URL=$SUPABASE_URL")
+          fi
+          if [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
+            defines+=("--dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY")
+          fi
+          if [ ${#defines[@]} -eq 2 ]; then
+            echo "Cloud features enabled."
+          else
+            echo "::warning::Supabase credentials are absent or incomplete; this build is local-only."
+          fi
+          flutter build apk --release "${defines[@]}"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -147,7 +168,23 @@ jobs:
         run: flutter pub get
 
       - name: Build web
-        run: flutter build web --release
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          defines=()
+          if [ -n "$SUPABASE_URL" ]; then
+            defines+=("--dart-define=SUPABASE_URL=$SUPABASE_URL")
+          fi
+          if [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
+            defines+=("--dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY")
+          fi
+          if [ ${#defines[@]} -eq 2 ]; then
+            echo "Cloud features enabled."
+          else
+            echo "::warning::Supabase credentials are absent or incomplete; this build is local-only."
+          fi
+          flutter build web --release "${defines[@]}"
 
       # `flutter build web` has no knowledge of Drift, so the two WASM assets are
       # copied from the pub cache afterwards. The script is the single source of
@@ -203,14 +240,29 @@ jobs:
         run: flutter pub get
 
       - name: Build Linux
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
+          defines=()
+          if [ -n "$SUPABASE_URL" ]; then
+            defines+=("--dart-define=SUPABASE_URL=$SUPABASE_URL")
+          fi
+          if [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
+            defines+=("--dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY")
+          fi
+          if [ ${#defines[@]} -eq 2 ]; then
+            echo "Cloud features enabled."
+          else
+            echo "::warning::Supabase credentials are absent or incomplete; this build is local-only."
+          fi
           # `flutter build linux` without -v captures the toolchain's stderr and
           # reports a link failure as a bare "clang++: error: linker command
           # failed", with the `undefined reference to ...` line — the only part
           # worth reading — nowhere in the log. That is what made this job
           # undiagnosable. Verbose streaming shows it; if the build still fails,
           # the link is re-run directly so the symbol is captured either way.
-          if ! flutter build linux --release -v; then
+          if ! flutter build linux --release -v "${defines[@]}"; then
             echo "::error::Linux release build failed; re-running the link directly"
             if [ -d build/linux/x64/release ]; then
               cmake --build build/linux/x64/release --config Release --verbose || true
@@ -253,10 +305,32 @@ jobs:
       # No signing identity is configured here, so these produce unsigned
       # bundles suitable for local verification and simulator use only.
       - name: Build iOS (no codesign)
-        run: flutter build ios --release --no-codesign
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          defines=()
+          if [ -n "$SUPABASE_URL" ]; then
+            defines+=("--dart-define=SUPABASE_URL=$SUPABASE_URL")
+          fi
+          if [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
+            defines+=("--dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY")
+          fi
+          flutter build ios --release --no-codesign "${defines[@]}"
 
       - name: Build macOS
-        run: flutter build macos --release
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          defines=()
+          if [ -n "$SUPABASE_URL" ]; then
+            defines+=("--dart-define=SUPABASE_URL=$SUPABASE_URL")
+          fi
+          if [ -n "$SUPABASE_PUBLISHABLE_KEY" ]; then
+            defines+=("--dart-define=SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY")
+          fi
+          flutter build macos --release "${defines[@]}"
 
       - name: Upload Apple artifacts
         uses: actions/upload-artifact@v4
@@ -292,7 +366,19 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows
-        run: flutter build windows --release
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          $defines = @()
+          if ($env:SUPABASE_URL) { $defines += "--dart-define=SUPABASE_URL=$env:SUPABASE_URL" }
+          if ($env:SUPABASE_PUBLISHABLE_KEY) { $defines += "--dart-define=SUPABASE_PUBLISHABLE_KEY=$env:SUPABASE_PUBLISHABLE_KEY" }
+          if ($defines.Count -eq 2) {
+            Write-Host "Cloud features enabled."
+          } else {
+            Write-Host "::warning::Supabase credentials are absent or incomplete; this build is local-only."
+          }
+          flutter build windows --release $defines
 
       - name: Upload Windows bundle
         uses: actions/upload-artifact@v4

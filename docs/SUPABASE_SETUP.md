@@ -16,6 +16,37 @@ membership and anonymised organisation dashboards.
 
 ---
 
+## From zero: the order that works
+
+Each step depends on the one above it, and two of them are easy to do in the
+wrong order:
+
+1. **Create the project** (§1) and copy the Project URL and publishable key.
+2. **Run `supabase_schema.sql`** (§2.1). It creates the tables, the RLS policies,
+   the join function and the aggregate views.
+3. **Run `supabase_validation.sql`** (§2.2). It adds columns to
+   `analytics_daily` and recreates both aggregate views, so it *must* come after
+   the schema. Running it first fails on a missing table.
+4. **Configure Authentication** (§4) — Email is enough for a pilot; set the Site
+   URL and the `standup://login-callback` redirect.
+5. **Provision the organisation and its invite code** (§5), in the SQL editor.
+   There is deliberately no sample data and no client-side way to create either.
+6. **Set the two repository secrets** (§6): `SUPABASE_URL` and
+   `SUPABASE_PUBLISHABLE_KEY`. Until this is done every build is local-only,
+   including tagged releases.
+7. **Cut a tag** to build and publish. The release body must say
+   `**Cloud features:** enabled`.
+8. **Verify against the live server** (§7). Steps 7.3–7.6 are the ones that
+   actually prove RLS is on: they check that your rows are yours, that a direct
+   INSERT is refused, and that an admin sees aggregates only.
+
+Optional, and separate: the **company AI guidance** function. It is not part of
+the schema and the app works without it. Deploy `supabase/functions/ai-guidance`
+with its own server-side secrets — see `docs/AI_INTEGRATION.md` §"Deployment".
+The model credential goes in the Supabase function secrets, never in the app.
+
+---
+
 ## 1. Create the project
 
 1. Sign in at [supabase.com](https://supabase.com) and create a project.
@@ -160,6 +191,37 @@ flutter run -d <device-id> `
 
 ### Release builds
 
+The two workflows already pass these through, so a release build is connected by
+setting the repository secrets rather than by editing either YAML:
+
+| GitHub secret | Value |
+| --- | --- |
+| `SUPABASE_URL` | `https://<project-ref>.supabase.co` |
+| `SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_...` (never the service-role key) |
+
+Set them under **Settings → Secrets and variables → Actions → New repository
+secret**. Both are optional: when they are absent or only one is set, every job
+warns `Supabase credentials are absent or incomplete; this build is local-only`
+and the artefact falls back to the on-device database exactly as before. With both set,
+`.github/workflows/ci.yml` and `.github/workflows/release.yml` add
+`--dart-define=SUPABASE_URL=... --dart-define=SUPABASE_PUBLISHABLE_KEY=...` to
+the Android, Web, Windows, Linux and Apple builds.
+
+The release body states which case a given release is, because the credentials
+are baked in at compile time and there is no way to tell from the binary:
+
+```
+**Cloud features:** enabled — this build can create accounts, sync and reach the organisation dashboards.
+```
+
+or
+
+```
+**Cloud features:** not configured — this build is local-only.
+```
+
+Building by hand instead:
+
 ```bash
 flutter build apk --release \
   --dart-define=SUPABASE_URL=https://<project-ref>.supabase.co \
@@ -170,8 +232,9 @@ flutter build web --release \
   --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 ```
 
-In CI, store these as repository **Settings → Secrets** and inject them from the
-environment rather than committing them.
+`scripts/standup.sh` and `scripts/standup.ps1` also read `SUPABASE_URL` and
+`SUPABASE_KEY` from the environment or a `.env` file at the repository root, so a
+local `run` is connected the same way.
 
 ### Optional build metadata
 

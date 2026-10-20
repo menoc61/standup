@@ -54,7 +54,7 @@
 [Setup]
 AppId={{6F2A1C64-6B4E-4E1E-9F0B-1B7A5D3C9E21}
 AppName={#AppName}
-AppVersion=1.0.3
+AppVersion=1.0.4
 AppVerName={#AppName} {#AppVersion}
 AppPublisher=CNPS
 DefaultDirName={localappdata}\Programs\CNPS StandUp
